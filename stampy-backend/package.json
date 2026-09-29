@@ -4,26 +4,63 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "nodemon",
+    "start": "tsx src/index.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
-  "type": "module",
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.2",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "cors": "^2.8.6",
     "dotenv": "^18.0.4",
+    "drizzle-orm": "^0.45.3",
     "express": "^5.2.1",
     "google-auth-library": "^11.1.0",
     "jsonwebtoken": "^9.0.3",
+    "lodash": "^4.18.1",
+    "mongoose": "^9.2.1",
+    "morgan": "^1.10.1",
     "node": "^22.23.3",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "passport-local": "^1.0.0",
+    "pg": "^8.23.0",
+    "reflect-metadata": "^0.2.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/body-parser": "^1.19.6",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^26.6.3",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "@types/lodash": "^4.17.24",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^25.9.8",
+    "@types/passport": "^1.0.17",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/passport-local": "^1.0.38",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "nodemon": "^3.1.11",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "node_modules"
+    ],
+    "watch": [
+      "src"
+    ],
+    "exec": "npm start",
+    "ext": "ts"
   }
 }
