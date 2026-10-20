@@ -1,12 +1,10 @@
 import { Router } from "express";
 import { healt } from "./healt/healt.controller";
-import { addGoogleCard } from "./cards/google/google.controller";
-import { validate } from "../utils/validation-middleware";
-import { AddGoogleCardDTO } from "./cards/google/google.dto";
+import cardsRouter from "./cards/cards.router";
 
 const router = Router();
 
 router.get("/healt", healt);
-router.post("/cards/google", validate(AddGoogleCardDTO, "body"), addGoogleCard);
+router.use("/cards", cardsRouter);
 
 export default router;
