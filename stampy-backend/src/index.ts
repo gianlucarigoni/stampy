@@ -1,6 +1,6 @@
-import "dotenv/config";
 import { createServer } from "node:http";
 import app from "./app";
+import { env } from "./config/env";
 import { pool } from "./db";
 
 const server = createServer(app);
@@ -8,8 +8,8 @@ const server = createServer(app);
 pool
   .query("SELECT 1")
   .then(() => {
-    server.listen(3000, () => {
-      console.log(`server listening on port 3000`);
+    server.listen(env.PORT, () => {
+      console.log(`server listening on port ${env.PORT}`);
     });
   })
   .catch((err) => {

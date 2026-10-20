@@ -2,8 +2,6 @@ import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 import * as jwt from "jsonwebtoken";
 import { customAlphabet } from "nanoid";
 import { randomUUID } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import { db } from "../../../db";
 import { cards, promotions, users, venues, walletProvider, walletStatus } from "../../../db/schema";
 import { Card } from "../../../utils/types/card.type";
@@ -11,35 +9,19 @@ import { Promotion } from "../../../utils/types/promotion.type";
 import { User } from "../../../utils/types/users.type";
 import { Venue } from "../../../utils/types/venue.type";
 import { brandingSchema } from "../../../utils/schemas/branding.schema";
+import { env } from "../../../config/env";
+import { loadServiceAccount, ServiceAccount } from "../../../config/serviceAccount";
 
 export class GoogleService {
+  private readonly credentials: ServiceAccount = loadServiceAccount(
+    env.WALLET_SERVICE_ACCOUNT_KEY_PATH,
+    env.WALLET_SERVICE_ACCOUNT_EMAIL,
+  );
+  
   private publicCodeGenerator = customAlphabet("23456789ABCDEFGHJKMNPQRSTUVWXYZ", 8);
-
+  
   private generatePublicCode(): string {
     return this.publicCodeGenerator();
-  }
-
-  getPrivateKey(): string {
-    const keyPath = process.env.WALLET_SERVICE_ACCOUNT_KEY_PATH;
-    if (!keyPath) {
-      throw new Error("WALLET_SERVICE_ACCOUNT_KEY_PATH non è definito nel file .env");
-    }
-
-    // Risolve il percorso relativo a partire dalla root del progetto
-    const absolutePath = path.resolve(process.cwd(), keyPath);
-
-    if (!fs.existsSync(absolutePath)) {
-      throw new Error(`File delle credenziali Google non trovato al percorso: ${absolutePath}`);
-    }
-
-    const rawData = fs.readFileSync(absolutePath, "utf-8");
-    const serviceAccount = JSON.parse(rawData);
-
-    if (!serviceAccount.private_key) {
-      throw new Error("Il file JSON non contiene il campo 'private_key'.");
-    }
-
-    return serviceAccount.private_key;
   }
 
   async getUserById(userId: string): Promise<User | null> {
@@ -76,7 +58,7 @@ export class GoogleService {
     venueId: string,
     promotionId: string,
   ): Promise<{ card: Card; created: boolean } | null> {
-    const issuerId = process.env.WALLET_ISSUER_ID;
+    const issuerId = env.WALLET_ISSUER_ID
     if (!issuerId) return null;
 
     const id = randomUUID();
@@ -114,7 +96,7 @@ export class GoogleService {
   }
 
   buildLoyaltyClass(venue: Venue) {
-    const issuerId = process.env.WALLET_ISSUER_ID;
+    const issuerId = env.WALLET_ISSUER_ID;
     if (!issuerId) {
       throw new Error("WALLET_ISSUER_ID non è configurato.");
     }
@@ -204,18 +186,12 @@ export class GoogleService {
   }
 
   createSaveUrl(loyaltyClass: object, loyaltyObject: object): string {
-    const serviceAccountEmail = process.env.WALLET_SERVICE_ACCOUNT_EMAIL;
-    if (!serviceAccountEmail) {
-      throw new Error("WALLET_SERVICE_ACCOUNT_EMAIL non è configurato.");
-    }
-
-    // Carica la chiave dal file JSON
-    const privateKey = this.getPrivateKey();
+    const serviceAccountEmail = env.WALLET_SERVICE_ACCOUNT_EMAIL
 
     const claims = {
-      iss: serviceAccountEmail,
+      iss: this.credentials.clientEmail,
       aud: "google",
-      origins: [process.env.APP_ORIGIN || "http://localhost:3000"],
+      origins: [ env.APP_ORIGIN ],
       typ: "savetowallet",
       payload: {
         loyaltyClasses: [loyaltyClass],
@@ -223,7 +199,7 @@ export class GoogleService {
       },
     };
 
-    const token = jwt.sign(claims, privateKey, { algorithm: "RS256" });
+    const token = jwt.sign(claims, this.credentials.privateKey, { algorithm: "RS256" });
 
     return `https://pay.google.com/gp/v/save/${token}`;
   }
