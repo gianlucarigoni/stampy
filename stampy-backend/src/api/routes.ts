@@ -4,7 +4,7 @@ import cardsRouter from "./cards/cards.router";
 
 const router = Router();
 
-router.get("/healt", health);
+router.get("/health", health);
 router.use("/cards", cardsRouter);
 
 export default router;
