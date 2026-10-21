@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { healt } from "./healt/healt.controller";
+import { health } from "./health/health.controller";
 import cardsRouter from "./cards/cards.router";
 
 const router = Router();
 
-router.get("/healt", healt);
+router.get("/healt", health);
 router.use("/cards", cardsRouter);
 
 export default router;

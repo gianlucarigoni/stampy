@@ -57,9 +57,8 @@ export class GoogleService {
     userId: string,
     venueId: string,
     promotionId: string,
-  ): Promise<{ card: Card; created: boolean } | null> {
+  ): Promise<{ card: Card; created: boolean }> {
     const issuerId = env.WALLET_ISSUER_ID
-    if (!issuerId) return null;
 
     const id = randomUUID();
     const walletObjectId = `${issuerId}.${id}`;
@@ -172,7 +171,7 @@ export class GoogleService {
           id: "reward_info",
         },
         {
-          header: "MECANISMO TIMBRI",
+          header: "MECCANISMO TIMBRI",
           body: `Raccogli ${config.stampsRequired} timbri per riscattare il premio.`,
           id: "stamps_info",
         },
