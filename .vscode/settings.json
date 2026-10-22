@@ -1,0 +1,57 @@
+{
+  // ==========================================
+  // 🎯 AUTOMAZIONI E REGOLE DI FORMATTAZIONE
+  // ==========================================
+  "editor.formatOnSave": true,
+  "prettier.printWidth": 120,
+
+  // Disabilita la chiusura automatica dei tag nei generici TypeScript <T>
+  "js/ts.autoClosingTags.enabled": false,
+  "auto-close-tag.activationOnLanguage": ["html", "xml", "php"],
+
+  "path-intellisense.autoTrigger": true,
+
+  // Forza il supporto HTML avanzato (Emmet/Bootstrap)
+  "emmet.includeLanguages": {
+    "html": "html"
+  },
+
+  // ==========================================
+  // 🛠️ COMPORTAMENTO LINGUAGGI DEL PROGETTO
+  // ==========================================
+
+  // TypeScript (Angular e Backend Express)
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    }
+  },
+
+  // HTML (Template Angular e strutture Bootstrap)
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+
+  // JSON (Configurazioni di progetto)
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+
+  // Stili grafici
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+
+  // Estensioni specifiche attive in questo Workspace
+  "angular.suggest.includeComponentExtension": true,
+  "console-ninja.featureSet": "Community"
+}

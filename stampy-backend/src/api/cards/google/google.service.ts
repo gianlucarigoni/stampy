@@ -17,9 +17,9 @@ export class GoogleService {
     env.WALLET_SERVICE_ACCOUNT_KEY_PATH,
     env.WALLET_SERVICE_ACCOUNT_EMAIL,
   );
-  
+
   private publicCodeGenerator = customAlphabet("23456789ABCDEFGHJKMNPQRSTUVWXYZ", 8);
-  
+
   private generatePublicCode(): string {
     return this.publicCodeGenerator();
   }
@@ -53,12 +53,8 @@ export class GoogleService {
     return promotion ?? null;
   }
 
-  async addOrGetCard(
-    userId: string,
-    venueId: string,
-    promotionId: string,
-  ): Promise<{ card: Card; created: boolean }> {
-    const issuerId = env.WALLET_ISSUER_ID
+  async addOrGetCard(userId: string, venueId: string, promotionId: string): Promise<{ card: Card; created: boolean }> {
+    const issuerId = env.WALLET_ISSUER_ID;
 
     const id = randomUUID();
     const walletObjectId = `${issuerId}.${id}`;
@@ -185,12 +181,10 @@ export class GoogleService {
   }
 
   createSaveUrl(loyaltyClass: object, loyaltyObject: object): string {
-    const serviceAccountEmail = env.WALLET_SERVICE_ACCOUNT_EMAIL
-
     const claims = {
       iss: this.credentials.clientEmail,
       aud: "google",
-      origins: [ env.APP_ORIGIN ],
+      origins: [env.APP_ORIGIN],
       typ: "savetowallet",
       payload: {
         loyaltyClasses: [loyaltyClass],
