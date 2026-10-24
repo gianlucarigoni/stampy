@@ -1,10 +1,36 @@
-import { and, eq, gt, lte, sql } from "drizzle-orm";
+import { and, eq, lte, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { requestStatus, stampRequests } from "../../db/schema";
-import { StampRequest } from "../../utils/types/request.type";
+import { stampRequests } from "../../db/schema";
 import { RequestStatus } from "../../utils/enum/request-status.enum";
+import { StampRequest } from "../../utils/types/request.type";
 
 export class RequestsService {
+  async refreshStatus(id: string) {
+    const [updated] = await db
+      .update(stampRequests)
+      .set({
+        status: RequestStatus.expired,
+        resolvedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(stampRequests.id, id),
+          eq(stampRequests.status, RequestStatus.pending),
+          lte(stampRequests.expiresAt, sql`now()`),
+        ),
+      )
+      .returning();
+
+    if (!updated) return null;
+    return updated;
+  }
+
+  async getRequestById(id: string): Promise<StampRequest | null> {
+    const [request] = await db.select().from(stampRequests).where(eq(stampRequests.id, id));
+    if (!request) return null;
+    return request;
+  }
+
   async getPendingRequest(cardId: string): Promise<StampRequest | null> {
     const [request] = await db
       .select()

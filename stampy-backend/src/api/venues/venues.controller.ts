@@ -50,7 +50,7 @@ export const visit = async (req: TypedRequest<userIdDTO, unknown, venueIdDTO>, r
       const newRequest = await requestSrv.newRequest(card.id, venueId);
       if (!newRequest) {
         const pending = await requestSrv.getPendingRequest(card.id);
-        if (!pending) throw new GenericError("Errore nella richiesta, riprova");
+        if (!pending) throw new GenericError("Errore nella richiesta, riprova", 409);
         res.status(200).json({ state: VISIT_STATES[1], requestId: pending.id, expiresAt: pending.expiresAt });
         return;
       }

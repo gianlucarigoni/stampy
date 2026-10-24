@@ -1,10 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 
 export class GenericError extends Error {
-  constructor(message: string) {
-    super();
-    this.message = message;
-    this.name = "Generic";
+  constructor(
+    message: string,
+    public readonly statusCode: number = 500,
+  ) {
+    super(message);
+    this.name = "GenericError";
   }
 }
 
