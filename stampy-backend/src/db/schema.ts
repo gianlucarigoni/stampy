@@ -24,25 +24,127 @@ export const walletProvider = pgEnum("wallet_provider", ["google", "apple"]);
 export const walletStatus = pgEnum("wallet_status", ["not_added", "active", "removed"]);
 export const requestStatus = pgEnum("request_status", ["pending", "approved", "rejected", "expired"]);
 export const eventType = pgEnum("event_type", ["stamp", "redeem"]);
+export const identityProvider = pgEnum("identity_provider", ["email", "google"]);
+export const otpChannel = pgEnum("otp_channel", ["email"]);
+export const authEventType = pgEnum("auth_event_type", [
+  "otp_sent",
+  "otp_send_blocked",
+  "otp_failed",
+  "otp_verified",
+  "login_success",
+  "identity_linked",
+  "google_untrusted_email_rejected",
+  "logout",
+  "session_revoked",
+]);
 
 export const users = pgTable(
   "users",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    phoneCountryCode: text("phone_country_code"), // "39"
-    phoneNationalNumber: text("phone_national_number"), // "3331234567"
-    phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
+    // email verificata (OTP o IdP autorevole). NULL = nessuna email verificata, oppure utente anonimizzato
+    email: text("email"),
     displayName: text("display_name"),
     isPlatformAdmin: boolean("is_platform_admin").notNull().default(false),
     anonymizedAt: timestamp("anonymized_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
-    unique("users_phone_uq").on(t.phoneCountryCode, t.phoneNationalNumber),
+    unique("users_email_uq").on(t.email),
+    // normalizzazione: solo trim e minuscolo (niente rimozione di punti o +alias)
+    check("users_email_normalized_ck", sql`${t.email} = lower(btrim(${t.email}))`),
+  ],
+);
+
+export const authIdentities = pgTable(
+  "auth_identities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    provider: identityProvider("provider").notNull(),
+    // provider "email": l'email normalizzata; provider "google": il claim "sub"
+    providerUserId: text("provider_user_id").notNull(),
+    emailAtProvider: text("email_at_provider"),
+    createdAt: createdAt(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("auth_identities_provider_uq").on(t.provider, t.providerUserId),
+    unique("auth_identities_user_provider_uq").on(t.userId, t.provider),
     check(
-      "users_phone_required",
-      sql`${t.anonymizedAt} IS NOT NULL OR (${t.phoneCountryCode} IS NOT NULL AND ${t.phoneNationalNumber} IS NOT NULL)`,
+      "auth_identities_email_normalized_ck",
+      sql`${t.provider} <> 'email' OR ${t.providerUserId} = lower(btrim(${t.providerUserId}))`,
     ),
+    check(
+      "auth_identities_email_at_provider_ck",
+      sql`${t.emailAtProvider} IS NULL OR ${t.emailAtProvider} = lower(btrim(${t.emailAtProvider}))`,
+    ),
+  ],
+);
+
+export const otpChallenges = pgTable(
+  "otp_challenges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(), // opaco, restituito al client
+    channel: otpChannel("channel").notNull(),
+    destination: text("destination").notNull(), // email normalizzata
+    codeHash: text("code_hash").notNull(), // HMAC del codice, mai il codice in chiaro
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }), // usata con successo
+    invalidatedAt: timestamp("invalidated_at", { withTimezone: true }), // sostituita o esaurita
+    createdAt: createdAt(),
+  },
+  (t) => [
+    // una sola sfida attiva per destinatario: l'invio chiude la precedente nella STESSA transazione
+    uniqueIndex("otp_challenges_one_active_uq")
+      .on(t.channel, t.destination)
+      .where(sql`${t.consumedAt} IS NULL AND ${t.invalidatedAt} IS NULL`),
+    // cooldown e tetto orario degli invii
+    index("otp_challenges_destination_idx").on(t.channel, t.destination, t.createdAt),
+    check("otp_challenges_attempts_ck", sql`${t.attempts} >= 0`),
+    check(
+      "otp_challenges_destination_ck",
+      sql`${t.channel} <> 'email' OR ${t.destination} = lower(btrim(${t.destination}))`,
+    ),
+  ],
+);
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    tokenHash: text("token_hash").notNull(), // SHA-256 del token casuale, mai il token
+    authProvider: identityProvider("auth_provider").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    userAgent: text("user_agent"),
+    createdAt: createdAt(),
+  },
+  (t) => [unique("sessions_token_hash_uq").on(t.tokenHash), index("sessions_user_idx").on(t.userId)],
+);
+
+// Log di sicurezza append-only: l'applicazione non fa mai UPDATE né DELETE
+export const authEvents = pgTable(
+  "auth_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "restrict" }), // NULL = utente sconosciuto
+    type: authEventType("type").notNull(),
+    provider: identityProvider("provider"),
+    subjectHash: text("subject_hash"), // HMAC dell'email, mai l'email in chiaro
+    metadata: jsonb("metadata").notNull().default({}), // niente dati personali né codici
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("auth_events_user_idx").on(t.userId, t.createdAt),
+    index("auth_events_type_idx").on(t.type, t.createdAt),
   ],
 );
 
@@ -176,3 +278,4 @@ export const stampEvents = pgTable(
 export type Card = typeof cards.$inferSelect;
 export type WalletProvider = (typeof walletProvider.enumValues)[number]; // "google" | "apple"
 export type WalletStatus = (typeof walletStatus.enumValues)[number]; // "not_added" | "active" | "removed"
+export type IdentityProvider = (typeof identityProvider.enumValues)[number]; // "email" | "google"

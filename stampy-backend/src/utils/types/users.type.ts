@@ -1,8 +1,6 @@
 export type User = {
   id: string;
-  phoneCountryCode: string | null;
-  phoneNationalNumber: string | null;
-  phoneVerifiedAt: Date | null;
+  email: string | null;
   displayName: string | null;
   isPlatformAdmin: boolean;
   anonymizedAt: Date | null;
