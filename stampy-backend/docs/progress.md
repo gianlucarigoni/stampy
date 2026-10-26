@@ -2,7 +2,7 @@
 
 > Documento vivo, complementare a `stampy_contesto_progetto.md` (decisioni di prodotto).
 > Qui si tiene traccia di **cosa è stato fatto**, **cosa è stato verificato** e **cosa resta da fare**.
-> Ultimo aggiornamento: 26 ottobre 2026 (pomeriggio) — fase: pre-MVP, **Fase 3 chiusa; Fase 4 in corso: migration 2, percorso email dell'auth e `isAuthenticated`/sessione/logout chiusi e testati**. Prossimo: `visit` e polling con l'utente di sessione, poi login Google e staff. Nessun frontend, nessun cliente pilota confermato.
+> Ultimo aggiornamento: 26 ottobre 2026 (sera) — fase: pre-MVP, **Fase 3 chiusa; Fase 4 in corso: migration 2, percorso email, `isAuthenticated`/sessione/logout, `visit` e polling con l'utente di sessione chiusi e testati**. Prossimo: rate limit di `visit`, poi coda staff; Google rimandato dopo lo staff. Nessun frontend, nessun cliente pilota confermato.
 > Questa versione consolida e sostituisce le sezioni precedenti (Fase A, aggiornamenti del 19/10, 23/10, 24/10): quanto è superato è stato rimosso.
 
 ---
@@ -11,11 +11,12 @@
 
 - **Wallet**: un backend nostro emette un pass Google Wallet (testato su Android, demo mode). Il link "Add to Google Wallet" si firma in locale con la chiave del service account.
 - **Database**: PostgreSQL 16 in Docker, Drizzle con migration versionate (0000, 0001, **0002_auth_foundation**), **11 tabelle** e tutti i vincoli principali verificati. Dettagli, con spiegazione di ogni vincolo, in `stampy_db_schema.md`.
-- **API**: `GET /api/health`, `POST /api/cards/google` (dev), `POST /api/venues/:venueId/visit`, `GET /api/requests/:requestId`, **`POST /api/auth/email/request`**, **`POST /api/auth/email/verify`**, **`GET /api/auth/me`**, **`POST /api/auth/logout`**. Dettagli in `CODEBASE_CONTEXT.md`.
+- **API**: `GET /api/health`, `POST /api/cards/google` (dev), **`POST /api/venues/:venueId/visit`** e **`GET /api/requests/:requestId`** (entrambe dietro `isAuthenticated`, `userId` non più nel body), **`POST /api/auth/email/request`**, **`POST /api/auth/email/verify`**, **`GET /api/auth/me`**, **`POST /api/auth/logout`**. Dettagli in `CODEBASE_CONTEXT.md`.
 - **Flusso cliente**: tocco del tag → creazione card o richiesta di timbro `pending` → polling dello stato con scadenza lazy (3 minuti). Testato anche con race tra richieste parallele.
 - **Auth — percorso email (implementato e testato da terminale il 26/10)**: richiesta del codice con cooldown 45 s e tetto 5 invii/ora, verifica con 5 tentativi, creazione/collegamento di utente e identità `email`, sessione con cookie `httpOnly`. Niente password. **Google non ancora implementato**; Apple e telefono (SMS) sono evoluzioni future non confermate. Parametri e regole in `stampy_contesto_progetto.md` §4.11 e `stampy_db_schema.md` §6.
+- **`visit` e polling con l'utente di sessione (implementati e testati il 26/10)**: l'utente viene da `req.auth`, il `userId` nel body è ignorato; il polling verifica l'ownership **in SQL** (join `stamp_requests ⋈ cards`) e la richiesta altrui dà **404 identico** a un id inesistente, senza scrivere nulla. Dettagli in §2.9.
 - **Auth — sessione e logout (implementati e testati il 26/10)**: cookie `sid` `httpOnly`, `SameSite=Lax`, `Secure` solo in produzione, `Path=/`; in DB solo lo SHA-256 del token. Sessione **scorrevole 30 giorni dall'ultima attività con tetto assoluto di 90 giorni** da `created_at`, rinnovo al massimo ogni 5 minuti; cookie con `maxAge` = tetto assoluto. Ogni fallimento (assente, alterato, scaduto, revocato, anonimizzato, tetto superato) dà lo **stesso 401**. Logout revoca la sola sessione corrente, cancella il cookie con le stesse opzioni e scrive un evento `logout` senza metadata. L'utente sta in `req.auth` (non `req.user`, vedi §4).
-- **Mancano**: `visit` e polling con l'utente di sessione, invio email reale (Gmail), login Google, endpoint staff, `confirm`/`reject`, tratti e quantità, aggiornamento del pass da server, frontend, hosting con URL fisso.
+- **Mancano**: rate limit di `visit`, invio email reale (Gmail), login Google, endpoint staff, `confirm`/`reject`, tratti e quantità, aggiornamento del pass da server, frontend, hosting con URL fisso.
 - **Ancora non verificati**: aggiornamento del pass da server (**gate tecnico per la `confirm`**), lettura da tag NFC fisico (iPhone e Android), tempi di approvazione Google per il publishing access, limiti di invio di Gmail per le email automatiche, configurazione di Google Sign-In.
 
 ---
@@ -91,14 +92,26 @@ File modificati: `session.service.ts` (costanti, `sessionCookieOptions`, `authen
 | `POST /auth/email/request` (`scripts/otp-request.ts`): validazione, 202, normalizzazione, cooldown con `Retry-After`, tetto orario (la sfida viva resta viva), finestra oraria, 5 richieste simultanee (una 202, quattro 429, nessun 5xx), risposta uguale per utente esistente/inesistente | OK (25/10, RIPORTATO; rieseguito 13/13 il 26/10) |
 | `POST /auth/email/verify` (`scripts/otp-verify.ts`): **16/16** — validazione senza consumare tentativi; utente nuovo con cookie/utente/identità/sessione/eventi; nessuna email in chiaro in `auth_events`; codice riusato; errato; 5 errati poi il giusto fallisce; quinto tentativo giusto passa; sfida a 5 tentativi; scaduta; sostituita; inesistente; utente esistente senza identità (`identity_linked`) e con identità; 5 verify simultanee (una 200, un utente, una sessione) | OK (26/10, RIPORTATO; rieseguito 16/16 dopo le sessioni) |
 | `isAuthenticated` + logout (`scripts/session.ts`): **16/16** — cookie valido (200, body mappato), richiesta ravvicinata senza riscrittura di `last_seen_at`, cookie assente/alterato/malformato, sessione scaduta, revocata, utente anonimizzato, tetto assoluto superato, scorrimento dopo 10 minuti, tetto rispettato a 89 giorni, login vero con OTP e cookie accettato, logout (204, cookie rimosso con le stesse opzioni, un evento senza metadata), 401 dopo logout, logout ripetuto (401, `revoked_at` invariato, nessun secondo evento), due logout simultanei (un solo evento), whitelist dei metadata | OK (26/10, verificato in questa sessione) |
-| `npm run typecheck` | pulito (26/10, dopo `isAuthenticated`/logout) |
+| `visit` + polling con sessione (`scripts/poll-request.ts`): **12/12** — 401 senza cookie/fasullo/utente anonimizzato, `userId` nel body ignorato, card creata per l'utente di sessione, secondo tocco `request_pending`, polling del proprietario, params malformati (401 senza sessione / 400 con sessione), richiesta altrui → 404 identico a inesistente e nessuna scrittura, scadenza lazy → `expired`, nuovo tocco dopo la scadenza | OK (26/10) |
+| `npm run typecheck` | pulito (26/10, dopo `isAuthenticated`/logout e dopo `visit`/polling) |
+
+### 2.9 Fase 4 — `visit` e polling con l'utente di sessione (26/10/2026)
+
+File modificati: `venues/venues.router.ts` e `venues/venues.controller.ts` (`isAuthenticated` prima della validazione, `userId = requireAuth(req).user.id`), `venues/venues.dto.ts` (rimossa `userIdDTO`), `requests/requests.router.ts`, `requests/requests.controller.ts`, `requests/requests.service.ts` (ownership in SQL), `auth/session.middleware.ts` e `utils/auth-context.ts` (generics aperti su `P`), `scripts/poll-request.ts` (riscritto come test completo). `venues/venues.service.ts` non è stato toccato. Il server locale (nodemon) ha ricaricato da solo.
+
+- **`visit`**: `userId` dal body rimosso e **ignorato** se inviato; la card nasce per l'utente della sessione. Rimossi `userSrv.getUserById` e il ramo `UserNotFoundError`: `isAuthenticated` garantisce già utente esistente e non anonimizzato, quindi la seconda lettura era una query in più senza nuovi controlli.
+- **Polling**: ownership in SQL con join `stamp_requests ⋈ cards` su `(card_id, venue_id)` e filtro `cards.user_id`; la scadenza lazy ha in più un `EXISTS` sulla stessa condizione, così non scrive mai righe di altri. Richiesta altrui → **404 identico** a un id inesistente (deciso il 26/10: nessun 403, nessuna conferma dell'esistenza).
+- **Ordine dei middleware**: `isAuthenticated → validate(params) → controller`. Conseguenza accettata: senza cookie un UUID malformato dà **401**, non 400; con sessione valida resta 400.
+- **Typecheck**: con tre handler sulla rotta (`isAuthenticated`, `validate`, controller tipizzato dal DTO) `isAuthenticated` con `P = ParamsDictionary` fisso rendeva il controller non assegnabile a `RequestHandler`. Risolto aprendo i generics di `isAuthenticated` e `requireAuth` su `P`; nessun cast nei controller. Stesso tipo di problema già documentato per `req.auth`/`req.user`.
+- **Test**: `scripts/poll-request.ts` **12/12** (§2.8). Lo script non usa più id scritti a mano: sceglie il primo locale con promozione attiva, crea utenti `visit-test-*@test.it` e sessioni con token noto (in tabella solo SHA-256), e ripulisce a fine run. Verificata la pulizia a mano sul DB (0 utenti/sessioni/card/richieste residue).
+- **Debito dichiarato**: `visit` **resta non transazionale** (come concordato); il 409 ha lo status nel codice ma non è esercitabile a runtime senza forzare una race; `src/api/cards/google/google.controller.ts` (rotta dev) legge ancora `userId` dal body e resta fuori ambito; il rate limit di `visit` non è implementato (§6.9 dell'handoff).
 
 ---
 
 ## 3. Procedura di test
 
 - **Server**: `npm run dev` (il `.env` si legge solo all'avvio: dopo ogni modifica va riavviato; un `tsx watch` vivo non implica un server in ascolto).
-- **Polling**: `npx tsx scripts/poll-request.ts` (POST `visit` + GET ogni 2 s fino a stato diverso da `pending`; per accorciare il test: `UPDATE stamp_requests SET expires_at = now() - interval '1 minute' WHERE status = 'pending';`).
+- **`visit` e polling (con sessione)**: `npx tsx --env-file=.env scripts/poll-request.ts`. Crea utenti `visit-test-*@test.it` e sessioni con token noto, sceglie dal DB il primo locale con promozione attiva ed esegue i controlli (401, card, richiesta pending, ownership → 404, scadenza lazy, nuovo tocco). Pulizia a fine run.
 - **Auth, richiesta codice**: `npx tsx --env-file=.env scripts/otp-request.ts` (il tempo si simula spostando `created_at` via SQL: verifica la logica sulle righe, non l'orologio). Indirizzi `otp-test-*@test.it`, pulizia a fine run.
 - **Auth, verifica codice**: `npx tsx --env-file=.env scripts/otp-verify.ts` (crea le sfide direttamente nel DB con un codice noto, usando lo stesso `OTP_HMAC_SECRET`; non passa dall'email). Indirizzi `otp-verify-*@test.it`, pulizia a fine run.
 - **Auth, sessione e logout**: `npx tsx --env-file=.env scripts/session.ts` (crea le sessioni direttamente nel DB con un token noto — in tabella solo SHA-256 — e fa un login vero con una sfida OTP preparata a mano). Copre scadenza, revoca, anonimizzazione, tetto assoluto, scorrimento, 401 unico, logout e whitelist dei metadata. Indirizzi `auth-session-*@test.it`, pulizia a fine run.
@@ -149,28 +162,29 @@ File modificati: `session.service.ts` (costanti, `sessionCookieOptions`, `authen
 5. ~~Design dell'auth e migration 2~~ **fatto** (24/10).
 6. ~~Percorso email: `OtpService`, `IdentityService`, `SessionService`, `AuthEventsService`, `EmailSender` console, endpoint di richiesta e verifica~~ **fatto e testato** (26/10).
 7. ~~**`isAuthenticated`**, **logout**, `cookie-parser`, `last_seen_at` con scorrimento, errore 401~~ **fatto e testato** (26/10, §2.7): sessione scorrevole 30 giorni + tetto assoluto 90, tocco ogni 5 minuti, `req.auth`, `GET /api/auth/me`, `POST /api/auth/logout`.
-8. Sostituire `userId` nel body con l'utente di sessione in `visit` e in `GET /requests/:requestId` (la richiesta deve appartenere all'utente: filtro sul `user_id` della card collegata).
-9. **Login con Google** (verifica del token con `google-auth-library`, collegamento solo se autorevole, rifiuto delle email di terzi con `google_untrusted_email_rejected`). Richiede configurazione esterna e un modo di ottenere un token in test: da leggere nella documentazione ufficiale.
-10. **Invio email reale** (`GmailEmailSender`, limiti di Gmail da verificare; `EMAIL_PROVIDER` in `env.ts`).
-11. Decisioni ancora aperte: CORS/CSRF con cookie, login dello staff, primo `owner`, come conservare il `venueId` durante l'accesso, retention di `otp_challenges` e `auth_events`, trattamento GDPR di `subject_hash`. (Durata/`SameSite` della sessione e revoca: risolte il 26/10, §2.7.)
-12. Endpoint staff: coda delle pendenti, `requireRole`, `venue_id` da `venue_members`; creazione del primo `owner`.
-13. **Migration 3** (togliere UNIQUE su `stamp_events.request_id`), funzione pura dei tratti con test, `confirm`/`reject` in transazione con `idempotency_key`.
-14. **Ricerca nella documentazione Google**: aggiornamento dell'object via REST (scope, patch vs sostituzione, campi aggiornabili, latenza, class modificabile). Non cercare finché l'utente non lo dice.
-15. `wallet_status` (punto 20), branding di default (punto 17), personalizzazione estetica (punto 21).
+8. ~~Sostituire `userId` nel body con l'utente di sessione in `visit` e in `GET /requests/:requestId`~~ **fatto e testato** (26/10, §2.9): `userId` dal body ignorato, ownership del polling in SQL, richiesta altrui → 404 identico a inesistente.
+9. **Rate limit di `visit`** (deciso il 26/10, handoff §6.9): contatori nel DB per card/utente, più un limite in memoria per IP sulle rotte `/auth` con `trust proxy` da configurare. **Prossimo passo.**
+10. **Login con Google** (verifica del token con `google-auth-library`, collegamento solo se autorevole, rifiuto delle email di terzi con `google_untrusted_email_rejected`). **Rimandato dopo lo staff** (deciso il 26/10). Richiede configurazione esterna e un modo di ottenere un token in test: da leggere nella documentazione ufficiale.
+11. **Invio email reale** (`GmailEmailSender`, limiti di Gmail da verificare; `EMAIL_PROVIDER` in `env.ts`).
+12. ~~Decisioni ancora aperte su auth/CORS/staff/retention~~ **chiuse il 26/10** (handoff §6): CORS ristretto a una sola origine con `credentials` e controllo `Origin` sulle rotte che modificano stato, senza token CSRF per ora; staff con lo stesso metodo di login del cliente e ruolo letto da `venue_members`; primo `owner` con uno script dopo il suo primo login; `venueId` nell'URL con login sulla stessa pagina (frontend); retention e anonimizzazione rimandate a prima del primo utente reale.
+13. Endpoint staff: coda delle pendenti, `requireRole`, `venue_id` da `venue_members`; creazione del primo `owner` con uno script.
+14. **Migration 3** (togliere UNIQUE su `stamp_events.request_id`), funzione pura dei tratti con test, `confirm`/`reject` in transazione con `idempotency_key`.
+15. **Ricerca nella documentazione Google**: aggiornamento dell'object via REST (scope, patch vs sostituzione, campi aggiornabili, latenza, class modificabile). Non cercare finché l'utente non lo dice.
+16. `wallet_status`, branding di default, personalizzazione estetica.
 
 ### Infrastruttura e Wallet in produzione
-16. **Dominio** (circa 10 €/anno) e URL fisso per il backend di test; verificare nella documentazione Cloudflare cosa serve per un tunnel con nome. Il dominio serve anche per l'email (SPF/DKIM) quando si lascerà l'account Gmail.
-17. **Tag NFC di prova**: adesivi NTAG213 più qualche card PVC NFC. **Non bloccare mai i tag in sola lettura** prima di aver fissato l'URL definitivo. Test su iPhone (lettura in background da XS/XR in poi) e Android.
-18. **Web app staff e cliente** (Vue.js); polling cliente ogni 1–2 s.
-19. **Publishing access Google**: completare il Business Profile, creare la class definitiva, preparare gli screenshot dei pass. **Tempi di review e requisiti per un individuo senza P.IVA da verificare**, non assunti.
-20. Decidere se tenere il barcode sul pass (l'identificazione avviene dal tag/QR del banco; potrebbe bastare `accountId`) e come mostrare il codice leggibile.
-21. Prima di qualunque deploy: `genericErrorHandler` che espone `err.message` e `err.name` (e non gestisce errori che non sono `GenericError`), `logger: true` di Drizzle (stampa query e parametri, quindi anche email e dati personali), `cors()` aperto, `start` via `tsx` con `build`/`dist` scollegati.
+17. **Dominio** (circa 10 €/anno) e URL fisso per il backend di test; verificare nella documentazione Cloudflare cosa serve per un tunnel con nome. Il dominio serve anche per l'email (SPF/DKIM) quando si lascerà l'account Gmail.
+18. **Tag NFC di prova**: adesivi NTAG213 più qualche card PVC NFC. **Non bloccare mai i tag in sola lettura** prima di aver fissato l'URL definitivo. Test su iPhone (lettura in background da XS/XR in poi) e Android.
+19. **Web app staff e cliente** (Vue.js); polling cliente ogni 1–2 s.
+20. **Publishing access Google**: completare il Business Profile, creare la class definitiva, preparare gli screenshot dei pass. **Tempi di review e requisiti per un individuo senza P.IVA da verificare**, non assunti.
+21. Decidere se tenere il barcode sul pass (l'identificazione avviene dal tag/QR del banco; potrebbe bastare `accountId`) e come mostrare il codice leggibile.
+22. Prima di qualunque deploy: `genericErrorHandler` che espone `err.message` e `err.name` (e non gestisce errori che non sono `GenericError`), `logger: true` di Drizzle (stampa query e parametri, quindi anche email e dati personali), `cors()` aperto, `start` via `tsx` con `build`/`dist` scollegati.
 
 ### Prodotto e mercato
-22. **Parlare con 2-3 gestori reali** (bar, gelaterie, pizzerie): prerequisito per il modello di business e per le decisioni su scadenza/rollover. Non è un compito tecnico rimandabile.
-23. **Supporto fisico per il locale**, in fasi: prototipo (adesivo NTAG213 su porta-menù in acrilico a L, QR stampato in casa), pilota (stampa curata col brand), scala (plexiglass su misura con chip incassato). Da testare: schermatura da metallo e inchiostri metallici, posizione dell'antenna, spessore, cover dei telefoni.
-24. **Apple Wallet** solo dopo aver validato il flusso su Google Wallet (99 $/anno Apple Developer Program). Con Apple Wallet si valuterà anche l'accesso con Apple.
-25. **Telefono con SMS** (accesso): solo con un cliente reale, per costo per messaggio e perché NIST lo classifica come metodo "restricted". Costi e requisiti dei provider da verificare nelle loro documentazioni.
+23. **Parlare con 2-3 gestori reali** (bar, gelaterie, pizzerie): prerequisito per il modello di business e per le decisioni su scadenza/rollover. Non è un compito tecnico rimandabile.
+24. **Supporto fisico per il locale**, in fasi: prototipo (adesivo NTAG213 su porta-menù in acrilico a L, QR stampato in casa), pilota (stampa curata col brand), scala (plexiglass su misura con chip incassato). Da testare: schermatura da metallo e inchiostri metallici, posizione dell'antenna, spessore, cover dei telefoni.
+25. **Apple Wallet** solo dopo aver validato il flusso su Google Wallet (99 $/anno Apple Developer Program). Con Apple Wallet si valuterà anche l'accesso con Apple.
+26. **Telefono con SMS** (accesso): solo con un cliente reale, per costo per messaggio e perché NIST lo classifica come metodo "restricted". Costi e requisiti dei provider da verificare nelle loro documentazioni.
 
 ---
 
@@ -179,9 +193,9 @@ File modificati: `session.service.ts` (costanti, `sessionCookieOptions`, `authen
 - **Auth prima della validazione**, poi ruolo, poi validazione, poi controller:
   `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`.
 - **Il `venue_id` dello staff non arriva mai da body o params**: si ricava dalla sessione.
-- **Ownership** su ogni risorsa (`:cardId`, `:requestId`): il ruolo giusto non basta.
+- **Ownership** su ogni risorsa (`:cardId`, `:requestId`): il ruolo giusto non basta. La verifica è **in SQL** (join su `cards.user_id`), non in memoria; una richiesta altrui dà lo **stesso 404** di un id inesistente e non viene mai scritta.
 - **Validazione input**: vietare i campi non previsti (mass assignment), limite massimo su ogni valore numerico, regole strette sulle query string (`Number('')` vale 0, `Number('0x64')` vale 100), 400 e non 500 per input mancanti, nessuna eccezione non gestita nei middleware (verificare la versione di Express).
-- **Nessuna route che riceve dati senza validazione**: idealmente un test automatico che elenca le rotte POST/PUT/PATCH/DELETE e fallisce se manca il middleware. Eccezione consapevole attuale: il body di `visit`, fino all'auth.
+- **Nessuna route che riceve dati senza validazione**: idealmente un test automatico che elenca le rotte POST/PUT/PATCH/DELETE e fallisce se manca il middleware. `visit` non legge più il body (l'utente viene dalla sessione): l'eccezione storica è stata rimossa.
 - **Tag e QR sono copiabili**: la conferma manuale dello staff resta la protezione contro chi si timbra da solo. Rate limit per utente e carta e `idempotency_key`.
 - **Manomissione fisica** del QR o del tag: supporto con QR non sovrapponibile, dominio corto e riconoscibile.
 - **Segreti**: la chiave JSON del service account non va mai in Git, in chiaro in chat o nei documenti; in produzione nei secret dell'hosting. Vale anche per il segreto HMAC degli OTP e per le credenziali dell'invio email.
@@ -202,8 +216,8 @@ File modificati: `session.service.ts` (costanti, `sessionCookieOptions`, `authen
 - Rollover della promozione e destino dei timbri maturati alla scadenza (decisione di prodotto).
 - Rotta "riaggiungi card" per chi ha rimosso il pass.
 - Comportamento di Safari/iOS sul cookie `httpOnly` dopo il primo deploy di staging: il limite ITP dei 7 giorni non dovrebbe applicarsi ai cookie scritti dal server, ma se l'IP del server è scollegato dal sito principale Safari può limitarlo. Frontend e `/api` dovranno stare sulla stessa origine.
-- **Sessione/logout, non provato**: testati via HTTP in locale con sessioni create nel DB e con un login vero; non ancora su un browser reale, su HTTPS (cookie `Secure`) né su un iPhone. Il flusso "esci da tutti i dispositivi" non esiste.
-- **Auth**: limiti di invio e consegna di Gmail per le email automatiche; configurazione di Google Sign-In in produzione (client ID, schermata di consenso, requisiti di verifica); se `email_verified` di Apple sia sempre vero (la documentazione ufficiale dice che può essere falso per Work & School, un tutorial di terzi dice sempre vero); come collegare un login Apple con email proxy; trattamento GDPR di `subject_hash`; retention di `otp_challenges` e `auth_events`.
+- **Sessione/logout/`visit`, non provato**: testati via HTTP in locale con sessioni create nel DB e con un login vero; non ancora su un browser reale, su HTTPS (cookie `Secure`) né su un iPhone. Il flusso "esci da tutti i dispositivi" non esiste. Il **409** di `visit` ha lo status nel codice ma non è esercitabile a runtime senza forzare una race.
+- **Auth**: limiti di invio e consegna di Gmail per le email automatiche; configurazione di Google Sign-In in produzione (client ID, schermata di consenso, requisiti di verifica), da riprendere **dopo lo staff**; se `email_verified` di Apple sia sempre vero (la documentazione ufficiale dice che può essere falso per Work & School, un tutorial di terzi dice sempre vero); come collegare un login Apple con email proxy; trattamento GDPR di `subject_hash` con la procedura di anonimizzazione (rimandata a prima del primo utente reale).
 - **Percorso email, non provato**: il primo accesso simultaneo con la stessa email da due sfide diverse non è riproducibile (una sola sfida viva per destinatario); la protezione è per costruzione (`ON CONFLICT`). Il ramo "utente anonimizzato" di `loginWithEmail` non ha un test dedicato (quello di `authenticate` è coperto da `scripts/session.ts`).
 
 ---
@@ -216,8 +230,8 @@ npm run dev
 npm run typecheck
 npm run seed          # solo sviluppo
 
-# polling di test
-npx tsx scripts/poll-request.ts
+# test di visit + polling (crea utenti/sessioni di test, pulisce a fine run)
+npx tsx --env-file=.env scripts/poll-request.ts
 
 # test dell'auth (server acceso)
 npx tsx --env-file=.env scripts/otp-request.ts

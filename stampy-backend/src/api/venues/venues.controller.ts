@@ -2,26 +2,24 @@ import { NextFunction, Response } from "express";
 import { CardNotFoundError } from "../../errors/card-not-found.error";
 import { GenericError } from "../../errors/generic";
 import { PromotionNotFoundError } from "../../errors/promotion-not-found.error";
-import { UserNotFoundError } from "../../errors/user-not-found.error";
 import { VenueNotFoundError } from "../../errors/venue-not-found.error";
-import { TypedRequest } from "../../utils/typed-request";
+import { requireAuth } from "../../utils/auth-context";
+import { TypedAuthRequest } from "../../utils/typed-request";
 import googleSrv from "../cards/google/google.service";
 import requestSrv from "../requests/requests.service";
-import userSrv from "../users/users.service";
-import { userIdDTO, venueIdDTO } from "./venues.dto";
+import { venueIdDTO } from "./venues.dto";
 import venueSrv from "./venues.service";
 
 export const VISIT_STATES = ["card_created", "request_pending"] as const;
 export type VisitState = (typeof VISIT_STATES)[number];
 
-export const visit = async (req: TypedRequest<userIdDTO, unknown, venueIdDTO>, res: Response, next: NextFunction) => {
-  const userId = req.body.userId;
+export const visit = async (req: TypedAuthRequest<unknown, unknown, venueIdDTO>, res: Response, next: NextFunction) => {
+  // L'utente viene dalla sessione (isAuthenticated l'ha già verificato: esiste, non è
+  // anonimizzato, sessione valida). Il body non contiene più userId.
+  const userId = requireAuth(req).user.id;
   const venueId = req.params.venueId;
 
   try {
-    const user = await userSrv.getUserById(userId);
-    if (!user || user.anonymizedAt != null) throw new UserNotFoundError();
-
     const venue = await venueSrv.getVenueById(venueId);
     if (!venue) throw new VenueNotFoundError();
 

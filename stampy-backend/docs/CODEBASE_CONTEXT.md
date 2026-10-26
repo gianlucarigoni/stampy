@@ -1,7 +1,7 @@
 # Stampy — Mappa del codice (backend)
 
 > Documento vivo. Descrive **dove sta cosa** e le convenzioni del codice, non le decisioni di prodotto (per quelle: `stampy_contesto_progetto.md`) né lo schema DB (`stampy_db_schema.md`).
-> Ultimo aggiornamento: 26 ottobre 2026 (sera) — allineato a `isAuthenticated`/sessione/logout.
+> Ultimo aggiornamento: 26 ottobre 2026 (sera) — allineato a `isAuthenticated`/sessione/logout e a `visit`/polling con l'utente di sessione.
 
 ---
 
@@ -30,8 +30,8 @@ src/
     routes.ts               monta /health, /cards (dev), /auth, /venues, /requests
     health/
     cards/google/           GoogleService: LoyaltyClass per locale, object per card, JWT del saveUrl
-    venues/                 visit (POST /:venueId/visit), service, dto, router
-    requests/               polling cliente (GET /:requestId), scadenza lazy, service
+    venues/                 visit (POST /:venueId/visit, isAuthenticated), service, dto, router
+    requests/               polling cliente (GET /:requestId, isAuthenticated + ownership), scadenza lazy, service
     users/users.service.ts  getUserById (esclude anonimizzati), getUserByEmail, addUser
     auth/
       auth.router.ts        /email/* pubblico; /me e /logout dietro isAuthenticated
@@ -69,8 +69,8 @@ scripts/
 |---|---|---|
 | `GET /api/health` | no | |
 | `POST /api/cards/google` | no (dev) | creazione card/link Wallet per prove |
-| `POST /api/venues/:venueId/visit` | no (**da mettere**) | oggi `userId` nel body: solo sviluppo |
-| `GET /api/requests/:requestId` | no (**da mettere**) | polling; dovrà verificare l'ownership dell'utente |
+| `POST /api/venues/:venueId/visit` | **sì** | `userId` dalla sessione (il body non è letto); 201 `card_created` / 201-200 `request_pending` |
+| `GET /api/requests/:requestId` | **sì** | polling; ownership in SQL, richiesta altrui → 404 identico a inesistente |
 | `POST /api/auth/email/request` | no | 202 `{challengeId}`; cooldown e tetto orario |
 | `POST /api/auth/email/verify` | no | 200 `{user}` + cookie `sid` |
 | `GET /api/auth/me` | **sì** | `{user:{id,email,displayName}}`, sonda read-only |
@@ -78,7 +78,8 @@ scripts/
 
 ## 4. Convenzioni
 
-- **Ordine dei middleware** (quando si aggiunge una rotta protetta): `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`. `isAuthenticated` si monta **per rotta**, mai su `/api/auth` in blocco (`/email/*` è pubblico).
+- **Ordine dei middleware** (quando si aggiunge una rotta protetta): `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`. `isAuthenticated` si monta **per rotta**, mai su `/api/auth` in blocco (`/email/*` è pubblico). Conseguenza: senza cookie un param malformato dà **401**, non 400.
+- **Rotte protette e params tipizzati**: `isAuthenticated` e `requireAuth` hanno il generic `P` aperto (`Request<P,…>`). Serve per combinare tre handler sulla stessa rotta con un controller tipizzato dal DTO dei params: con `P = ParamsDictionary` fisso il controller non è assegnabile a `RequestHandler`. Nessun cast nei controller.
 - **Utente autenticato**: `req.auth = { user: {id, email, displayName, isPlatformAdmin}, session: {id, authProvider} }`, letto con `requireAuth(req)`. **Mai `req.user`**: `@types/passport` (dipendenza in disuso, ma inclusa nel programma perché `tsconfig` non limita `types`) dichiara già `Express.Request.user` e un tipo nostro renderebbe l'handler non assegnabile ai `RequestHandler`. Nessun ruolo nella sessione: si legge da `venue_members` a ogni richiesta.
 - **Errori**: ogni `GenericError` si scrive con lo status (senza risponde 500). Un errore ricorrente con status proprio (401, 403, 404, 409, 429) merita classe + handler registrato **prima** di `genericErrorHandler`.
 - **Tempo**: sempre `now()` del DB nelle query, mai `new Date()` per confronti di scadenza.
@@ -96,7 +97,7 @@ scripts/
 
 **Logout** — transazione: `revoke` condizionata a `revoked_at IS NULL`; evento `logout` solo se la revoca è avvenuta; poi `clearCookie` e 204.
 
-**Timbro (parziale)** — `visit` crea la card (201 + saveUrl) o una `stamp_request` `pending` (201) o restituisce quella viva (200); il polling legge lo stato con scadenza lazy a 3 minuti. La `confirm` non esiste ancora.
+**Timbro (parziale)** — `visit` parte da `req.auth.user.id` (body ignorato): crea la card (201 + saveUrl) o una `stamp_request` `pending` (201) o restituisce quella viva (200). Il polling legge lo stato con scadenza lazy a 3 minuti e filtra per proprietario in SQL (join `stamp_requests ⋈ cards` su `(card_id, venue_id)` + `cards.user_id`); la richiesta altrui dà 404. La `confirm` non esiste ancora.
 
 ## 6. Test da terminale
 
@@ -106,18 +107,18 @@ Server acceso (`npm run dev`) e DB di sviluppo. Gli script creano fixture nel DB
 npx tsx --env-file=.env scripts/otp-request.ts
 npx tsx --env-file=.env scripts/otp-verify.ts
 npx tsx --env-file=.env scripts/session.ts
-npx tsx scripts/poll-request.ts
+npx tsx --env-file=.env scripts/poll-request.ts
 docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-2.sql
 ```
 
-Stato al 26/10: `otp-request` 13/13, `otp-verify` 16/16, `session` 16/16, typecheck pulito.
+Stato al 26/10: `otp-request` 13/13, `otp-verify` 16/16, `session` 16/16, `poll-request` 12/12, typecheck pulito. `poll-request` crea i propri utenti/sessioni di test e sceglie dal DB il locale con promozione attiva.
 
 ## 7. Debito noto (non blocca lo sviluppo, blocca il deploy)
 
 - `genericErrorHandler` espone `err.message`/`err.name` anche per i 5xx, non gestisce errori non-`GenericError`, non controlla `res.headersSent`; il 400 della validazione restituisce anche `value`.
 - `logger: true` in `src/db/index.ts`: stampa query e parametri (anche email e hash dei codici).
 - `cors()` aperto; nessuna protezione CSRF oltre a `SameSite=Lax`; `trust proxy` non configurato.
-- `visit` non è in transazione e usa `userId` dal body; `GET /requests/:requestId` non verifica l'ownership.
+- `visit` non è in transazione; il 409 ha lo status nel codice ma non è esercitabile a runtime senza forzare una race.
 - `start` usa `tsx` con `build`/`dist` scollegati.
 - Dipendenze inutilizzate: `mongoose`, `bcrypt`, `lodash`, `passport*` (la rimozione di `@types/passport` libererebbe `Express.Request.user`).
 - Duplicati in `GoogleService` (`getUserById`/`getVenueById`/`getActivePromotion`), import inutilizzati, `venues.response.ts` da correggere.
