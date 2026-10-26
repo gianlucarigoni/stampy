@@ -9,7 +9,9 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "seed": "tsx ./seed",
-    "script:poll-request": "tsx ./scripts/poll-request"
+    "script:poll-request": "tsx ./scripts/poll-request",
+    "script:otp-request": "tsx ./scripts/otp-request",
+    "script:otp-verify": "tsx ./scripts/otp-verify"
   },
   "keywords": [],
   "dependencies": {
@@ -44,7 +46,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash": "^4.17.24",
     "@types/morgan": "^1.9.10",
-    "@types/node": "^25.9.8",
+    "@types/node": "^25.9.9",
     "@types/passport": "^1.0.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",

@@ -2,7 +2,7 @@ import { and, eq, lte, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { stampRequests } from "../../db/schema";
 import { RequestStatus } from "../../utils/enum/request-status.enum";
-import { StampRequest } from "../../utils/types/request.type";
+import { StampRequest } from "../../utils/types/stamp-request.type";
 
 export class RequestsService {
   async refreshStatus(id: string) {

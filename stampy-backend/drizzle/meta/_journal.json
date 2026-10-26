@@ -15,6 +15,13 @@
       "when": 1790713562352,
       "tag": "0001_promotions_no_overlap",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792858022521,
+      "tag": "0002_auth_foundation",
+      "breakpoints": true
     }
   ]
 }
