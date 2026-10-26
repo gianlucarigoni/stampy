@@ -10,6 +10,18 @@ export class UserService {
 
     return user;
   }
+
+  async getuserByEmail(email: string): Promise<User | null> {
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    if (!user) return null;
+    return user;
+  }
+
+  async addUser(email: string): Promise<User | null> {
+    const [user] = await db.insert(users).values({ email: email }).returning();
+    if (!user) return null;
+    return user;
+  }
 }
 
 export default new UserService();

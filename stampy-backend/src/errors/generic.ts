@@ -10,9 +10,9 @@ export class GenericError extends Error {
   }
 }
 
-export const genericErrorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+export const genericErrorHandler = (err: GenericError, req: Request, res: Response, next: NextFunction) => {
   console.error(err);
-  res.status(500);
+  res.status(err.statusCode);
   res.json({
     error: err.name,
     message: err.message,

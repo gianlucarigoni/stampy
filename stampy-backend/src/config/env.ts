@@ -6,9 +6,10 @@ const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().min(1),
   APP_ORIGIN: z.string().url().default("http://localhost:3000"),
-  WALLET_ISSUER_ID: z.string().regex(/^\d+$/, "..."),          
-  WALLET_SERVICE_ACCOUNT_EMAIL: z.string().email(),            
-  WALLET_SERVICE_ACCOUNT_KEY_PATH: z.string().min(1),          
+  WALLET_ISSUER_ID: z.string().regex(/^\d+$/, "..."),
+  WALLET_SERVICE_ACCOUNT_EMAIL: z.string().email(),
+  WALLET_SERVICE_ACCOUNT_KEY_PATH: z.string().min(1),
+  OTP_HMAC_SECRET: z.string().min(1),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -21,4 +22,4 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-export const env = parsed.data
+export const env = parsed.data;
