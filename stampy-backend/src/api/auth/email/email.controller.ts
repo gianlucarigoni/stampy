@@ -3,17 +3,19 @@ import { TypedRequest } from "../../../utils/typed-request";
 import { emailDTO, verifyDTO } from "./email.dto";
 import otpSrv, { MAX_OTP_ATTEMPTS } from "../otp.service";
 import identitySrv from "../identity.service";
-import sessionSrv, { SESSION_COOKIE_NAME, SESSION_TTL_DAYS } from "../session.service";
+import sessionSrv, {
+  SESSION_ABSOLUTE_TTL_DAYS,
+  SESSION_COOKIE_NAME,
+  sessionCookieOptions,
+} from "../session.service";
 import authEventsSrv from "../auth-events.service";
 import { db } from "../../../db";
-import { env } from "../../../config/env";
 import { TryLaterError } from "../../../errors/try-later.error";
 import { GenericError } from "../../../errors/generic";
 import { emailSender } from "../../../utils/email/email-sender";
 
 // stessa risposta per codice errato, scaduto, usato, inesistente o tentativi esauriti
 const invalidCode = () => new GenericError("Codice non valido o scaduto", 400);
-400;
 
 export const request = async (req: TypedRequest<emailDTO>, res: Response, next: NextFunction) => {
   try {
@@ -79,11 +81,9 @@ export const verify = async (req: TypedRequest<verifyDTO>, res: Response, next: 
 
     // 4) cookie dopo il commit; il token non va mai nel body
     res.cookie(SESSION_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: "lax", // da confermare insieme a CORS/CSRF
-      maxAge: SESSION_TTL_DAYS * 24 * 60 * 60 * 1000,
-      path: "/",
+      ...sessionCookieOptions(),
+      // il cookie vive quanto il tetto assoluto della sessione (lo scorrimento non lo rinnova)
+      maxAge: SESSION_ABSOLUTE_TTL_DAYS * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({ user: { id: user.id, email: user.email, displayName: user.displayName } });

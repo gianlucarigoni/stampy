@@ -189,8 +189,8 @@ async function main() {
       check("cookie HttpOnly", /httponly/i.test(cookieLine)),
       check("cookie SameSite=Lax", /samesite=lax/i.test(cookieLine)),
       check(
-        "cookie Max-Age ~ 30 giorni",
-        /max-age=25920\d\d/i.test(cookieLine) || /expires=/i.test(cookieLine),
+        "cookie Max-Age ~ 90 giorni (tetto assoluto della sessione)",
+        /max-age=77760\d\d/i.test(cookieLine) || /expires=/i.test(cookieLine),
         cookieLine.slice(0, 120),
       ),
       check("un solo utente creato", users.length === 1),

@@ -11,7 +11,8 @@
     "seed": "tsx ./seed",
     "script:poll-request": "tsx ./scripts/poll-request",
     "script:otp-request": "tsx ./scripts/otp-request",
-    "script:otp-verify": "tsx ./scripts/otp-verify"
+    "script:otp-verify": "tsx ./scripts/otp-verify",
+    "script:session": "tsx ./scripts/session"
   },
   "keywords": [],
   "dependencies": {
@@ -19,6 +20,7 @@
     "body-parser": "^2.2.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "drizzle-orm": "^0.45.3",
@@ -41,6 +43,7 @@
     "@faker-js/faker": "^10.2.0",
     "@types/bcrypt": "^6.0.0",
     "@types/body-parser": "^1.19.6",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
