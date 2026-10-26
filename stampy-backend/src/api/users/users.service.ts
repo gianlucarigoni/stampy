@@ -11,7 +11,7 @@ export class UserService {
     return user;
   }
 
-  async getuserByEmail(email: string): Promise<User | null> {
+  async getUserByEmail(email: string): Promise<User | null> {
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (!user) return null;
     return user;
