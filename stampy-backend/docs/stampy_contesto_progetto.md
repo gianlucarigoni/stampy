@@ -1,7 +1,7 @@
 # Stampy — Contesto di progetto
 
 > Documento vivo. Aggiornarlo a ogni decisione presa, non riscriverlo da zero.
-> Ultimo aggiornamento: 26 ottobre 2026 (pomeriggio) — fase: pre-MVP, **Fase 3 chiusa** (DB, creazione card Google Wallet, richieste pendenti, polling cliente); **Fase 4 in corso: migration 2 chiusa, percorso email dell'auth e `isAuthenticated`/logout implementati e testati**. Prossimo: `visit` e polling con l'utente di sessione, poi login Google e staff. Nessun frontend, nessun cliente pilota confermato.
+> Ultimo aggiornamento: 26 ottobre 2026 (sera) — fase: pre-MVP, **Fase 3 chiusa** (DB, creazione card Google Wallet, richieste pendenti, polling cliente); **Fase 4 in corso: migration 2, percorso email, `isAuthenticated`/logout e `visit`/polling con l'utente di sessione chiusi e testati**. Prossimo: rate limit di `visit`, poi coda staff; Google rimandato dopo lo staff. Nessun frontend, nessun cliente pilota confermato.
 
 ---
 
@@ -26,7 +26,7 @@ Mercato iniziale: piccole/medie attività locali in Italia, spesso ancora su car
 - Nessun vincolo di tempo fisso.
 - Fase 3 chiusa: schema DB e migration 1, creazione card e link Wallet, richieste di timbro pendenti con scadenza lazy, polling del cliente. Dettagli in `progress.md` e `CODEBASE_CONTEXT.md`.
 - Fase 4 avviata: **migration 2** (`auth_identities`, `otp_challenges`, `sessions`, `auth_events`; telefono tolto da `users`, email aggiunta) applicata e verificata sul DB reale (19 controlli OK, 24/10).
-- Fase 4 — **percorso email** (`POST /api/auth/email/request` e `/verify`: utente, identità `email`, sessione, cookie) e **`isAuthenticated` + logout** implementati e testati da terminale il 26/10 (`scripts/session.ts` 16/16, `scripts/otp-verify.ts` 16/16, `scripts/otp-request.ts` 13/13, typecheck pulito). API di sessione: `GET /api/auth/me`, `POST /api/auth/logout`.
+- Fase 4 — **percorso email** (`POST /api/auth/email/request` e `/verify`: utente, identità `email`, sessione, cookie), **`isAuthenticated` + logout** e **`visit`/polling con l'utente di sessione** implementati e testati da terminale il 26/10 (`scripts/session.ts` 16/16, `scripts/otp-verify.ts` 16/16, `scripts/otp-request.ts` 13/13, `scripts/poll-request.ts` 12/12, typecheck pulito). API di sessione: `GET /api/auth/me`, `POST /api/auth/logout`. `visit` e `GET /api/requests/:requestId` richiedono la sessione: il `userId` nel body non esiste più, il polling verifica l'ownership (richiesta altrui → 404).
 
 ---
 
@@ -143,11 +143,13 @@ Obiettivo: costo ~0 al lancio, buona esperienza al banco, tutto tracciabile a DB
 - **Rotta "riaggiungi card"** per chi ha rimosso il pass.
 - **Google Wallet**: aggiornamento del pass via REST (latenza, campi aggiornabili), tempi e requisiti del publishing access per un individuo senza P.IVA, mantenimento di `wallet_status`.
 - **Branding di default** per un locale appena creato e personalizzazione self-service (rimandata).
-- **Auth (aperti)**: CORS/CSRF con i cookie (CORS ristretto a una sola origine con `credentials` e controllo `Origin` sulle rotte che modificano stato), come creare il primo `owner` di un locale, login dello staff (stesso metodo o più forte, visto che un account staff compromesso può approvare timbri falsi), come conservare il `venueId` durante l'accesso, limiti di Gmail per l'invio, configurazione Google Sign-In (client ID e schermata di consenso, da leggere nella documentazione ufficiale), retention di `otp_challenges` e `auth_events`, trattamento GDPR di `subject_hash`. Vedi `Stampy_Handoff_Fase_4c.md` §6.
+- **Auth — decisioni chiuse il 26/10** (handoff §6, non riaprire): CORS ristretto a una sola origine con `credentials` e controllo `Origin` sulle rotte che modificano stato, **senza token CSRF per ora**; staff con **lo stesso metodo di login del cliente** (account personale) e ruolo letto da `venue_members` a ogni richiesta, primo `owner` creato con uno script dopo il suo primo login; `venueId` nell'URL con login sulla stessa pagina (frontend); retention di `otp_challenges`/`auth_events` e anonimizzazione **rimandate a prima del primo utente reale**.
+- **Auth — rimandati, non aperti**: **login Google** (dopo lo staff; configurazione esterna e token di test da verificare nella documentazione ufficiale) e **invio email reale** (limiti di Gmail da verificare).
+- **Rate limit di `visit`**: deciso (contatori nel DB per card/utente, limite in memoria per IP sulle rotte `/auth` con `trust proxy`), **non ancora implementato**.
 - **Safari/iOS**: il cookie impostato dal server con `Set-Cookie` httpOnly non rientra nel limite ITP dei 7 giorni (che riguarda i cookie scritti da JS), ma se il server che lo imposta ha un IP scollegato dal sito principale Safari può limitarlo a 7 giorni. Per questo frontend e `/api` dovranno stare sulla stessa origine. Da provare su un iPhone vero dopo il primo deploy di staging.
 - **Apple** (futuro): collegamento con email proxy, verificare nella documentazione quando si implementa.
 - **Hosting e URL fisso** (dominio, tunnel con nome o staging).
-- *Risolti*: polling breve invece di WebSocket per l'MVP; quantità "B" con tratti; scadenza lazy delle richieste; **metodo di accesso (email con codice + Google, niente password, niente SMS al lancio)**; struttura delle tabelle di auth (migration 2); **durata e revoca delle sessioni (scorrevole 30 giorni + tetto assoluto 90 giorni, logout della sola sessione corrente)**.
+- *Risolti*: polling breve invece di WebSocket per l'MVP; quantità "B" con tratti; scadenza lazy delle richieste; **metodo di accesso (email con codice + Google, niente password, niente SMS al lancio)**; struttura delle tabelle di auth (migration 2); **durata e revoca delle sessioni (scorrevole 30 giorni + tetto assoluto 90 giorni, logout della sola sessione corrente)**; **`visit` e polling con l'utente di sessione, con ownership in SQL (26/10)**; **cookie/Safari, CORS/CSRF futuri, staff, rate limit, retention e flusso cliente da tag (decisi o rimandati il 26/10, handoff §6)**.
 
 ---
 

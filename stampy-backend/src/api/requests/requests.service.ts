@@ -1,11 +1,30 @@
-import { and, eq, lte, sql } from "drizzle-orm";
+import { and, eq, exists, lte, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { stampRequests } from "../../db/schema";
+import { cards, stampRequests } from "../../db/schema";
 import { RequestStatus } from "../../utils/enum/request-status.enum";
 import { StampRequest } from "../../utils/types/stamp-request.type";
 
 export class RequestsService {
-  async refreshStatus(id: string) {
+  /**
+   * Ownership di una richiesta: l'unico legame tra richiesta e utente è la card.
+   * (card_id, venue_id) è la FK verso cards; cards.user_id è il proprietario.
+   */
+  private ownedBy(userId: string) {
+    return exists(
+      db
+        .select()
+        .from(cards)
+        .where(
+          and(
+            eq(cards.id, stampRequests.cardId),
+            eq(cards.venueId, stampRequests.venueId),
+            eq(cards.userId, userId),
+          ),
+        ),
+    );
+  }
+
+  async refreshStatus(id: string, userId: string) {
     const [updated] = await db
       .update(stampRequests)
       .set({
@@ -17,6 +36,8 @@ export class RequestsService {
           eq(stampRequests.id, id),
           eq(stampRequests.status, RequestStatus.pending),
           lte(stampRequests.expiresAt, sql`now()`),
+          // difesa in profondità: una richiesta di un altro utente non viene mai scritta
+          this.ownedBy(userId),
         ),
       )
       .returning();
@@ -25,8 +46,18 @@ export class RequestsService {
     return updated;
   }
 
-  async getRequestById(id: string): Promise<StampRequest | null> {
-    const [request] = await db.select().from(stampRequests).where(eq(stampRequests.id, id));
+  async getRequestById(id: string, userId: string): Promise<StampRequest | null> {
+    const [row] = await db
+      .select({ request: stampRequests })
+      .from(stampRequests)
+      .innerJoin(
+        cards,
+        and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)),
+      )
+      .where(and(eq(stampRequests.id, id), eq(cards.userId, userId)))
+      .limit(1);
+
+    const request = row?.request;
     if (!request) return null;
     return request;
   }
