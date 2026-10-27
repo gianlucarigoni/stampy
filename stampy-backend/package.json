@@ -15,6 +15,7 @@
     "script:create-owner": "tsx ./scripts/create-owner",
     "script:staff-requests": "tsx ./scripts/staff-requests",
     "script:stamps-split": "tsx ./scripts/stamps-split",
+    "script:create-venue": "tsx ./scripts/create-venue",
     "typecheck:all": "tsc --noEmit -p tsconfig.check.json"
   },
   "keywords": [],
