@@ -224,7 +224,14 @@ async function main() {
       check("status 200", r.status === 200, `status=${r.status}`),
       check("status = pending", r.body?.status === "pending", String(r.body?.status)),
       check("expiresAt presente", typeof r.body?.expiresAt === "string"),
-      check("body solo {status, expiresAt}", Object.keys(r.body ?? {}).sort().join() === "expiresAt,status"),
+      // contratto esteso il 27/10/2026: il cliente vede il saldo senza aprire il Wallet
+      check(
+        "body solo {status, expiresAt, stampsCount, stampsRequired}",
+        Object.keys(r.body ?? {}).sort().join() === "expiresAt,stampsCount,stampsRequired,status",
+        Object.keys(r.body ?? {}).sort().join(),
+      ),
+      check("stampsCount numerico", typeof r.body?.stampsCount === "number", `${r.body?.stampsCount}`),
+      check("stampsRequired 10", r.body?.stampsRequired === 10, `${r.body?.stampsRequired}`),
     ];
   });
 

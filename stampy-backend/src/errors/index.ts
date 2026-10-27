@@ -1,4 +1,5 @@
 import { cardNotFoundHandler } from "./card-not-found.error";
+import { forbiddenHandler } from "./forbidden.error";
 import { genericErrorHandler } from "./generic";
 import { promotionExpiredHandler } from "./promotion-expired.error";
 import { promotionNotFoundHandler } from "./promotion-not-found.error";
@@ -18,6 +19,7 @@ export const errorHandlers = [
   promotionExpiredHandler,
   requestNotFoundHandler,
   tryLaterHandler,
+  forbiddenHandler,
   // prima del generico, altrimenti non verrebbe mai raggiunto
   unauthorizedHandler,
   genericErrorHandler,

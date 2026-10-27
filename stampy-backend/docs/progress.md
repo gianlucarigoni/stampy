@@ -2,22 +2,24 @@
 
 > Documento vivo, complementare a `stampy_contesto_progetto.md` (decisioni di prodotto).
 > Qui si tiene traccia di **cosa è stato fatto**, **cosa è stato verificato** e **cosa resta da fare**.
-> Ultimo aggiornamento: 26 ottobre 2026 (sera) — fase: pre-MVP, **Fase 3 chiusa; Fase 4 in corso: migration 2, percorso email, `isAuthenticated`/sessione/logout, `visit` e polling con l'utente di sessione chiusi e testati**. Prossimo: rate limit di `visit`, poi coda staff; Google rimandato dopo lo staff. Nessun frontend, nessun cliente pilota confermato.
-> Questa versione consolida e sostituisce le sezioni precedenti (Fase A, aggiornamenti del 19/10, 23/10, 24/10): quanto è superato è stato rimosso.
+> Ultimo aggiornamento: 27 ottobre 2026 — fase: pre-MVP, **Fase 3 chiusa; Fase 4d chiusa: migration 3, rate limit di `visit`, auth staff con ruoli, coda, conferma/rifiuto e regola dei timbri corretta**. Restano: aggiornamento del pass Google (4e), frontend, invio email reale, login Google, hosting. Nessun frontend, nessun cliente pilota confermato.
+> Questa versione consolida e sostituisce le sezioni precedenti (Fase A, aggiornamenti del 19/10, 23/10, 24/10, 26/10): quanto è superato è stato rimosso.
 
 ---
 
 ## 1. Stato in breve
 
 - **Wallet**: un backend nostro emette un pass Google Wallet (testato su Android, demo mode). Il link "Add to Google Wallet" si firma in locale con la chiave del service account.
-- **Database**: PostgreSQL 16 in Docker, Drizzle con migration versionate (0000, 0001, **0002_auth_foundation**), **11 tabelle** e tutti i vincoli principali verificati. Dettagli, con spiegazione di ogni vincolo, in `stampy_db_schema.md`.
-- **API**: `GET /api/health`, `POST /api/cards/google` (dev), **`POST /api/venues/:venueId/visit`** e **`GET /api/requests/:requestId`** (entrambe dietro `isAuthenticated`, `userId` non più nel body), **`POST /api/auth/email/request`**, **`POST /api/auth/email/verify`**, **`GET /api/auth/me`**, **`POST /api/auth/logout`**. Dettagli in `CODEBASE_CONTEXT.md`.
-- **Flusso cliente**: tocco del tag → creazione card o richiesta di timbro `pending` → polling dello stato con scadenza lazy (3 minuti). Testato anche con race tra richieste parallele.
+- **Database**: PostgreSQL 16 in Docker, Drizzle con migration versionate (0000, 0001, **0002_auth_foundation**, **0003_stamp_events_request_id_not_unique**), **11 tabelle** e tutti i vincoli principali verificati. Dettagli, con spiegazione di ogni vincolo, in `stampy_db_schema.md`.
+- **API**: `GET /api/health`, `POST /api/cards/google` (dev), **`POST /api/venues/:venueId/visit`** e **`GET /api/requests/:requestId`** (entrambe dietro `isAuthenticated`, `userId` non più nel body), **`POST /api/auth/email/request`**, **`POST /api/auth/email/verify`**, **`GET /api/auth/me`**, **`POST /api/auth/logout`**, **`GET /api/venues/mine`** e le tre rotte staff **`GET /api/venues/:venueId/requests`**, **`POST /api/venues/:venueId/requests/:requestId/confirm`**, **`POST /api/venues/:venueId/requests/:requestId/reject`**. Dettagli in `CODEBASE_CONTEXT.md`.
+- **Flusso cliente**: tocco del tag → creazione card o richiesta di timbro `pending` → polling dello stato con scadenza lazy (3 minuti) e saldo. Rate limit di 10 richieste nuove/ora per card. Testato anche con race tra richieste parallele.
+- **Flusso staff (implementato e testato il 27/10)**: login con lo stesso metodo del cliente, ruoli `owner`/`staff` letti da `venue_members` a ogni richiesta, coda delle pendenti del locale, conferma con quantità di prodotti e rifiuto. La conferma ricalcola i tratti nel backend, scrive un evento per tratto e aggiorna il saldo in transazione. Primo `owner` con `scripts/create-owner.ts`.
+- **Regola dei timbri (corretta il 27/10)**: la quantità è il **totale dei prodotti consumati, premio compreso**. Soglia 10 da 0: 15 prodotti → `stamp 10, redeem 1, stamp 4` → card **4/10**; 10 prodotti → card **10/10** (premio disponibile); 1 prodotto da card piena → `redeem` → card 0. `stampsCount` sta in `[0, stampsRequired]`, `rewards` = premi **consumati**.
 - **Auth — percorso email (implementato e testato da terminale il 26/10)**: richiesta del codice con cooldown 45 s e tetto 5 invii/ora, verifica con 5 tentativi, creazione/collegamento di utente e identità `email`, sessione con cookie `httpOnly`. Niente password. **Google non ancora implementato**; Apple e telefono (SMS) sono evoluzioni future non confermate. Parametri e regole in `stampy_contesto_progetto.md` §4.11 e `stampy_db_schema.md` §6.
 - **`visit` e polling con l'utente di sessione (implementati e testati il 26/10)**: l'utente viene da `req.auth`, il `userId` nel body è ignorato; il polling verifica l'ownership **in SQL** (join `stamp_requests ⋈ cards`) e la richiesta altrui dà **404 identico** a un id inesistente, senza scrivere nulla. Dettagli in §2.9.
 - **Auth — sessione e logout (implementati e testati il 26/10)**: cookie `sid` `httpOnly`, `SameSite=Lax`, `Secure` solo in produzione, `Path=/`; in DB solo lo SHA-256 del token. Sessione **scorrevole 30 giorni dall'ultima attività con tetto assoluto di 90 giorni** da `created_at`, rinnovo al massimo ogni 5 minuti; cookie con `maxAge` = tetto assoluto. Ogni fallimento (assente, alterato, scaduto, revocato, anonimizzato, tetto superato) dà lo **stesso 401**. Logout revoca la sola sessione corrente, cancella il cookie con le stesse opzioni e scrive un evento `logout` senza metadata. L'utente sta in `req.auth` (non `req.user`, vedi §4).
-- **Mancano**: rate limit di `visit`, invio email reale (Gmail), login Google, endpoint staff, `confirm`/`reject`, tratti e quantità, aggiornamento del pass da server, frontend, hosting con URL fisso.
-- **Ancora non verificati**: aggiornamento del pass da server (**gate tecnico per la `confirm`**), lettura da tag NFC fisico (iPhone e Android), tempi di approvazione Google per il publishing access, limiti di invio di Gmail per le email automatiche, configurazione di Google Sign-In.
+- **Mancano**: aggiornamento del pass Google dopo la conferma (Fase 4e), invio email reale (Gmail), login Google, frontend staff e cliente, hosting con URL fisso. La collection Bruno (test manuali strutturati) è solo proposta, non esiste.
+- **Ancora non verificati**: aggiornamento del pass da server (**gate tecnico della Fase 4e**), lettura da tag NFC fisico (iPhone e Android), tempi di approvazione Google per il publishing access, limiti di invio di Gmail per le email automatiche, configurazione di Google Sign-In, valore di `TRUST_PROXY` dietro il proxy di staging.
 
 ---
 
@@ -94,6 +96,12 @@ File modificati: `session.service.ts` (costanti, `sessionCookieOptions`, `authen
 | `isAuthenticated` + logout (`scripts/session.ts`): **16/16** — cookie valido (200, body mappato), richiesta ravvicinata senza riscrittura di `last_seen_at`, cookie assente/alterato/malformato, sessione scaduta, revocata, utente anonimizzato, tetto assoluto superato, scorrimento dopo 10 minuti, tetto rispettato a 89 giorni, login vero con OTP e cookie accettato, logout (204, cookie rimosso con le stesse opzioni, un evento senza metadata), 401 dopo logout, logout ripetuto (401, `revoked_at` invariato, nessun secondo evento), due logout simultanei (un solo evento), whitelist dei metadata | OK (26/10, verificato in questa sessione) |
 | `visit` + polling con sessione (`scripts/poll-request.ts`): **12/12** — 401 senza cookie/fasullo/utente anonimizzato, `userId` nel body ignorato, card creata per l'utente di sessione, secondo tocco `request_pending`, polling del proprietario, params malformati (401 senza sessione / 400 con sessione), richiesta altrui → 404 identico a inesistente e nessuna scrittura, scadenza lazy → `expired`, nuovo tocco dopo la scadenza | OK (26/10) |
 | `npm run typecheck` | pulito (26/10, dopo `isAuthenticated`/logout e dopo `visit`/polling) |
+| Migration 3 (`scripts/verify-migration-3.sql`, 6 controlli, ROLLBACK): UNIQUE rimosso, indice presente, più eventi per richiesta, `idempotency_key` duplicata rifiutata, FK intatta, `request_id` NULL | OK (27/10) |
+| `splitStamps` (`scripts/stamps-split.ts`): **20/20** — 0/10+1, 9, 0, soglia esatta (10, 3+7, 9+1), 11, 15 (card 4/10), 3+8, 3+15, 9+2, 9+15 (2 premi), 22, 21, card piena +1 e +11, soglia 1, tetto 50 (4 premi), input impossibili | OK (27/10) |
+| Staff end-to-end (`scripts/staff-requests.ts`): **24/24** — 401/403 (anche `venueId` malformato), `/venues/mine`, coda senza email, conferma 15 → 3 eventi e saldo 4, polling con saldo, doppia conferma 409, validazione quantità (0, 51, `"10"`, 1.5, assente), rifiuto, conferma dopo rifiuto, scaduta 409, cross-venue 404, promozione cambiata 409 con rollback, owner, soglia esatta (card 10/10), prodotto su card piena (solo `redeem`), card piena +13 (2 premi, card 1/10), rate limit 11ª → 429 con `Retry-After` e ritocco su pendente viva 200 | OK (27/10) |
+| Limiter IP `/auth/email/*` a mano (`PORT=3001 IP_RATE_LIMIT=on`): 30 × 202 poi 429 con `RateLimit-Policy: 30;w=900` e `Retry-After` | OK (27/10) |
+| `scripts/create-owner.ts`: creazione, idempotenza, utente/locale inesistente, staff senza/con `--force`, utente anonimizzato | OK (27/10, 7 scenari) |
+| `npm run typecheck` | pulito (27/10, dopo la Fase 4d) |
 
 ### 2.9 Fase 4 — `visit` e polling con l'utente di sessione (26/10/2026)
 
@@ -104,7 +112,25 @@ File modificati: `venues/venues.router.ts` e `venues/venues.controller.ts` (`isA
 - **Ordine dei middleware**: `isAuthenticated → validate(params) → controller`. Conseguenza accettata: senza cookie un UUID malformato dà **401**, non 400; con sessione valida resta 400.
 - **Typecheck**: con tre handler sulla rotta (`isAuthenticated`, `validate`, controller tipizzato dal DTO) `isAuthenticated` con `P = ParamsDictionary` fisso rendeva il controller non assegnabile a `RequestHandler`. Risolto aprendo i generics di `isAuthenticated` e `requireAuth` su `P`; nessun cast nei controller. Stesso tipo di problema già documentato per `req.auth`/`req.user`.
 - **Test**: `scripts/poll-request.ts` **12/12** (§2.8). Lo script non usa più id scritti a mano: sceglie il primo locale con promozione attiva, crea utenti `visit-test-*@test.it` e sessioni con token noto (in tabella solo SHA-256), e ripulisce a fine run. Verificata la pulizia a mano sul DB (0 utenti/sessioni/card/richieste residue).
-- **Debito dichiarato**: `visit` **resta non transazionale** (come concordato); il 409 ha lo status nel codice ma non è esercitabile a runtime senza forzare una race; `src/api/cards/google/google.controller.ts` (rotta dev) legge ancora `userId` dal body e resta fuori ambito; il rate limit di `visit` non è implementato (§6.9 dell'handoff).
+- **Debito dichiarato**: `visit` **resta non transazionale** (come concordato); il 409 ha lo status nel codice ma non è esercitabile a runtime senza forzare una race; `src/api/cards/google/google.controller.ts` (rotta dev) legge ancora `userId` dal body e resta fuori ambito. ~~Rate limit di `visit` non implementato~~ → implementato il 27/10 (§2.10).
+
+### 2.10 Fase 4d — rate limit, staff, coda, conferma/rifiuto, migration 3 (27/10/2026)
+
+**File nuovi**: `src/api/venues/membership.service.ts`, `membership.middleware.ts` (`requireRole`), `staff.controller.ts`, `staff.dto.ts`, `src/api/requests/resolve.service.ts`, `src/api/auth/ip-rate-limit.middleware.ts`, `src/errors/forbidden.error.ts`, `src/utils/schemas/promotion-config.schema.ts`, `src/utils/stamps.ts`, `scripts/stamps-split.ts`, `scripts/staff-requests.ts`, `scripts/create-owner.ts`, `scripts/verify-migration-3.sql`, `drizzle/0003_stamp_events_request_id_not_unique.sql`.
+
+**File modificati**: `src/db/schema.ts` (indice non unique su `request_id`), `requests/requests.service.ts` (rate limit, coda, polling con saldo, `refreshStatus` → boolean), `requests/requests.controller.ts` (4 campi), `venues/venues.controller.ts` (`visit` con rate limit, `mine`), `venues/venues.router.ts` (rotte staff, ordine middleware), `auth/email/email.router.ts` (limiter IP), `config/env.ts` (`TRUST_PROXY`, `IP_RATE_LIMIT`), `app.ts` (`trust proxy`), `errors/generic.ts` (fix, §4), `errors/index.ts` (handler 403), `utils/types/enum.ts` (`MemberRole`), `scripts/poll-request.ts` (contratto a 4 campi), `package.json` (`express-rate-limit` 8.7.1).
+
+- **Migration 3**: `ALTER TABLE stamp_events DROP CONSTRAINT stamp_events_request_id_unique` + `CREATE INDEX stamp_events_request_idx`. SQL letto prima di applicarlo; `verify-migration-3.sql` **6/6 OK** (UNIQUE rimosso, indice presente, più eventi per richiesta accettati, `idempotency_key` duplicata rifiutata, FK composita intatta, `request_id` NULL accettato).
+- **`splitStamps`** (funzione pura, `src/utils/stamps.ts`): vedi §1 e §4. Input impossibili (soglia 0, saldo negativo o oltre la soglia, quantità negativa o non intera) lanciano invece di ciclare.
+- **Auth staff**: `requireRole("owner","staff")` legge il ruolo da `venue_members` (join con `venues`, esclude archiviati) a ogni richiesta; `venueId` non-UUID → trattato come "non membro" (evita il 22P02 di Postgres) → 403. `GET /api/venues/mine` restituisce i locali non archiviati in cui l'utente è membro, con il ruolo.
+- **Coda**: `GET /api/venues/:venueId/requests` fa la scadenza lazy del locale e restituisce le pendenti in ordine di arrivo (`requestId`, `publicCode`, `stampsCount`, `stampsRequired`, `createdAt`, `expiresAt`), max 50, **mai l'email**.
+- **Conferma** (`resolve.service.ts`): `expireIfDue` fuori transazione → UPDATE condizionato `status='pending' AND expires_at > now()` (mutex, doppia conferma → 409) → `SELECT … FOR UPDATE` della card → 409 se la promozione della card non è quella attiva → `splitStamps` → eventi con `idempotency_key = {requestId}:{n}` → `cards.stamps_count = finalCount`. Richiesta inesistente o di un altro locale → **404 `RequestNotFound`**; già conclusa o scaduta → **409**. Risposta `{status, stampsCount, stampsRequired, rewards}`.
+- **Rifiuto**: stesso UPDATE condizionato con `status='rejected'`; non tocca card né eventi; stessa distinzione 404/409.
+- **Rate limit di `visit`**: 10 richieste **nuove**/ora per card, contate su `stamp_requests` (qualunque stato), `Retry-After` in secondi calcolato dal DB; nessun cooldown. Ordine in `visit`: `expirePendingRequest → getPendingRequest (200, non consuma quota) → checkCardRateLimit (429) → newRequest`.
+- **Limiter IP su `/auth/email/*`**: `express-rate-limit`, 30 richieste/15 minuti, attivo in produzione (attivabile in sviluppo con `IP_RATE_LIMIT=on`, disattivabile con `off`); in sviluppo senza override è un pass-through. `TRUST_PROXY` (numero di hop, default 0) impostato in `app.ts` solo se > 0. Verificato a mano con `PORT=3001 IP_RATE_LIMIT=on`: 30 × 202 poi 429 con `RateLimit-Policy: 30;w=900` e `Retry-After`.
+- **`create-owner.ts`**: `npx tsx --env-file=.env scripts/create-owner.ts <email> <slug> [--force]`; idempotente, rifiuta utente/locale inesistenti o anonimizzati/archiviati, non promuove uno `staff` senza `--force`. Provato in 7 scenari.
+- **`genericErrorHandler` corretto**: prima faceva `res.status(err.statusCode)` su ogni errore; un `ZodError` (senza `statusCode`) faceva crashare Express e il client riceveva HTML 500. Ora solo i `GenericError` espongono status e messaggio; tutto il resto → **500 JSON generico**, dettagli solo nei log.
+- **Test**: `scripts/stamps-split.ts` **20/20**, `scripts/staff-requests.ts` **24/24**, regressione `poll-request` 12/12, `otp-request` 13/13, `otp-verify` 16/16, `session` 16/16 → **101 controlli verdi**, `npm run typecheck` pulito, DB dev ripulito (0 utenti `@test.it`, 0 membri, 0 eventi).
 
 ---
 
@@ -115,7 +141,10 @@ File modificati: `venues/venues.router.ts` e `venues/venues.controller.ts` (`isA
 - **Auth, richiesta codice**: `npx tsx --env-file=.env scripts/otp-request.ts` (il tempo si simula spostando `created_at` via SQL: verifica la logica sulle righe, non l'orologio). Indirizzi `otp-test-*@test.it`, pulizia a fine run.
 - **Auth, verifica codice**: `npx tsx --env-file=.env scripts/otp-verify.ts` (crea le sfide direttamente nel DB con un codice noto, usando lo stesso `OTP_HMAC_SECRET`; non passa dall'email). Indirizzi `otp-verify-*@test.it`, pulizia a fine run.
 - **Auth, sessione e logout**: `npx tsx --env-file=.env scripts/session.ts` (crea le sessioni direttamente nel DB con un token noto — in tabella solo SHA-256 — e fa un login vero con una sfida OTP preparata a mano). Copre scadenza, revoca, anonimizzazione, tetto assoluto, scorrimento, 401 unico, logout e whitelist dei metadata. Indirizzi `auth-session-*@test.it`, pulizia a fine run.
-- **Verifica dei vincoli del DB**: `docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-2.sql` (ogni riga `OK`; lo script termina con ROLLBACK e non sporca il DB).
+- **Regola dei timbri (funzione pura, non serve server né DB)**: `npx tsx scripts/stamps-split.ts` → 20 controlli, esce con codice ≠ 0 se qualcosa fallisce.
+- **Staff end-to-end**: `npx tsx --env-file=.env scripts/staff-requests.ts` (server acceso). Crea utenti `*@test.it`, un locale dedicato con promozione e membri `owner`/`staff`, poi prova 401/403, `/venues/mine`, coda, conferma con vari quantità (15, 10, 1, 13), doppia conferma, validazione, rifiuto, scadenza, cross-venue, promozione non più attiva e rate limit. Pulizia a fine run.
+- **Primo owner di un locale**: `npx tsx --env-file=.env scripts/create-owner.ts <email> <slug> [--force]` (l'utente deve aver già fatto il primo login). Idempotente.
+- **Verifica dei vincoli del DB**: `docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-2.sql` e `... < scripts/verify-migration-3.sql` (ogni riga `OK`; terminano con ROLLBACK e non sporcano il DB).
 - **Wallet**: aprire il link `saveUrl` con un account Admin o tester. Se compare l'errore generico di Google, gli errori dettagliati sono visibili solo ad Admin/Developer dell'Issuer.
 - **Con tunnel** (quando serve): `cloudflared tunnel --url http://localhost:3000`, poi allineare l'URL pubblico nel `.env` e riavviare.
 
@@ -139,6 +168,12 @@ File modificati: `venues/venues.router.ts` e `venues/venues.controller.ts` (`isA
 - **`req.user` non è tipizzabile con `@types/passport` nel programma** (26/10): il typecheck fallisce perché `Express.Request.user` è già dichiarato come `Express.User`. Soluzione adottata: `req.auth = { user, session }`. L'alternativa sarebbe togliere `passport*` dalle dipendenze, ma è una pulizia a parte.
 - **Il cookie può rendere inutile lo scorrimento della sessione** (26/10): con `maxAge` di 30 giorni fissi dal login, un utente attivo viene disconnesso al trentesimo giorno anche se la sessione si è rinnovata. Ora il cookie dura quanto il tetto assoluto (90 giorni). Se un giorno si vuole che segua l'idle, serve il *reissue* del cookie a ogni tocco.
 - **Logout dietro `isAuthenticated` è idempotente sullo stato, non sulla risposta** (26/10): il secondo logout dà 401, ma `revoked_at` non viene riscritto e non nasce un secondo evento. Due logout simultanei possono dare 204 + 401, sempre con un solo evento.
+- **Il `genericErrorHandler` assumeva che ogni errore fosse un `GenericError`** (27/10): faceva `res.status(err.statusCode)`; un `ZodError` di branding (senza `statusCode`) faceva lanciare Express e il client riceveva una pagina HTML 500 invece del JSON. Ora status e messaggio si espongono **solo** per `GenericError`, tutto il resto è un 500 JSON generico con i dettagli nei log. Regola già nota ("ogni GenericError con lo status") ma qui il problema era l'handler, non il `throw`.
+- **La regola della quantità contava il prodotto in premio fuori dalla quantità** (27/10): 15 prodotti da 0 davano `stamp 10, redeem 1, stamp 5` → card 5/10 (come se i prodotti fossero 16) e, con quantità esattamente sulla soglia, la card veniva azzerata consumando un premio mai erogato. La quantità è il **totale dei prodotti, premio compreso**; l'invariante da testare è `timbri + premi = quantità` e "card piena solo se il premio non è stato consumato". I documenti di prodotto erano già corretti: il codice no.
+- **Un `venueId` malformato arrivava a Postgres** (27/10): l'UUID non valido produceva l'errore 22P02 del driver e quindi un 500. Ora `MembershipService` tratta un id non-UUID come "non membro" → 403, senza interrogare il DB.
+- **Il limiter IP in sviluppo blocca gli script di test** (27/10): decine di chiamate dallo stesso IP superano subito 30/15 minuti. Per questo `express-rate-limit` è attivo solo in produzione o con `IP_RATE_LIMIT=on`; in sviluppo è un pass-through. Il limite per destinatario (nel DB) resta attivo sempre.
+- **`trust proxy` non è un dettaglio**: con 0 hop dietro Cloudflare il limiter vede l'IP del proxy e mette tutti gli utenti nello stesso secchio. `TRUST_PROXY` è un numero di hop, mai `true` (falsificabile con `X-Forwarded-For`).
+- **Il pass del Wallet non si aggiorna dopo la conferma** (27/10): il DB e il polling web sono corretti, ma il Wallet mostra il saldo vecchio. Non confondere un test del DB con un test end-to-end: serve la Fase 4e.
 - **Il typecheck non copre `scripts/`** (`tsconfig` include solo `src`): gli script girano con `tsx` senza controllo dei tipi. Un errore di tipo in uno script si vede solo a runtime.
 - **Il solo riepilogo "passati/falliti" non basta a diagnosticare**: lo script stampa risposta e singoli controlli, e va letto quell'output.
 
@@ -146,7 +181,7 @@ File modificati: `venues/venues.router.ts` e `venues/venues.controller.ts` (`isA
 
 ## 5. Da fare
 
-### Pre-merge / chiusura Fase 3 (esito non ancora comunicato)
+### Pre-merge / chiusura Fase 4d (esito non ancora comunicato)
 1. Sicurezza sulla storia Git (mostrare solo nomi di file, atteso vuoto):
    ```bash
    git grep -lI -e '-----BEGIN' $(git rev-list --all)
@@ -156,47 +191,49 @@ File modificati: `venues/venues.router.ts` e `venues/venues.controller.ts` (`isA
    Se una chiave è stata pushata, ruotarla dalla console Google Cloud.
 2. Pulizie facili: duplicati in `GoogleService`, controllo date morto, import inutilizzati, `venues.response.ts`, test del ramo `card_created` da `visit`, decisione su `.vscode`. Elenco completo in `Stampy_Handoff_Fase_4c.md` §8.
 3. Ruotare o rimuovere `DEV_ENDPOINT_SECRET` se ancora nel `.env`.
-4. Committare il percorso email e la sessione (file in `src/api/auth/`, `src/utils/auth-context.ts`, `src/utils/types/auth.type.ts`, `src/db/tx.ts`, `src/utils/email/`, `src/errors/unauthorized.error.ts`, gli script in `scripts/`) e fare un tag.
+4. Committare percorso email, sessione, `visit`/polling **e la Fase 4d** (file nuovi e modificati elencati in `Stampy_Handoff_Fase_4d.md` §4), poi tag `fase-4d-chiusa`.
 
 ### Fase 4 — auth e staff (in corso)
 5. ~~Design dell'auth e migration 2~~ **fatto** (24/10).
 6. ~~Percorso email: `OtpService`, `IdentityService`, `SessionService`, `AuthEventsService`, `EmailSender` console, endpoint di richiesta e verifica~~ **fatto e testato** (26/10).
 7. ~~**`isAuthenticated`**, **logout**, `cookie-parser`, `last_seen_at` con scorrimento, errore 401~~ **fatto e testato** (26/10, §2.7): sessione scorrevole 30 giorni + tetto assoluto 90, tocco ogni 5 minuti, `req.auth`, `GET /api/auth/me`, `POST /api/auth/logout`.
 8. ~~Sostituire `userId` nel body con l'utente di sessione in `visit` e in `GET /requests/:requestId`~~ **fatto e testato** (26/10, §2.9): `userId` dal body ignorato, ownership del polling in SQL, richiesta altrui → 404 identico a inesistente.
-9. **Rate limit di `visit`** (deciso il 26/10, handoff §6.9): contatori nel DB per card/utente, più un limite in memoria per IP sulle rotte `/auth` con `trust proxy` da configurare. **Prossimo passo.**
+9. ~~**Rate limit di `visit`** (deciso il 26/10, handoff §6.9): contatori nel DB per card, più un limite in memoria per IP sulle rotte `/auth` con `trust proxy`~~ **fatto e testato** (27/10, §2.10): 10 richieste nuove/ora per card con `Retry-After`, limiter IP 30/15 minuti attivo solo in produzione o con `IP_RATE_LIMIT=on`, `TRUST_PROXY` numerico.
 10. **Login con Google** (verifica del token con `google-auth-library`, collegamento solo se autorevole, rifiuto delle email di terzi con `google_untrusted_email_rejected`). **Rimandato dopo lo staff** (deciso il 26/10). Richiede configurazione esterna e un modo di ottenere un token in test: da leggere nella documentazione ufficiale.
 11. **Invio email reale** (`GmailEmailSender`, limiti di Gmail da verificare; `EMAIL_PROVIDER` in `env.ts`).
 12. ~~Decisioni ancora aperte su auth/CORS/staff/retention~~ **chiuse il 26/10** (handoff §6): CORS ristretto a una sola origine con `credentials` e controllo `Origin` sulle rotte che modificano stato, senza token CSRF per ora; staff con lo stesso metodo di login del cliente e ruolo letto da `venue_members`; primo `owner` con uno script dopo il suo primo login; `venueId` nell'URL con login sulla stessa pagina (frontend); retention e anonimizzazione rimandate a prima del primo utente reale.
-13. Endpoint staff: coda delle pendenti, `requireRole`, `venue_id` da `venue_members`; creazione del primo `owner` con uno script.
-14. **Migration 3** (togliere UNIQUE su `stamp_events.request_id`), funzione pura dei tratti con test, `confirm`/`reject` in transazione con `idempotency_key`.
-15. **Ricerca nella documentazione Google**: aggiornamento dell'object via REST (scope, patch vs sostituzione, campi aggiornabili, latenza, class modificabile). Non cercare finché l'utente non lo dice.
-16. `wallet_status`, branding di default, personalizzazione estetica.
+13. ~~Endpoint staff: coda delle pendenti, `requireRole`, `venue_id` da `venue_members`; creazione del primo `owner` con uno script~~ **fatto e testato** (27/10, §2.10): `GET /venues/mine`, `GET /venues/:venueId/requests`, `POST .../confirm`, `POST .../reject`, `scripts/create-owner.ts`.
+14. ~~**Migration 3** (togliere UNIQUE su `stamp_events.request_id`), funzione pura dei tratti con test, `confirm`/`reject` in transazione con `idempotency_key`~~ **fatto e testato** (27/10, §2.10), inclusa la **correzione della regola della quantità**.
+15. **Fase 4e — aggiornamento del pass Google via REST** dopo la conferma: **prossimo passo tecnico**, è il gate per il flusso end-to-end. Da verificare nella documentazione ufficiale: auth/scope, patch vs sostituzione, campi aggiornabili (`loyaltyPoints.balance`, `user_progress`), latenza, se la class è modificabile. Non cercare finché l'utente non lo dice.
+16. **Frontend** (Vue) staff e cliente: il backend espone già tutto (coda, conferma, rifiuto, polling con saldo, `/venues/mine`). Polling cliente ogni 1–2 s.
+17. `wallet_status`, branding di default, personalizzazione estetica.
 
 ### Infrastruttura e Wallet in produzione
-17. **Dominio** (circa 10 €/anno) e URL fisso per il backend di test; verificare nella documentazione Cloudflare cosa serve per un tunnel con nome. Il dominio serve anche per l'email (SPF/DKIM) quando si lascerà l'account Gmail.
-18. **Tag NFC di prova**: adesivi NTAG213 più qualche card PVC NFC. **Non bloccare mai i tag in sola lettura** prima di aver fissato l'URL definitivo. Test su iPhone (lettura in background da XS/XR in poi) e Android.
-19. **Web app staff e cliente** (Vue.js); polling cliente ogni 1–2 s.
-20. **Publishing access Google**: completare il Business Profile, creare la class definitiva, preparare gli screenshot dei pass. **Tempi di review e requisiti per un individuo senza P.IVA da verificare**, non assunti.
-21. Decidere se tenere il barcode sul pass (l'identificazione avviene dal tag/QR del banco; potrebbe bastare `accountId`) e come mostrare il codice leggibile.
-22. Prima di qualunque deploy: `genericErrorHandler` che espone `err.message` e `err.name` (e non gestisce errori che non sono `GenericError`), `logger: true` di Drizzle (stampa query e parametri, quindi anche email e dati personali), `cors()` aperto, `start` via `tsx` con `build`/`dist` scollegati.
+18. **Dominio** (circa 10 €/anno) e URL fisso per il backend di test; verificare nella documentazione Cloudflare cosa serve per un tunnel con nome. Il dominio serve anche per l'email (SPF/DKIM) quando si lascerà l'account Gmail.
+19. **Tag NFC di prova**: adesivi NTAG213 più qualche card PVC NFC. **Non bloccare mai i tag in sola lettura** prima di aver fissato l'URL definitivo. Test su iPhone (lettura in background da XS/XR in poi) e Android.
+20. **Web app staff e cliente** (Vue.js); polling cliente ogni 1–2 s.
+21. **Publishing access Google**: completare il Business Profile, creare la class definitiva, preparare gli screenshot dei pass. **Tempi di review e requisiti per un individuo senza P.IVA da verificare**, non assunti.
+22. Decidere se tenere il barcode sul pass (l'identificazione avviene dal tag/QR del banco; potrebbe bastare `accountId`) e come mostrare il codice leggibile.
+23. Prima di qualunque deploy: `logger: true` di Drizzle (stampa query e parametri, quindi anche email e dati personali), `cors()` aperto, `start` via `tsx` con `build`/`dist` scollegati, JSON malformato che risponde 500, rotta inesistente che risponde HTML, `POST /api/cards/google` senza auth.
 
 ### Prodotto e mercato
-23. **Parlare con 2-3 gestori reali** (bar, gelaterie, pizzerie): prerequisito per il modello di business e per le decisioni su scadenza/rollover. Non è un compito tecnico rimandabile.
-24. **Supporto fisico per il locale**, in fasi: prototipo (adesivo NTAG213 su porta-menù in acrilico a L, QR stampato in casa), pilota (stampa curata col brand), scala (plexiglass su misura con chip incassato). Da testare: schermatura da metallo e inchiostri metallici, posizione dell'antenna, spessore, cover dei telefoni.
-25. **Apple Wallet** solo dopo aver validato il flusso su Google Wallet (99 $/anno Apple Developer Program). Con Apple Wallet si valuterà anche l'accesso con Apple.
-26. **Telefono con SMS** (accesso): solo con un cliente reale, per costo per messaggio e perché NIST lo classifica come metodo "restricted". Costi e requisiti dei provider da verificare nelle loro documentazioni.
+24. **Parlare con 2-3 gestori reali** (bar, gelaterie, pizzerie): prerequisito per il modello di business e per le decisioni su scadenza/rollover. Non è un compito tecnico rimandabile.
+25. **Supporto fisico per il locale**, in fasi: prototipo (adesivo NTAG213 su porta-menù in acrilico a L, QR stampato in casa), pilota (stampa curata col brand), scala (plexiglass su misura con chip incassato). Da testare: schermatura da metallo e inchiostri metallici, posizione dell'antenna, spessore, cover dei telefoni.
+26. **Apple Wallet** solo dopo aver validato il flusso su Google Wallet (99 $/anno Apple Developer Program). Con Apple Wallet si valuterà anche l'accesso con Apple.
+27. **Telefono con SMS** (accesso): solo con un cliente reale, per costo per messaggio e perché NIST lo classifica come metodo "restricted". Costi e requisiti dei provider da verificare nelle loro documentazioni.
 
 ---
 
 ## 6. Regole di sicurezza da rispettare nelle API vere
 
-- **Auth prima della validazione**, poi ruolo, poi validazione, poi controller:
-  `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`.
-- **Il `venue_id` dello staff non arriva mai da body o params**: si ricava dalla sessione.
+- **Auth prima della validazione**, poi ruolo, poi validazione, poi controller: `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`.
+- **Il `venue_id` dello staff sta nel path ma non è una prova di autorizzazione**: il ruolo si legge da `venue_members` a ogni richiesta (`requireRole`), mai dalla sessione o dal body. Non-membro → 403; `venueId` non-UUID → 403 (trattato come non membro, prima della validazione).
+- **La conferma è idempotente per costruzione**: UPDATE condizionato a `status='pending'` (mutex) + `idempotency_key = {requestId}:{n}` univoca; doppia conferma → 409, mai doppio conteggio. La quantità è validata (intero 1–50) e i tratti li ricalcola il backend.
 - **Ownership** su ogni risorsa (`:cardId`, `:requestId`): il ruolo giusto non basta. La verifica è **in SQL** (join su `cards.user_id`), non in memoria; una richiesta altrui dà lo **stesso 404** di un id inesistente e non viene mai scritta.
 - **Validazione input**: vietare i campi non previsti (mass assignment), limite massimo su ogni valore numerico, regole strette sulle query string (`Number('')` vale 0, `Number('0x64')` vale 100), 400 e non 500 per input mancanti, nessuna eccezione non gestita nei middleware (verificare la versione di Express).
 - **Nessuna route che riceve dati senza validazione**: idealmente un test automatico che elenca le rotte POST/PUT/PATCH/DELETE e fallisce se manca il middleware. `visit` non legge più il body (l'utente viene dalla sessione): l'eccezione storica è stata rimossa.
-- **Tag e QR sono copiabili**: la conferma manuale dello staff resta la protezione contro chi si timbra da solo. Rate limit per utente e carta e `idempotency_key`.
+- **Tag e QR sono copiabili**: la conferma manuale dello staff resta la protezione contro chi si timbra da solo. Rate limit per carta (10 richieste nuove/ora, 429 con `Retry-After`) e `idempotency_key` sulla conferma.
+- **Limiti a due livelli, con scopi diversi**: per card (`stamp_requests`, sempre attivo) e per IP sulle rotte `/auth` (`express-rate-limit`, 30/15 minuti, attivo in produzione o con `IP_RATE_LIMIT=on`). Mai un contatore globale. `TRUST_PROXY` = numero di hop del proxy, mai `true`.
 - **Manomissione fisica** del QR o del tag: supporto con QR non sovrapponibile, dominio corto e riconoscibile.
 - **Segreti**: la chiave JSON del service account non va mai in Git, in chiaro in chat o nei documenti; in produzione nei secret dell'hosting. Vale anche per il segreto HMAC degli OTP e per le credenziali dell'invio email.
 - **Mai `res.json(riga)`**: sempre risposte mappate (la verifica del codice risponde `{user:{id,email,displayName}}`).
@@ -207,7 +244,10 @@ File modificati: `venues/venues.router.ts` e `venues/venues.controller.ts` (`isA
 
 ## 7. Punti aperti / da verificare (non assunti)
 
-- Aggiornamento del pass via REST: scope, patch vs sostituzione, campi aggiornabili, latenza, se la class è modificabile (reinviare una class in un nuovo JWT non è confermato che la aggiorni).
+- **Fase 4e — aggiornamento del pass via REST** (prossimo passo, gate del flusso end-to-end): scope, patch vs sostituzione, campi aggiornabili (`loyaltyPoints.balance`, `user_progress`), latenza, se la class è modificabile (reinviare una class in un nuovo JWT non è confermato che la aggiorni). Finché non è fatto, dopo la conferma il Wallet mostra il saldo vecchio.
+- **Findings aperti dalla Fase 4d** (non corretti, da decidere): JSON malformato nel body → oggi 500 (atteso 400); rotta inesistente → pagina HTML di Express invece del JSON; `cors()` aperto (`*`); `POST /api/cards/google` è ancora montata **senza auth** (rotta dev).
+- **`TRUST_PROXY`** da impostare al primo deploy (numero di hop, non `true`); da verificare che il limiter IP veda l'IP reale dietro Cloudflare.
+- **Collection Bruno** (test manuali strutturati): solo proposta, nulla creato. Il piano prevedeva cartelle `00–09` e fixture generate da script (Bruno non ha accesso al DB né ai codici OTP).
 - Tempi reali di review Google per il publishing access e requisiti del Business Profile per un individuo.
 - Se Google offre un meccanismo di notifica per mantenere `wallet_status`.
 - Dimensioni e requisiti grafici consigliati del logo del pass (PNG, meglio quadrato); `public/logo.png` non è servito.
@@ -233,6 +273,15 @@ npm run seed          # solo sviluppo
 # test di visit + polling (crea utenti/sessioni di test, pulisce a fine run)
 npx tsx --env-file=.env scripts/poll-request.ts
 
+# regola dei timbri: funzione pura, non serve server né DB
+npx tsx scripts/stamps-split.ts
+
+# staff end-to-end: coda, conferma, rifiuto, rate limit (crea locale e membri di test)
+npx tsx --env-file=.env scripts/staff-requests.ts
+
+# primo owner di un locale (l'utente deve aver già fatto il primo login)
+npx tsx --env-file=.env scripts/create-owner.ts <email> <slug> [--force]
+
 # test dell'auth (server acceso)
 npx tsx --env-file=.env scripts/otp-request.ts
 npx tsx --env-file=.env scripts/otp-verify.ts
@@ -243,6 +292,7 @@ docker exec -it stampy-db psql -U stampy -d stampy_dev
 npx drizzle-kit generate --config=src/drizzle.config.ts --name=NOME
 node --env-file=.env ./node_modules/.bin/drizzle-kit migrate --config=src/drizzle.config.ts
 docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-2.sql
+docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-3.sql
 
 # tunnel (quando serve)
 cloudflared tunnel --url http://localhost:3000

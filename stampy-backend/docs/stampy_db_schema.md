@@ -1,8 +1,8 @@
 # Stampy — Schema database
 
-> Documento vivo. Stato attuale: **Migration 2 chiusa** (`0000_init`, `0001_promotions_no_overlap`, `0002_auth_foundation`; se il nome del file in `drizzle/` differisce, vince il file).
-> Prossima migration: **3** (togliere UNIQUE da `stamp_events.request_id`, vedi §5.7 e §8). Una migration per modifica. Aggiornare questo file a ogni migration, non riscriverlo da zero.
-> Ultimo aggiornamento: 24 ottobre 2026.
+> Documento vivo. Stato attuale: **Migration 3 chiusa** (`0000_init`, `0001_promotions_no_overlap`, `0002_auth_foundation`, `0003_stamp_events_request_id_not_unique`; se il nome del file in `drizzle/` differisce, vince il file).
+> Prossima migration: **nessuna pianificata**. Una migration per modifica. Aggiornare questo file a ogni migration, non riscriverlo da zero.
+> Ultimo aggiornamento: 27 ottobre 2026.
 > Fonte di verità del codice: `src/db/schema.ts`. Se questo file lo contraddice, vince il codice.
 
 ---
@@ -53,6 +53,7 @@ node --env-file=.env ./node_modules/.bin/drizzle-kit migrate --config=src/drizzl
 
 # esegue uno script SQL di verifica (tutto in transazione, termina con ROLLBACK)
 docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-2.sql
+docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-3.sql
 ```
 
 Mai `push` né `introspect`: i vincoli scritti a mano (es. `promotions_no_overlap`) non sono in `schema.ts`. **Prima di applicare una migration generata, leggere sempre il file SQL** (ordine dei DROP, vincoli presenti, nessuna riga che tocchi `promotions_no_overlap` o `btree_gist`).
@@ -270,7 +271,7 @@ Una riga = una card nel Wallet. La card è la relazione cliente ↔ locale e non
 | `user_id` | uuid | FK → `users.id` RESTRICT |
 | `venue_id` | uuid | FK → `venues.id` RESTRICT |
 | `promotion_id` | uuid | promozione corrente della card |
-| `stamps_count` | integer | NOT NULL, default 0, denormalizzato |
+| `stamps_count` | integer | NOT NULL, default 0, denormalizzato; può valere `stampsRequired` (= premio disponibile, non ancora consumato) |
 | `public_code` | text | NOT NULL, UNIQUE, codice leggibile |
 | `wallet_provider` | wallet_provider | NOT NULL |
 | `wallet_object_id` | text | NOT NULL, UNIQUE (ID object Google) |
@@ -315,6 +316,7 @@ check("cards_stamps_ck", sql`${t.stampsCount} >= 0`)
 - *In parole:* i timbri non possono essere negativi.
 - *Esempio:* un `UPDATE` che porta `stamps_count` da 1 a -2 fallisce.
 - *Perché:* se un bug sottrae troppo, il database si rifiuta di salvare un valore impossibile.
+- *Nota (27/10):* **non c'è** un CHECK superiore a `stampsRequired`, ed è voluto: con la regola della quantità (prodotti totali, premio compreso) la card può restare **piena** e significa "premio disponibile". Il valore `stamps_count = stampsRequired` è uno stato normale prodotto dal sistema, non un dato da riparare.
 
 **`public_code` UNIQUE e `wallet_object_id` UNIQUE** — `NON TESTATO esplicitamente`
 ```ts
@@ -384,10 +386,10 @@ Log immutabile delle operazioni confermate. Fonte di verità; `cards.stamps_coun
 | `venue_id` | uuid | |
 | `promotion_id` | uuid | promozione al momento dell'evento |
 | `operator_id` | uuid | FK → `users.id` RESTRICT (chi ha confermato) |
-| `request_id` | uuid | nullable; **oggi UNIQUE, da togliere (migration 3)**: una richiesta genera più eventi (uno per tratto) |
+| `request_id` | uuid | nullable; **non più UNIQUE dalla migration 3**: una richiesta genera più eventi (uno per tratto) |
 | `type` | event_type | NOT NULL (`stamp` / `redeem`) |
 | `quantity` | integer | NOT NULL, default 1 |
-| `idempotency_key` | text | NOT NULL, UNIQUE; con la quantità "B" avrà forma `{requestId}:{n}` |
+| `idempotency_key` | text | NOT NULL, UNIQUE; forma `{requestId}:{n}` (n = posizione del tratto, da 1) |
 | `created_at` | timestamptz | NOT NULL |
 
 **Vincoli**
@@ -400,12 +402,13 @@ idempotencyKey: text("idempotency_key").notNull().unique()
 - *Esempio:* lo staff preme "conferma" due volte, o la rete ripete la richiesta: il secondo evento con chiave `{requestId}:1` è rifiutato, quindi non si assegnano timbri doppi.
 - *Perché:* idempotenza garantita dal database, non dalla speranza che il client non ripeta.
 
-**`request_id` UNIQUE** — `NON TESTATO` — **da rimuovere con la migration 3**
-```ts
-requestId: uuid("request_id").unique()
+**`stamp_events_request_idx`** — indice **non unique** su `request_id` — `VERIFICATO 27/10 (migration 3)`
+```sql
+CREATE INDEX "stamp_events_request_idx" ON "stamp_events" USING btree ("request_id");
 ```
-- *In parole:* oggi una richiesta può generare un solo evento.
-- *Perché va tolto:* con la quantità "B" una richiesta genera più eventi (es. 15 prodotti → `stamp` ×10, `redeem` ×1, `stamp` ×4). Dopo la migration resta un indice normale (non unique).
+- *In parole:* più eventi possono avere lo stesso `request_id` (es. 15 prodotti → `stamp` 10, `redeem` 1, `stamp` 4).
+- *Perché:* con la quantità "B" una singola richiesta genera un evento per tratto; l'unicità della conferma è garantita da `idempotency_key`, non da `request_id`. L'indice resta perché serve a leggere gli eventi di una richiesta.
+- *Storia:* prima della migration 3 c'era un UNIQUE (`stamp_events_request_id_unique`), rimosso con `ALTER TABLE ... DROP CONSTRAINT`. La FK composita `(request_id, venue_id)` è rimasta intatta.
 
 **FK composita `(card_id, venue_id)` → `cards`; `(promotion_id, venue_id)` → `promotions`; `(request_id, venue_id)` → `stamp_requests`** — `NON TESTATO esplicitamente`
 ```ts
@@ -610,13 +613,16 @@ userId: uuid("user_id").references(() => users.id, { onDelete: "restrict" })
 ## 6. Regole applicative (non garantite dal DB)
 
 **Timbri e richieste**
-- **`stamps_count`**: aggiornarlo nella **stessa transazione** che inserisce lo `stamp_event`, con `UPDATE ... SET stamps_count = stamps_count + $1` (atomico), mai leggi-poi-scrivi.
-- **Quantità "B"**: lo staff inserisce i prodotti consumati; il backend li scompone in tratti (`stamp` / `redeem`) con una funzione pura e scrive un evento per tratto, nella stessa transazione.
+- **`stamps_count`**: si aggiorna nella **stessa transazione** che inserisce gli `stamp_event`. Il codice attuale (27/10) fa `SELECT … FOR UPDATE` sulla card, calcola il saldo finale con `splitStamps` e scrive `UPDATE cards SET stamps_count = $1`: il lock serializza gli scrittori, quindi non è un leggi-poi-scrivi insicuro. Il saldo finale può valere `stampsRequired` (= premio disponibile).
+- **Quantità "B" (regola corretta il 27/10)**: lo staff inserisce il **totale dei prodotti consumati, premio compreso** (intero 1–50). Il backend li scompone in tratti (`stamp` / `redeem`) con `splitStamps`: timbra fino alla soglia, spende **una unità** della quantità come prodotto in premio, timbra il resto. Con soglia 10 da 0: 15 → `stamp 10, redeem 1, stamp 4` → card 4/10; 10 → `stamp 10` → card piena (premio disponibile); 1 da card piena → `redeem 1` → card 0. Un evento per tratto, stessa transazione. Vale solo per `type = "stamps"`.
+- **Conferma**: `expireIfDue` fuori transazione → transazione: UPDATE condizionato `status='pending' AND expires_at > now()` (mutex, doppia conferma → 409) → lock card → 409 se la promozione della card non è quella attiva → eventi con `idempotency_key = {requestId}:{n}` → `stamps_count` → risposta `{status, stampsCount, stampsRequired, rewards}` (`rewards` = premi **consumati**). Richiesta inesistente o di un altro locale → 404 `RequestNotFound`.
+- **Rifiuto**: stesso UPDATE condizionato, `status='rejected'`, nessuna scrittura su card o eventi; stessa distinzione 404/409.
 - **Rollover promozione (lazy)**: se `cards.promotion_id` non è la promozione attiva, al primo timbro il backend azzera `stamps_count`, aggiorna `promotion_id` e aggiorna il pass. Nessun cron per l'MVP. Per ora la `confirm` risponde 409. Lo storico resta in `stamp_events.promotion_id`.
 - **Cosa succede ai timbri già maturati alla scadenza** (es. 9/10): decisione di prodotto ancora aperta. Opzione consigliata per l'MVP: il gestore imposta la fine con preavviso e il cliente vede la scadenza sulla card.
 - **Nel codice passare sempre `venue_id` insieme agli ID** delle risorse, per rispettare le FK composite e l'ownership.
-- **Il `venue_id` dello staff** si ricava da `venue_members` tramite la sessione, mai da body o params.
-- **Scadenza richieste**: vedi §2 (scadenza lazy, solo da `pending`).
+- **Il ruolo dello staff** si legge da `venue_members` a ogni richiesta (`requireRole`); il `venueId` nel path è solo un selettore, mai una prova di autorizzazione. Non-membro → 403.
+- **Rate limit delle richieste nuove**: 10 per card nell'ultima ora, contate su `stamp_requests` (qualunque stato); oltre → 429 con `Retry-After` calcolato dal DB. La pendente viva non consuma quota.
+- **Scadenza richieste**: vedi §2 (scadenza lazy, solo da `pending`); la applicano polling cliente, coda staff e conferma/rifiuto.
 
 **Identità e collegamento tra metodi (decise 24/10/2026)**
 - **Nessun utente senza prova di possesso** dell'identificativo (codice OTP o IdP autorevole): niente account "non verificati" in attesa. È la difesa dal *pre-hijacking* (un attaccante crea l'account con l'email della vittima prima che si registri).
@@ -695,13 +701,26 @@ userId: uuid("user_id").references(() => users.id, { onDelete: "restrict" })
 | 18 | `promotions_no_overlap` ancora presente | OK |
 | 19 | colonne `phone_*` rimosse da `users` | OK |
 
-Non ancora verificati: `promotions_dates_ck`, `stamp_events_qty_ck`, UNIQUE su `stamp_events.request_id` (verrà rimosso), FK composite di `stamp_requests` e `stamp_events`, `venues.slug` UNIQUE, PK di `venue_members`, RESTRICT sulle FK di `sessions` e `auth_events` (testato solo su `auth_identities`).
+Non ancora verificati: `promotions_dates_ck`, `stamp_events_qty_ck`, FK composite di `stamp_requests` e `stamp_events`, `venues.slug` UNIQUE, PK di `venue_members`, RESTRICT sulle FK di `sessions` e `auth_events` (testato solo su `auth_identities`).
+
+**27/10/2026 — migration 3 (script `verify-migration-3.sql`, tutto in transazione con ROLLBACK)**
+
+| # | Cosa | Esito |
+|---|---|---|
+| 01 | UNIQUE `stamp_events_request_id_unique` rimosso | OK |
+| 02 | indice `stamp_events_request_idx` presente | OK |
+| 03 | più eventi con lo stesso `request_id` accettati | OK |
+| 04 | `idempotency_key` duplicata rifiutata | OK |
+| 05 | FK composita `(request_id, venue_id)` ancora presente | OK |
+| 06 | evento con `request_id` NULL accettato | OK |
+
+Verificato anche dal vivo con `scripts/staff-requests.ts`: una conferma con quantità 15 scrive 3 eventi (`stamp 10`, `redeem 1`, `stamp 4`) con lo stesso `request_id` e chiavi `{requestId}:1..3`.
 
 ---
 
 ## 8. Roadmap dello schema
 
-**Migration 3 (prima della `confirm`):** togliere UNIQUE su `stamp_events.request_id` (resta indice normale), con aggiornamento di `schema.ts` e di §5.7.
+**Nessuna migration pianificata.** La migration 3 (togliere UNIQUE su `stamp_events.request_id`, resta l'indice `stamp_events_request_idx`) è **applicata e verificata** il 27/10.
 
 **Con nuovi metodi di accesso (quando serviranno, migration additive):**
 - Apple: valore `apple` in `identity_provider`.

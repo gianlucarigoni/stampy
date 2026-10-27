@@ -10,6 +10,11 @@ const schema = z.object({
   WALLET_SERVICE_ACCOUNT_EMAIL: z.string().email(),
   WALLET_SERVICE_ACCOUNT_KEY_PATH: z.string().min(1),
   OTP_HMAC_SECRET: z.string().min(1),
+  // Numero di proxy fidati davanti all'app (0 = nessuno). Dietro Cloudflare/altri
+  // proxy va messo il numero di hop, MAI `true` (permette di falsificare X-Forwarded-For).
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  // Forza il limiter IP su /auth/email/*: "on" | "off". Se assente, attivo solo in produzione.
+  IP_RATE_LIMIT: z.enum(["on", "off"]).optional(),
 });
 
 const parsed = schema.safeParse(process.env);
