@@ -6,7 +6,7 @@ import { TryLaterError } from "../../errors/try-later.error";
 import { VenueNotFoundError } from "../../errors/venue-not-found.error";
 import { requireAuth } from "../../utils/auth-context";
 import { TypedAuthRequest } from "../../utils/typed-request";
-import googleSrv from "../cards/google/google.service";
+import googleSrv from "../cards/google.service";
 import requestSrv from "../requests/requests.service";
 import membershipSrv from "./membership.service";
 import { venueIdDTO } from "./venues.dto";

@@ -3,11 +3,7 @@ import { TypedRequest } from "../../../utils/typed-request";
 import { emailDTO, verifyDTO } from "./email.dto";
 import otpSrv, { MAX_OTP_ATTEMPTS } from "../otp.service";
 import identitySrv from "../identity.service";
-import sessionSrv, {
-  SESSION_ABSOLUTE_TTL_DAYS,
-  SESSION_COOKIE_NAME,
-  sessionCookieOptions,
-} from "../session.service";
+import sessionSrv, { SESSION_ABSOLUTE_TTL_DAYS, SESSION_COOKIE_NAME, sessionCookieOptions } from "../session.service";
 import authEventsSrv from "../auth-events.service";
 import { db } from "../../../db";
 import { TryLaterError } from "../../../errors/try-later.error";
@@ -33,7 +29,6 @@ export const request = async (req: TypedRequest<emailDTO>, res: Response, next: 
       throw new GenericError("Impossibile inviare il codice, riprova", 503);
     }
 
-    console.error(`[DEV] codice per ${email}: ${result.code}`);
     res.status(202).json({ challengeId: result.challenge.id });
   } catch (err) {
     next(err);

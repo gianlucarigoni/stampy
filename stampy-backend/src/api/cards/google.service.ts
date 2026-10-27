@@ -1,16 +1,14 @@
-import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as jwt from "jsonwebtoken";
 import { customAlphabet } from "nanoid";
 import { randomUUID } from "node:crypto";
-import { db } from "../../../db";
-import { cards, promotions, users, venues, walletProvider, walletStatus } from "../../../db/schema";
-import { Card } from "../../../utils/types/card.type";
-import { Promotion } from "../../../utils/types/promotion.type";
-import { User } from "../../../utils/types/users.type";
-import { Venue } from "../../../utils/types/venue.type";
-import { brandingSchema } from "../../../utils/schemas/branding.schema";
-import { env } from "../../../config/env";
-import { loadServiceAccount, ServiceAccount } from "../../../config/serviceAccount";
+import { env } from "../../config/env";
+import { loadServiceAccount, ServiceAccount } from "../../config/serviceAccount";
+import { db } from "../../db";
+import { cards, walletProvider, walletStatus } from "../../db/schema";
+import { Card } from "../../utils/types/card.type";
+import { Promotion } from "../../utils/types/promotion.type";
+import { Venue } from "../../utils/types/venue.type";
 
 export class GoogleService {
   private readonly credentials: ServiceAccount = loadServiceAccount(
@@ -22,35 +20,6 @@ export class GoogleService {
 
   private generatePublicCode(): string {
     return this.publicCodeGenerator();
-  }
-
-  async getUserById(userId: string): Promise<User | null> {
-    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-    return user ?? null;
-  }
-
-  async getVenueById(venueId: string): Promise<Venue | null> {
-    const [row] = await db.select().from(venues).where(eq(venues.id, venueId)).limit(1);
-    if (!row) return null;
-
-    return { ...row, branding: brandingSchema.parse(row.branding) };
-  }
-
-  async getActivePromotion(venueId: string): Promise<Promotion | null> {
-    const now = new Date();
-    const [promotion] = await db
-      .select()
-      .from(promotions)
-      .where(
-        and(
-          eq(promotions.venueId, venueId),
-          lte(promotions.startsAt, now),
-          or(isNull(promotions.endsAt), gt(promotions.endsAt, now)),
-        ),
-      )
-      .limit(1);
-
-    return promotion ?? null;
   }
 
   async addOrGetCard(userId: string, venueId: string, promotionId: string): Promise<{ card: Card; created: boolean }> {
