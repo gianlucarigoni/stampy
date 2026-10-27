@@ -1,18 +1,53 @@
-# Stampy
-Scopo: tessere fedeltà digitali nel Google Wallet per locali food & beverage (una card per locale, cliente unico, timbri confermati sempre dallo staff).
-Fase: pre-MVP, Fase 4 (auth). Stack: Node/Express 5/TypeScript, Drizzle, PostgreSQL 16, Vue (non iniziato).
+# Stampy backend: struttura e convenzioni
 
-## Come lavorare
-- Rispondi in italiano. Se il codice contraddice i documenti, vince il codice.
-- Prima di modificare file: proponi il piano (file, motivo, test) e aspetta il mio ok.
-- Non decidere al posto mio: raccomanda con pro e contro.
-- Non inventare API di servizi esterni (Google Wallet, Gmail, Google Sign-In): segnala "da verificare".
-- Mai leggere, stampare o citare .env e secrets/.
-- Ogni `GenericError` va scritto con lo status. Mai `drizzle-kit push`. Leggi sempre il SQL di una migration prima di applicarla.
+Documenti di riferimento in `docs/`: `stampy_contesto_progetto.md` (decisioni di
+prodotto), `stampy_db_schema.md` (schema, fonte di verità del DB),
+`CODEBASE_CONTEXT.md` (mappa del codice), `progress.md` (storico e test).
+Se un documento contraddice il codice, vince il codice.
 
-## Documenti (leggili quando servono)
-- docs/stampy_contesto_progetto.md: decisioni di prodotto e cosa NON fare
-- docs/stampy_db_schema.md: schema DB e vincoli (fonte di verità)
-- docs/progress.md: cosa è fatto, testato, da fare
-- docs/CODEBASE_CONTEXT.md: mappa del codice (può essere datata)
-- docs/Stampy_Handoff_Fase_4c.md: stato attuale e decisioni aperte
+## Struttura
+
+src/
+  api/<dominio>/     router, controller, service, dto di un dominio
+    auth/ cards/ health/ requests/ users/ venues/ wallet/
+  config/            env.ts (zod), serviceAccount.ts
+  db/                index.ts (pool, db), schema.ts, tx.ts (Tx, DbOrTx), types.ts (tipi e enum derivati)
+  errors/            una classe + un handler per errore; generico per ultimo
+  utils/             auth-context, typed-request, validation-middleware, stamps, email, schemas (zod)
+scripts/             test end-to-end e utility (create-owner, create-venue)
+
+Un dominio = una cartella. Nessun import tra router di domini diversi;
+i service si importano tra domini solo come dipendenze esplicite.
+
+## Regole
+
+- Tipi di dominio SOLO da `db/types.ts` (derivati da Drizzle). Mai tipi scritti a mano per tabelle.
+- Enum: derivati dai `pgEnum` in `schema.ts`. Mai enum TS paralleli.
+- Wallet: tutto il codice Google in `api/wallet/`. `cards.service` conosce solo `buildObjectId`.
+- Ordine middleware: rate limit -> isAuthenticated -> requireRole -> validate(params) -> validate(body) -> controller.
+- Utente autenticato in `req.auth` (letto con `requireAuth`). Ruoli mai in sessione: da `venue_members` a ogni richiesta.
+- Il `venueId` del path è un selettore, mai una prova di autorizzazione. Mai fidarsi del client per quantità o tratti.
+- `new GenericError(msg, status)`: lo status è sempre obbligatorio. Errori ricorrenti: classe + handler prima del generico.
+- Tempo: `now()` del DB nelle query, mai `new Date()` per scadenze.
+- Ogni UPDATE di stato ha il filtro di stato nel WHERE.
+- Risposte sempre mappate, mai `res.json(riga)`. Nessun dato personale nei log o in `auth_events.metadata`.
+- Timbri: la regola sta solo in `utils/stamps.ts` (`splitStamps`).
+- Migration: `generate` + `migrate`, mai `push`. Leggere il SQL prima di applicarlo.
+
+## Test (server acceso con `npm run dev`, DB di sviluppo)
+
+npm run typecheck && npm run typecheck:all
+npx tsx scripts/stamps-split.ts
+npx tsx --env-file=.env scripts/staff-requests.ts
+npx tsx --env-file=.env scripts/poll-request.ts
+npx tsx --env-file=.env scripts/otp-request.ts
+npx tsx --env-file=.env scripts/otp-verify.ts
+npx tsx --env-file=.env scripts/session.ts
+
+Atteso: 101 controlli verdi. Dopo ogni refactor: typecheck + tutti gli script.
+
+## Da non fare
+
+- Non reintrodurre repository, DI container o layer `domain/` senza un motivo concreto.
+- Non reintrodurre un'interfaccia "wallet provider" astratta finché non c'è Apple.
+- Non committare `.env`, `secrets/`, `bundle*.txt`.
