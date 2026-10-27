@@ -14,16 +14,18 @@ export const find = async (
   const userId = requireAuth(req).user.id;
   const requestId = req.params.requestId;
   try {
-    const refresh = await requestsSrv.refreshStatus(requestId, userId);
-    if (refresh) {
-      res.status(200).json({ status: refresh.status, expiresAt: refresh.expiresAt });
-      return;
-    }
+    // scadenza lazy (solo da pending); poi una sola lettura con il saldo della card
+    await requestsSrv.refreshStatus(requestId, userId);
 
     const request = await requestsSrv.getRequestById(requestId, userId);
     if (!request) throw new RequestNotFoundError();
 
-    res.status(200).json({ status: request.status, expiresAt: request.expiresAt });
+    res.status(200).json({
+      status: request.status,
+      expiresAt: request.expiresAt,
+      stampsCount: request.stampsCount,
+      stampsRequired: request.stampsRequired,
+    });
   } catch (err) {
     next(err);
   }

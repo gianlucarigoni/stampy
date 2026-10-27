@@ -1,4 +1,6 @@
 # Stampy — Handoff Fase 4c (percorso email, sessione e `visit`/polling chiusi: si riparte da rate limit e staff)
+
+> **SUPERATO il 27/10/2026: usare `Stampy_Handoff_Fase_4d.md`.** Questo file resta come documento storico della Fase 4c (rate limit, staff, coda e conferma/rifiuto sono stati chiusi nella 4d).
 **Data snapshot:** 26 ottobre 2026 (mattina), aggiornato la sera dello stesso giorno
 **Branch:** `main`. Ultimo hash noto prima del commit di chiusura della Fase 3: `fcacbbe` (inserire l'hash reale con `git log --oneline -5`). Il codice dell'auth e di `visit`/polling (§4) e gli script di test sono scritti e provati in locale: **il commit va fatto dall'utente** (insieme alla migration 2 se non ancora committata).
 **Tag consigliati:** `fase-3-chiusa`, e un tag dopo il commit di percorso email + sessione + `visit`/polling.

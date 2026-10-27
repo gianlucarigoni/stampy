@@ -255,7 +255,9 @@ export const stampEvents = pgTable(
     operatorId: uuid("operator_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    requestId: uuid("request_id").unique(),
+    // NON unique: una richiesta con più tratti (es. 15 timbri) genera più eventi,
+    // uno per tratto. L'unicità è garantita da idempotency_key.
+    requestId: uuid("request_id"),
     type: eventType("type").notNull(),
     quantity: integer("quantity").notNull().default(1),
     idempotencyKey: text("idempotency_key").notNull().unique(),
@@ -272,6 +274,8 @@ export const stampEvents = pgTable(
     }).onDelete("restrict"),
     check("stamp_events_qty_ck", sql`${t.quantity} > 0`),
     index("stamp_events_card_idx").on(t.cardId, t.createdAt),
+    // gli eventi di una richiesta si leggono per request_id (prima era un UNIQUE)
+    index("stamp_events_request_idx").on(t.requestId),
   ],
 );
 

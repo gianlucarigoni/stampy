@@ -12,7 +12,10 @@
     "script:poll-request": "tsx ./scripts/poll-request",
     "script:otp-request": "tsx ./scripts/otp-request",
     "script:otp-verify": "tsx ./scripts/otp-verify",
-    "script:session": "tsx ./scripts/session"
+    "script:session": "tsx ./scripts/session",
+    "script:create-owner": "tsx ./scripts/create-owner",
+    "script:staff-requests": "tsx ./scripts/staff-requests",
+    "script:stamps-split": "tsx ./scripts/stamps-split"
   },
   "keywords": [],
   "dependencies": {
@@ -25,6 +28,7 @@
     "dotenv": "^18.0.4",
     "drizzle-orm": "^0.45.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.1",
     "google-auth-library": "^11.1.0",
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.18.1",
