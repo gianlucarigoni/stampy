@@ -8,14 +8,14 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx ./seed",
     "script:poll-request": "tsx ./scripts/poll-request",
     "script:otp-request": "tsx ./scripts/otp-request",
     "script:otp-verify": "tsx ./scripts/otp-verify",
     "script:session": "tsx ./scripts/session",
     "script:create-owner": "tsx ./scripts/create-owner",
     "script:staff-requests": "tsx ./scripts/staff-requests",
-    "script:stamps-split": "tsx ./scripts/stamps-split"
+    "script:stamps-split": "tsx ./scripts/stamps-split",
+    "typecheck:all": "tsc --noEmit -p tsconfig.check.json"
   },
   "keywords": [],
   "dependencies": {
@@ -37,7 +37,6 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@faker-js/faker": "^10.2.0",
     "@types/body-parser": "^1.19.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
