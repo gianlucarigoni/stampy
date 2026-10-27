@@ -1,9 +1,8 @@
 import { and, asc, eq, exists, lte, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { cards, promotions, stampRequests } from "../../db/schema";
-import { RequestStatus } from "../../utils/enum/request-status.enum";
+import { RequestStatus, StampRequest } from "../../db/types";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
-import { StampRequest } from "../../db/types";
 
 /**
  * Tetto di richieste di timbro NUOVE per card in un'ora (decisione 27/10/2026).

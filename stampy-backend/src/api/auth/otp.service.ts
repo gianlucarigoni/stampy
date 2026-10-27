@@ -5,7 +5,7 @@ import { DbOrTx } from "../../db/tx";
 import { otpChallenges } from "../../db/schema";
 import { env } from "../../config/env";
 import { OtpChallenge } from "../../db/types";
-import { OtpChannel } from "../../utils/types/enum";
+import { OtpChannel } from "../../db/types";
 import authEventsSrv from "./auth-events.service";
 
 export const COOLDOWN_SECONDS = 45;

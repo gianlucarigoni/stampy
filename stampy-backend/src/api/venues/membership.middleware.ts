@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { ForbiddenError } from "../../errors/forbidden.error";
 import { requireAuth } from "../../utils/auth-context";
-import { MemberRole } from "../../utils/types/enum";
+import { MemberRole } from "../../db/types";
 import membershipSrv from "./membership.service";
 
 /**

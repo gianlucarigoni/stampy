@@ -278,8 +278,3 @@ export const stampEvents = pgTable(
     index("stamp_events_request_idx").on(t.requestId),
   ],
 );
-
-export type Card = typeof cards.$inferSelect;
-export type WalletProvider = (typeof walletProvider.enumValues)[number]; // "google" | "apple"
-export type WalletStatus = (typeof walletStatus.enumValues)[number]; // "not_added" | "active" | "removed"
-export type IdentityProvider = (typeof identityProvider.enumValues)[number]; // "email" | "google"

@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { venueMembers, venues } from "../../db/schema";
-import { MemberRole } from "../../utils/types/enum";
+import { MemberRole } from "../../db/types";
 
 // Un venueId malformato non deve arrivare a Postgres (errore 22P02 -> 500):
 // per il middleware equivale a "non sei membro", cioè 403.
@@ -25,13 +25,7 @@ export class MembershipService {
       .select({ role: venueMembers.role })
       .from(venueMembers)
       .innerJoin(venues, eq(venues.id, venueMembers.venueId))
-      .where(
-        and(
-          eq(venueMembers.userId, userId),
-          eq(venueMembers.venueId, venueId),
-          isNull(venues.archivedAt),
-        ),
-      )
+      .where(and(eq(venueMembers.userId, userId), eq(venueMembers.venueId, venueId), isNull(venues.archivedAt)))
       .limit(1);
 
     return row ?? null;

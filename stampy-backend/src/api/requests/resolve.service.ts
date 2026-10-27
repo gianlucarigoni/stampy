@@ -1,10 +1,10 @@
 import { and, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { DbOrTx } from "../../db/tx";
 import { cards, promotions, stampEvents, stampRequests } from "../../db/schema";
+import { DbOrTx } from "../../db/tx";
+import { RequestStatus } from "../../db/types";
 import { GenericError } from "../../errors/generic";
 import { RequestNotFoundError } from "../../errors/request-not-found.error";
-import { RequestStatus } from "../../utils/enum/request-status.enum";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
 import { splitStamps } from "../../utils/stamps";
 
@@ -66,12 +66,7 @@ export class ResolveService {
     throw new GenericError("Richiesta non più valida", 409);
   }
 
-  async confirm(
-    venueId: string,
-    requestId: string,
-    operatorId: string,
-    stamps: number,
-  ): Promise<ConfirmResult> {
+  async confirm(venueId: string, requestId: string, operatorId: string, stamps: number): Promise<ConfirmResult> {
     await this.expireIfDue(venueId, requestId);
 
     return db.transaction(async (tx) => {

@@ -1,4 +1,4 @@
-import { IdentityProvider } from "./enum";
+import { IdentityProvider } from "../../db/types";
 
 // Utente autenticato messo in `req.user` da isAuthenticated.
 // Niente ruoli: quelli dello staff si leggono da venue_members a ogni richiesta.
