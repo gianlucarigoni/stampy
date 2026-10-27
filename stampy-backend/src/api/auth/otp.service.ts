@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { DbOrTx } from "../../db/tx";
 import { otpChallenges } from "../../db/schema";
 import { env } from "../../config/env";
-import { OtpChallenge } from "../../utils/types/otp-challenge.type";
+import { OtpChallenge } from "../../db/types";
 import { OtpChannel } from "../../utils/types/enum";
 import authEventsSrv from "./auth-events.service";
 

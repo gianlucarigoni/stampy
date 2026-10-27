@@ -1,10 +1,8 @@
 import * as jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { loadServiceAccount, ServiceAccount } from "../../config/serviceAccount";
+import { Card, Promotion, Venue } from "../../db/types";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
-import { Card } from "../../utils/types/card.type";
-import { Promotion } from "../../utils/types/promotion.type";
-import { Venue } from "../../utils/types/venue.type";
 
 export class GoogleWalletService {
   private readonly credentials: ServiceAccount = loadServiceAccount(

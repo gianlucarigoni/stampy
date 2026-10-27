@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { users } from "../../db/schema";
-import { User } from "../../utils/types/users.type";
+import { User } from "../../db/types";
 
 export class UserService {
   async getUserById(userId: string): Promise<User | null> {

@@ -1,9 +1,8 @@
 import { and, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { promotions, venues } from "../../db/schema";
+import { Promotion, Venue } from "../../db/types";
 import { brandingSchema } from "../../utils/schemas/branding.schema";
-import { Promotion } from "../../utils/types/promotion.type";
-import { Venue } from "../../utils/types/venue.type";
 
 export class VenueService {
   async getVenueById(venueId: string): Promise<Venue | null> {

@@ -3,7 +3,7 @@ import { db } from "../../db";
 import { cards, promotions, stampRequests } from "../../db/schema";
 import { RequestStatus } from "../../utils/enum/request-status.enum";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
-import { StampRequest } from "../../utils/types/stamp-request.type";
+import { StampRequest } from "../../db/types";
 
 /**
  * Tetto di richieste di timbro NUOVE per card in un'ora (decisione 27/10/2026).
@@ -40,11 +40,7 @@ export class RequestsService {
         .select()
         .from(cards)
         .where(
-          and(
-            eq(cards.id, stampRequests.cardId),
-            eq(cards.venueId, stampRequests.venueId),
-            eq(cards.userId, userId),
-          ),
+          and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId), eq(cards.userId, userId)),
         ),
     );
   }
@@ -88,14 +84,8 @@ export class RequestsService {
         config: promotions.config,
       })
       .from(stampRequests)
-      .innerJoin(
-        cards,
-        and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)),
-      )
-      .innerJoin(
-        promotions,
-        and(eq(promotions.id, cards.promotionId), eq(promotions.venueId, cards.venueId)),
-      )
+      .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
+      .innerJoin(promotions, and(eq(promotions.id, cards.promotionId), eq(promotions.venueId, cards.venueId)))
       .where(and(eq(stampRequests.id, id), eq(cards.userId, userId)))
       .limit(1);
 
@@ -160,23 +150,14 @@ export class RequestsService {
    * ora (qualunque stato). Il valore è calcolato dal DB, non dall'orologio di Node.
    * `retryAfterSeconds` = quanto manca alla scadenza della più vecchia della finestra.
    */
-  async checkCardRateLimit(
-    cardId: string,
-  ): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> {
+  async checkCardRateLimit(cardId: string): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> {
     const [stats] = await db
       .select({
         total: sql<number>`count(*)::int`,
-        oldestAgeSeconds: sql<
-          number | null
-        >`extract(epoch from (now() - min(${stampRequests.createdAt})))::float8`,
+        oldestAgeSeconds: sql<number | null>`extract(epoch from (now() - min(${stampRequests.createdAt})))::float8`,
       })
       .from(stampRequests)
-      .where(
-        and(
-          eq(stampRequests.cardId, cardId),
-          sql`${stampRequests.createdAt} > now() - interval '1 hour'`,
-        ),
-      );
+      .where(and(eq(stampRequests.cardId, cardId), sql`${stampRequests.createdAt} > now() - interval '1 hour'`));
 
     if (stats.total < MAX_VISIT_REQUESTS_PER_HOUR) return { allowed: true };
 
@@ -211,14 +192,8 @@ export class RequestsService {
         expiresAt: stampRequests.expiresAt,
       })
       .from(stampRequests)
-      .innerJoin(
-        cards,
-        and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)),
-      )
-      .innerJoin(
-        promotions,
-        and(eq(promotions.id, cards.promotionId), eq(promotions.venueId, cards.venueId)),
-      )
+      .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
+      .innerJoin(promotions, and(eq(promotions.id, cards.promotionId), eq(promotions.venueId, cards.venueId)))
       .where(and(eq(stampRequests.venueId, venueId), eq(stampRequests.status, RequestStatus.pending)))
       .orderBy(asc(stampRequests.createdAt))
       .limit(limit);

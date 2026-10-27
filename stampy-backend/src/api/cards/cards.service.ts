@@ -3,7 +3,7 @@ import { customAlphabet } from "nanoid";
 import { randomUUID } from "node:crypto";
 import { db } from "../../db";
 import { cards } from "../../db/schema";
-import { Card } from "../../utils/types/card.type";
+import { Card } from "../../db/types";
 import googleWalletSrv from "../wallet/google-wallet.service";
 
 export class CardsService {
