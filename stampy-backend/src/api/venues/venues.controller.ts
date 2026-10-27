@@ -6,7 +6,8 @@ import { TryLaterError } from "../../errors/try-later.error";
 import { VenueNotFoundError } from "../../errors/venue-not-found.error";
 import { requireAuth } from "../../utils/auth-context";
 import { TypedAuthRequest } from "../../utils/typed-request";
-import googleSrv from "../cards/google.service";
+import cardsSrv from "../cards/cards.service";
+import googleWalletSrv from "../wallet/google-wallet.service";
 import requestSrv from "../requests/requests.service";
 import membershipSrv from "./membership.service";
 import { venueIdDTO } from "./venues.dto";
@@ -28,22 +29,14 @@ export const visit = async (req: TypedAuthRequest<unknown, unknown, venueIdDTO>,
     const promotion = await venueSrv.getActivePromotion(venueId);
     if (!promotion) throw new PromotionNotFoundError();
 
-    const result = await googleSrv.addOrGetCard(userId, venueId, promotion.id);
+    const result = await cardsSrv.addOrGetCard(userId, venueId, promotion.id);
     if (!result || !result.card) throw new CardNotFoundError();
-
     const { card, created } = result;
 
     if (created) {
-      const loyaltyClass = googleSrv.buildLoyaltyClass(venue);
-      const loyaltyObject = googleSrv.buildLoyaltyObject(card, promotion, loyaltyClass.id);
+      const saveUrl = googleWalletSrv.buildSaveUrl(venue, card, promotion);
 
-      const saveUrl = googleSrv.createSaveUrl(loyaltyClass, loyaltyObject);
-
-      res.status(201).json({
-        state: VISIT_STATES[0],
-        saveUrl,
-        publicCode: card.publicCode,
-      });
+      res.status(201).json({ state: VISIT_STATES[0], saveUrl, publicCode: card.publicCode });
       return;
     }
 
