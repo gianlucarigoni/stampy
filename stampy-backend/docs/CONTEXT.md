@@ -200,6 +200,7 @@ struttura estendibile ad Apple e telefono senza riscrivere.
 - Non-membro → **403**.
 - Primo `owner` con `scripts/create-owner.ts <email> <slug>` dopo il primo login
   dell'utente (idempotente, `--force` per promuovere uno `staff`).
+- Per ora owner e staff hanno gli stessi poteri
 
 ### 5.6 Limiti
 

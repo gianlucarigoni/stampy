@@ -141,8 +141,8 @@ promozione cambiata, `429` limiti, `500` generico JSON.
   `status = 'pending'`, `consumed_at IS NULL`, …).
 - **Risposte**: sempre mappate, mai `res.json(riga)`; il token di sessione non compare
   mai nel body.
-- **Input**: `validate(dto, origin)`; params validati come UUID; la quantità della
-  conferma è un intero, mai una stringa (niente coercizione implicita).
+- **Input**: `validate(dto, origin)`; validate usa whitelist e forbidNonWhitelisted 
+(campi extra → 400), e un body assente dà 400 "missing body" tramite GenericError.
 - **Cookie**: sempre da `sessionCookieOptions()` (httpOnly, secure solo in produzione,
   SameSite=Lax, path `/`); il `maxAge` lo aggiunge solo il login.
 - **Audit**: `authEventsSrv.log(type, { email?, userId?, provider?, metadata? }, tx?)`;
