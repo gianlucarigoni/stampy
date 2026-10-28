@@ -9,7 +9,7 @@ import { AuthContext } from "../../utils/types/auth.type";
 
 export const SESSION_COOKIE_NAME = "sid";
 
-// Scelte nostre, non standard (documentate in Stampy_Handoff_Fase_4c.md):
+// Scelte nostre, non standard (documentate in docs/CONTEXT.md §5.4):
 // - idle: la sessione dura 30 giorni dall'ultima attività (scorrimento, non a ogni richiesta)
 // - tetto assoluto: mai oltre 90 giorni dalla creazione, qualunque sia l'attività
 // - touch: last_seen_at/expires_at si riscrivono solo se l'ultimo tocco è più vecchio di 5 minuti

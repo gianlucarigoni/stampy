@@ -1,9 +1,9 @@
 # Stampy backend: struttura e convenzioni
 
-Documenti di riferimento in `docs/`: `stampy_contesto_progetto.md` (decisioni di
-prodotto), `stampy_db_schema.md` (schema, fonte di verità del DB),
-`CODEBASE_CONTEXT.md` (mappa del codice), `progress.md` (storico e test).
-Se un documento contraddice il codice, vince il codice.
+Documenti in `stampy-backend/docs/`: `CONTEXT.md` (contesto e decisioni, statico),
+`CODEBASE.md` (mappa del codice, endpoint, dati, test), `BACKLOG.md` (cosa manca,
+incluse le cose progettate e mai fatte). `docs/archive/` è congelato: non aggiornarlo.
+Se un documento contraddice il codice, vince il codice: correggi il documento.
 
 ## Struttura
 
@@ -33,6 +33,7 @@ i service si importano tra domini solo come dipendenze esplicite.
 - Risposte sempre mappate, mai `res.json(riga)`. Nessun dato personale nei log o in `auth_events.metadata`.
 - Timbri: la regola sta solo in `utils/stamps.ts` (`splitStamps`).
 - Migration: `generate` + `migrate`, mai `push`. Leggere il SQL prima di applicarlo.
+- Documentazione: nessun nuovo file in `docs/`. Una decisione va in `CONTEXT.md`, una modifica al codice in `CODEBASE.md`, un lavoro futuro in `BACKLOG.md`.
 
 ## Test (server acceso con `npm run dev`, DB di sviluppo)
 
