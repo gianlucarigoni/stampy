@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { db } from "../../db";
-import { venueMembers, venues } from "../../db/schema";
-import { MemberRole } from "../../db/types";
+import { db } from "../../../db";
+import { venueMembers, venues } from "../../../db/schema";
+import { MemberRole } from "../../../db/types";
 
 // Un venueId malformato non deve arrivare a Postgres (errore 22P02 -> 500):
 // per il middleware equivale a "non sei membro", cioè 403.

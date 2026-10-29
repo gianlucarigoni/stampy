@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { UnauthorizedError } from "../../errors/unauthorized.error";
-import { TypedAuthRequest } from "../../utils/typed-request";
-import sessionSrv, { SESSION_COOKIE_NAME, SESSION_TOKEN_LENGTH } from "./session.service";
+import { TypedAuthRequest } from "../typed-request";
+import sessionSrv, { SESSION_COOKIE_NAME, SESSION_TOKEN_LENGTH } from "../../api/auth/session/session.service";
 
 /**
  * Autenticazione da cookie di sessione. Va montata per rotta (mai su /api/auth in blocco:

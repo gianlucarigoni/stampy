@@ -1,10 +1,10 @@
 import { NextFunction, Response } from "express";
-import { requireAuth } from "../../utils/auth-context";
-import { TypedAuthRequest } from "../../utils/typed-request";
-import requestsSrv from "../requests/requests.service";
-import resolveSrv from "../requests/resolve.service";
+import { requireAuth } from "../../../utils/auth-context";
+import { TypedAuthRequest } from "../../../utils/typed-request";
+import requestsSrv from "../../requests/requests.service";
+import resolveSrv from "../../requests/resolve/resolve.service";
 import { confirmDTO, staffRequestParamsDTO } from "./staff.dto";
-import { venueIdDTO } from "./venues.dto";
+import { venueIdDTO } from "../venues.dto";
 
 /** Coda delle richieste pendenti del locale dello staff (solo lettura). */
 export const queue = async (

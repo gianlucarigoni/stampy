@@ -1,12 +1,12 @@
 import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import crypto, { timingSafeEqual } from "crypto";
-import { db } from "../../db";
-import { DbOrTx } from "../../db/tx";
-import { otpChallenges } from "../../db/schema";
-import { env } from "../../config/env";
-import { OtpChallenge } from "../../db/types";
-import { OtpChannel } from "../../db/types";
-import authEventsSrv from "./auth-events.service";
+import { db } from "../../../db";
+import { DbOrTx } from "../../../db/tx";
+import { otpChallenges } from "../../../db/schema";
+import { env } from "../../../config/env";
+import { OtpChallenge } from "../../../db/types";
+import { OtpChannel } from "../../../db/types";
+import authEventsSrv from "../auth-events/auth-events.service";
 
 export const COOLDOWN_SECONDS = 45;
 export const MAX_SENDS_PER_HOUR = 5;

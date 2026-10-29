@@ -10,8 +10,8 @@
  */
 import crypto from "crypto";
 import { pool } from "../src/db";
-import otpSrv from "../src/api/auth/otp.service";
-import authEventsSrv from "../src/api/auth/auth-events.service";
+import otpSrv from "../src/api/auth/otp/otp.service";
+import authEventsSrv from "../src/api/auth/auth-events/auth-events.service";
 
 const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000";
 const PATH = "/api/auth/email/verify";

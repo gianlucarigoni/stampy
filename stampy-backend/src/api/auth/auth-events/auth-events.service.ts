@@ -1,10 +1,10 @@
 import crypto from "crypto";
 import { z } from "zod";
-import { db } from "../../db";
-import { DbOrTx } from "../../db/tx";
-import { authEvents } from "../../db/schema";
-import { env } from "../../config/env";
-import { AuthEventType } from "../../db/types";
+import { db } from "../../../db";
+import { DbOrTx } from "../../../db/tx";
+import { authEvents } from "../../../db/schema";
+import { env } from "../../../config/env";
+import { AuthEventType } from "../../../db/types";
 
 type EventProvider = NonNullable<(typeof authEvents.$inferInsert)["provider"]>;
 

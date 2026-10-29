@@ -2,8 +2,8 @@ import { NextFunction, Response } from "express";
 import { db } from "../../db";
 import { requireAuth } from "../../utils/auth-context";
 import { TypedAuthRequest } from "../../utils/typed-request";
-import authEventsSrv from "./auth-events.service";
-import sessionSrv, { SESSION_COOKIE_NAME, sessionCookieOptions } from "./session.service";
+import authEventsSrv from "./auth-events/auth-events.service";
+import sessionSrv, { SESSION_COOKIE_NAME, sessionCookieOptions } from "./session/session.service";
 
 // Utente della sessione corrente. Sonda read-only per il frontend e per i test.
 export const me = async (req: TypedAuthRequest, res: Response, next: NextFunction) => {

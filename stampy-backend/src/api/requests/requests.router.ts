@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { isAuthenticated } from "../auth/session.middleware";
-import { validate } from "../../utils/validation-middleware";
+import { isAuthenticated } from "../../utils/middlewares/session.middleware";
+import { validate } from "../../utils/middlewares/validation.middleware";
 import { find } from "./requests.controller";
 import { requestIdDTO } from "./requests.dto";
 

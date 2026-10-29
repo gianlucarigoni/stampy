@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "../../db";
 import { cards } from "../../db/schema";
 import { Card } from "../../db/types";
-import googleWalletSrv from "../wallet/google-wallet.service";
+import googleWalletSrv from "../wallet/wallet.service";
 
 export class CardsService {
   private publicCodeGenerator = customAlphabet("23456789ABCDEFGHJKMNPQRSTUVWXYZ", 8);

@@ -54,7 +54,7 @@ pass nel Wallet mostra ancora il saldo vecchio. È il gate del flusso end-to-end
 | B9 | `DA-DECIDERE` | **Branding di default** per un locale appena creato (oggi `branding = {}` fa fallire la creazione card) e personalizzazione self-service (rimandata). | `archive/stampy_contesto_progetto.md` §5 |
 | B10 | `DA-VERIFICARE` | **`wallet_status`**: oggi vale `not_added` e non viene letto né aggiornato. Diventerebbe affidabile solo con un meccanismo di notifica di Google (V1). | `archive/stampy_contesto_progetto.md` §4.6 |
 | B11 | `DECISO` | **Dashboard gestore** (iscritti, timbri assegnati, premi riscattati + grafici nel tempo). Non iniziata. | `archive/stampy_contesto_progetto.md` §4.8 |
-| B12 | `DECISO` | **Apple Wallet**, solo dopo aver validato il flusso su Google: 99 $/anno, pass `.pkpass` firmati, estrazione del codice Wallet da `google-wallet.service.ts`. Con Apple si valuterà anche il login con Apple. | `archive/stampy_contesto_progetto.md` §4.6, §5 |
+| B12 | `DECISO` | **Apple Wallet**, solo dopo aver validato il flusso su Google: 99 $/anno, pass `.pkpass` firmati, estrazione del codice Wallet da `wallet/wallet.service.ts`. Con Apple si valuterà anche il login con Apple. | `archive/stampy_contesto_progetto.md` §4.6, §5 |
 | B13 | `DA-DECIDERE` | **Accesso con telefono + SMS**: solo con un cliente reale (costo per messaggio, NIST lo classifica "restricted"). Schema già predisposto. | `archive/progress.md` §5.27 |
 
 ---

@@ -8,7 +8,7 @@
  * Usa indirizzi otp-test-*@test.it e ripulisce i propri dati (solo sviluppo).
  */
 import { pool } from "../src/db";
-import authEventsSrv from "../src/api/auth/auth-events.service";
+import authEventsSrv from "../src/api/auth/auth-events/auth-events.service";
 
 const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000";
 const PATH = "/api/auth/email/request";

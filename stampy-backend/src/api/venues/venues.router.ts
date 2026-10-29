@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { isAuthenticated } from "../auth/session.middleware";
-import { validate } from "../../utils/validation-middleware";
-import { requireRole } from "./membership.middleware";
-import { confirmDTO, staffRequestParamsDTO } from "./staff.dto";
-import { confirm, queue, reject } from "./staff.controller";
+import { isAuthenticated } from "../../utils/middlewares/session.middleware";
+import { validate } from "../../utils/middlewares/validation.middleware";
+import { requireRole } from "../../utils/middlewares/membership.middleware";
+import { confirmDTO, staffRequestParamsDTO } from "./staff/staff.dto";
+import { confirm, queue, reject } from "./staff/staff.controller";
 import { mine, visit } from "./venues.controller";
 import { venueIdDTO } from "./venues.dto";
 

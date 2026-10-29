@@ -1,11 +1,11 @@
 import crypto from "crypto";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { CookieOptions } from "express";
-import { db } from "../../db";
-import { DbOrTx } from "../../db/tx";
-import { sessions, users } from "../../db/schema";
-import { env } from "../../config/env";
-import { AuthContext } from "../../utils/types/auth.type";
+import { db } from "../../../db";
+import { DbOrTx } from "../../../db/tx";
+import { sessions, users } from "../../../db/schema";
+import { env } from "../../../config/env";
+import { AuthContext } from "../../../utils/types/auth.type";
 
 export const SESSION_COOKIE_NAME = "sid";
 

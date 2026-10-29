@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { request, verify } from "./email.controller";
-import { validate } from "../../../utils/validation-middleware";
+import { validate } from "../../../utils/middlewares/validation.middleware";
 import { emailDTO, verifyDTO } from "./email.dto";
-import { ipAuthRateLimit } from "../ip-rate-limit.middleware";
+import { ipAuthRateLimit } from "../../../utils/middlewares/ip-rate-limit.middleware";
 
 const router = Router();
 

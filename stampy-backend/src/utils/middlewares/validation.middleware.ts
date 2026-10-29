@@ -1,9 +1,9 @@
 import { plainToClass } from "class-transformer";
 import { NextFunction, Response } from "express";
 import { validate as classValidate } from "class-validator";
-import { TypedRequest } from "./typed-request";
-import { ValidationError } from "../errors/validation-error";
-import { GenericError } from "../errors/generic";
+import { TypedRequest } from "../typed-request";
+import { ValidationError } from "../../errors/validation-error";
+import { GenericError } from "../../errors/generic";
 
 function validateFn<T extends object>(
   dtoClass: new () => T,

@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { ForbiddenError } from "../../errors/forbidden.error";
-import { requireAuth } from "../../utils/auth-context";
+import { requireAuth } from "../auth-context";
 import { MemberRole } from "../../db/types";
-import membershipSrv from "./membership.service";
+import membershipSrv from "../../api/venues/membership/membership.service";
 
 /**
  * Autorizzazione per locale: l'utente deve essere membro di `:venueId` con uno dei

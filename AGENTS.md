@@ -8,16 +8,18 @@ Se un documento contraddice il codice, vince il codice: correggi il documento.
 ## Struttura
 
 src/
-  api/<dominio>/     router, controller, service, dto di un dominio
+  api/<dominio>/     <dominio>.router, .controller, .service, .dto (dove servono)
     auth/ cards/ health/ requests/ users/ venues/ wallet/
+    <ausiliario>/    file ausiliari raggruppati per nome (email, staff, membership, resolve, otp, identity, session, auth-events)
   config/            env.ts (zod), serviceAccount.ts
   db/                index.ts (pool, db), schema.ts, tx.ts (Tx, DbOrTx), types.ts (tipi e enum derivati)
   errors/            una classe + un handler per errore; generico per ultimo
-  utils/             auth-context, typed-request, validation-middleware, stamps, email, schemas (zod)
+  utils/             auth-context, typed-request, stamps, email, schemas (zod), middlewares/
 scripts/             test end-to-end e utility (create-owner, create-venue)
 
 Un dominio = una cartella. Nessun import tra router di domini diversi;
 i service si importano tra domini solo come dipendenze esplicite.
+Tutti i middleware stanno in `utils/middlewares/`.
 
 ## Regole
 

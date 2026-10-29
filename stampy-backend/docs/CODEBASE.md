@@ -51,42 +51,57 @@ src/
     types.ts                tipi derivati ($inferSelect) + enum ri-esportati
   api/
     routes.ts               monta /health, /auth, /venues, /requests
-    health/                 GET /api/health
+    health/
+      health.router.ts      GET /api/health
+      health.controller.ts  health
     auth/
       auth.router.ts        /email/* pubblico; /me e /logout dietro isAuthenticated
-      email/                request/verify + DTO + limiter IP
-      ip-rate-limit.middleware.ts  express-rate-limit per IP, pass-through in sviluppo
-      session.middleware.ts isAuthenticated: cookie -> service -> req.auth
-      session.service.ts    hashToken, create, authenticate (scorrimento + tetto),
-                            revoke, sessionCookieOptions
       auth.controller.ts    me, logout
-      auth-events.service.ts log() append-only, whitelist zod dei metadata, hashSubject
-      identity.service.ts   loginWithEmail: utente + identità `email`, in transazione
-      otp.service.ts        crea/consuma/invalida sfide, tentativi, cooldown, tetto orario
+      auth-events/
+        auth-events.service.ts log() append-only, whitelist zod dei metadata, hashSubject
+      email/
+        email.router.ts     request/verify
+        email.controller.ts request, verify
+        email.dto.ts        emailDTO, verifyDTO
+      identity/
+        identity.service.ts loginWithEmail: utente + identità `email`, in transazione
+      otp/
+        otp.service.ts      crea/consuma/invalida sfide, tentativi, cooldown, tetto orario
+      session/
+        session.service.ts  hashToken, create, authenticate (scorrimento + tetto),
+                            revoke, sessionCookieOptions
     cards/
       cards.service.ts      addOrGetCard (INSERT ... ON CONFLICT su user_id+venue_id)
     wallet/
-      google-wallet.service.ts  LoyaltyClass per locale, object per card, JWT del saveUrl
+      wallet.service.ts     LoyaltyClass per locale, object per card, JWT del saveUrl
     venues/
       venues.router.ts      /mine, /:venueId/visit, rotte staff (ordine middleware)
       venues.controller.ts  visit (rate limit per card), mine
+      venues.dto.ts         venueIdDTO
       venues.service.ts     locale non archiviato, promozione attiva (now() del DB)
-      membership.service.ts ruolo da venue_members, locali dell'utente, venueId non-UUID -> null
-      membership.middleware.ts  requireRole("owner","staff")
-      staff.controller.ts   queue, confirm, reject
-      staff.dto.ts          params staff + confirmDTO (intero 1..50)
+      membership/
+        membership.service.ts ruolo da venue_members, locali dell'utente, venueId non-UUID -> null
+      staff/
+        staff.controller.ts queue, confirm, reject
+        staff.dto.ts        params staff + confirmDTO (intero 1..50)
     requests/
       requests.router.ts    GET /:requestId (isAuthenticated)
       requests.controller.ts  polling: status, expiresAt, stampsCount, stampsRequired
+      requests.dto.ts       requestIdDTO
       requests.service.ts   ownership in SQL, scadenza lazy, rate limit, coda, polling
-      resolve.service.ts    conferma/rifiuto in transazione
+      resolve/
+        resolve.service.ts  conferma/rifiuto in transazione
     users/
       users.service.ts      NON USATO da nessuna rotta (vedi BACKLOG.md §2)
   errors/                   una classe + handler per errore; generico ULTIMO
   utils/
     auth-context.ts         requireAuth(req) -> { user, session }, 401 se manca
     typed-request.ts        TypedRequest<B,Q,P>, TypedAuthRequest (auth?: AuthContext)
-    validation-middleware.ts  validate(dto, "body" | "query" | "params")
+    middlewares/
+      session.middleware.ts isAuthenticated: cookie -> service -> req.auth
+      membership.middleware.ts  requireRole("owner","staff")
+      ip-rate-limit.middleware.ts  express-rate-limit per IP, pass-through in sviluppo
+      validation.middleware.ts  validate(dto, "body" | "query" | "params")
     stamps.ts               splitStamps(stampsRequired, currentCount, quantity), pura
     email/email-sender.ts   EmailSender + ConsoleEmailSender (vietato in produzione)
     schemas/                branding.schema.ts, promotion-config.schema.ts
@@ -94,6 +109,12 @@ src/
 scripts/                    test end-to-end + utility (vedi §8)
 drizzle/                    migration 0000-0003 + meta (fonte di verità dello schema SQL)
 ```
+
+Convenzione `api/`: ogni cartella di dominio espone i file `<dominio>.router.ts`,
+`<dominio>.controller.ts`, `<dominio>.service.ts` e `<dominio>.dto.ts` (dove servono);
+i file ausiliari stanno in una sottocartella con il proprio nome (`email/`, `staff/`,
+`membership/`, `resolve/`, `otp/`, `identity/`, `session/`, `auth-events/`). Tutti i
+middleware stanno in `utils/middlewares/`.
 
 ## 3. Endpoint
 
@@ -302,10 +323,10 @@ argomenti (vedi `BACKLOG.md` §2).
 
 | Se devi… | Guarda prima |
 |---|---|
-| aggiungere una rotta protetta | `venues.router.ts` (ordine middleware) + `membership.middleware.ts` |
+| aggiungere una rotta protetta | `venues.router.ts` (ordine middleware) + `utils/middlewares/membership.middleware.ts` |
 | toccare la regola dei timbri | `utils/stamps.ts` + `scripts/stamps-split.ts` + `CONTEXT.md` §4.4 |
-| toccare la conferma | `requests/resolve.service.ts` + `staff.controller.ts` |
+| toccare la conferma | `requests/resolve/resolve.service.ts` + `venues/staff/staff.controller.ts` |
 | toccare l'auth | `auth/` (otp, identity, session, auth-events) + `CONTEXT.md` §5 |
 | toccare lo schema | `db/schema.ts` → `generate` → leggere il SQL → `migrate` → aggiornare §6 |
-| aggiornare il pass Wallet | `wallet/google-wallet.service.ts` (oggi solo creazione, nessun REST) |
+| aggiornare il pass Wallet | `wallet/wallet.service.ts` (oggi solo creazione, nessun REST) |
 | capire cosa manca | `BACKLOG.md` |

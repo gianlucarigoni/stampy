@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { health } from "./health/health.controller";
+import healthRouter from "./health/health.router";
 import venuesRouter from "./venues/venues.router";
 import requestsRouter from "./requests/requests.router";
 import authRouter from "./auth/auth.router";
 
 const router = Router();
 
-router.get("/health", health);
+router.use("/health", healthRouter);
 
 router.use("/auth", authRouter);
 

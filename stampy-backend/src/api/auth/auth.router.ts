@@ -1,7 +1,7 @@
 import { Router } from "express";
 import emailRouter from "./email/email.router";
 import { logout, me } from "./auth.controller";
-import { isAuthenticated } from "./session.middleware";
+import { isAuthenticated } from "../../utils/middlewares/session.middleware";
 
 const router = Router();
 

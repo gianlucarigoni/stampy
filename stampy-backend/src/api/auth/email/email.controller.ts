@@ -1,10 +1,14 @@
 import { NextFunction, Response } from "express";
 import { TypedRequest } from "../../../utils/typed-request";
 import { emailDTO, verifyDTO } from "./email.dto";
-import otpSrv, { MAX_OTP_ATTEMPTS } from "../otp.service";
-import identitySrv from "../identity.service";
-import sessionSrv, { SESSION_ABSOLUTE_TTL_DAYS, SESSION_COOKIE_NAME, sessionCookieOptions } from "../session.service";
-import authEventsSrv from "../auth-events.service";
+import otpSrv, { MAX_OTP_ATTEMPTS } from "../otp/otp.service";
+import identitySrv from "../identity/identity.service";
+import sessionSrv, {
+  SESSION_ABSOLUTE_TTL_DAYS,
+  SESSION_COOKIE_NAME,
+  sessionCookieOptions,
+} from "../session/session.service";
+import authEventsSrv from "../auth-events/auth-events.service";
 import { db } from "../../../db";
 import { TryLaterError } from "../../../errors/try-later.error";
 import { GenericError } from "../../../errors/generic";
