@@ -7,7 +7,19 @@ staff confirms each stamp request in a web app.
 Backend: Node.js + Express 5 + TypeScript (strict), Drizzle ORM, PostgreSQL 16.
 Frontend (Vue) not started. Solo developer, near-zero budget, no pilot customer yet.
 
-## Read these first (in `docs/` at the repo root; in Italian — keep them in Italian)
+## Language
+
+- **Speak English** with the user: all replies, summaries, questions and commit/PR text.
+- All documentation (`docs/`, `README.md`, skills) is in **English**. Keep terminology
+  consistent with the existing docs (e.g. *venue*, *stamp request*, *segment*, *reward*,
+  *challenge*, *lazy expiry*, *absolute cap*); do not introduce synonyms.
+- Backlog statuses are `DECIDED`, `TODO`, `TO-DECIDE`, `TO-VERIFY`, `BLOCKED`.
+- User-facing API strings and code identifiers currently in Italian (e.g. `"Riprova più
+  tardi"`, `"Codice non valido o scaduto"`) are code literals: leave them as they are
+  unless the owner asks to change them, and quote them verbatim in docs.
+- `docs/archive/` is frozen history, kept in its original Italian; do not translate it.
+
+## Read these first (in `docs/` at the repo root)
 
 | File | What it is | When to touch it |
 |---|---|---|
@@ -17,7 +29,7 @@ Frontend (Vue) not started. Solo developer, near-zero budget, no pilot customer 
 
 Decisions in `CONTEXT.md` are **closed**: do not reopen or re-litigate them. If the code
 contradicts `CODEBASE.md`, the code wins and the doc must be fixed.
-Before any task, check `CODEBASE.md` §8 ("Da dove partire") for the relevant files.
+Before any task, check `CODEBASE.md` §8 ("Where to start") for the relevant files.
 
 ## Commands
 
@@ -66,7 +78,7 @@ Errors
 
 - Add password login, unverified-email login, a "wallet provider" abstraction (until Apple exists),
   Web NFC API, a generic promotion rule engine, or Apple Wallet before Google is validated.
-- Build features marked `DA-DECIDERE` in `BACKLOG.md` (e.g. promotion rollover B2) — they need a product decision first.
+- Build features marked `TO-DECIDE` in `BACKLOG.md` (e.g. promotion rollover B2) — they need a product decision first.
 - Invent behavior of external APIs (Google Wallet REST, Gmail, Google Sign-In). Items in
   `BACKLOG.md` §5 must be verified against official docs; say so instead of guessing.
 - Commit secrets, service-account keys, `.env`, tokens, or Wallet `saveUrl`s.

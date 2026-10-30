@@ -1,299 +1,304 @@
-# Stampy — Mappa del codice e stato
+# Stampy — Code map and state
 
-> Documento **vivo**: descrive com'è il codice **adesso**. Si aggiorna nella stessa
-> modifica che cambia codice, endpoint, schema o test. Se questo file contraddice il
-> codice, **vince il codice** e questo file va corretto.
-> Non contiene decisioni di prodotto (`CONTEXT.md`) né cose da fare (`BACKLOG.md`).
-> Ultimo allineamento al codice: 28 ottobre 2026.
+> **Living** document: it describes the code **as it is now**. It is updated in the same
+> change that alters code, endpoints, schema or tests. If this file contradicts the code,
+> **the code wins** and this file must be fixed.
+> It contains neither product decisions (`CONTEXT.md`) nor things to do (`BACKLOG.md`).
+> Last aligned with the code: October 28, 2026.
 
-**Stato in una riga**: backend completo dal tocco del tag alla conferma dello staff
-(card, richieste, auth email, sessioni, ruoli, coda, conferma/rifiuto). Mancano
-aggiornamento del pass Google, login Google, invio email reale e frontend.
+**State in one line**: backend complete from the tag tap to staff confirmation (card,
+requests, email auth, sessions, roles, queue, confirm/reject). Still missing: Google pass
+update, Google login, real email delivery and the frontend.
 
 ---
 
-## 1. Stack e comandi
+## 1. Stack and commands
 
 - Node.js + **Express 5.2.1** + TypeScript `strict`, Drizzle ORM, PostgreSQL 16 (Docker).
-- `cookie-parser` senza segreto (cookie non firmati), `express-rate-limit` per il limiter IP.
-- `class-validator`/`class-transformer` per i DTO, `zod` per env, branding, config
-  promozione, metadata di audit.
-- `jsonwebtoken` per firmare il link Wallet, `nanoid` per `public_code` (fino a 3 tentativi se collide),
-  `google-auth-library` è installata ma **non usata** (serve al login Google futuro).
+- `cookie-parser` without a secret (unsigned cookies), `express-rate-limit` for the IP limiter.
+- `class-validator`/`class-transformer` for DTOs, `zod` for env, branding, promotion
+  config, audit metadata.
+- `jsonwebtoken` to sign the Wallet link, `nanoid` for `public_code` (up to 3 attempts on
+  collision), `google-auth-library` is installed but **unused** (it is for the future
+  Google login).
 
 ```bash
-npm run dev            # nodemon su src (riavvia da solo; il .env si legge solo all'avvio)
+npm run dev            # nodemon on src (restarts by itself; .env is read only at startup)
 npm start              # tsx src/index.ts
-npm run typecheck      # tsc --noEmit (solo src)
+npm run typecheck      # tsc --noEmit (src only)
 npm run typecheck:all  # tsc --noEmit -p tsconfig.check.json (src + scripts)
-npm run build          # tsc -> dist/ (dist NON è usato da start: build e start sono scollegati)
+npm run build          # tsc -> dist/ (dist is NOT used by start: build and start are disconnected)
 ```
 
-Variabili d'ambiente (`src/config/env.ts`, zod, il processo esce se non valide):
+Environment variables (`src/config/env.ts`, zod, the process exits if invalid):
 `PORT`, `NODE_ENV`, `DATABASE_URL`, `APP_ORIGIN`, `WALLET_ISSUER_ID`,
 `WALLET_SERVICE_ACCOUNT_EMAIL`, `WALLET_SERVICE_ACCOUNT_KEY_PATH`, `OTP_HMAC_SECRET`,
-`TRUST_PROXY` (numero di hop, default 0), `IP_RATE_LIMIT` (`on`/`off`, opzionale).
+`TRUST_PROXY` (number of hops, default 0), `IP_RATE_LIMIT` (`on`/`off`, optional).
 
-## 2. Struttura
+## 2. Structure
 
 ```text
 src/
-  app.ts                    express: trust proxy (solo se > 0), cors() aperto, morgan,
+  app.ts                    express: trust proxy (only if > 0), open cors(), morgan,
                             cookieParser(), bodyParser.json(), /api, errorHandlers
-  index.ts                  createServer + SELECT 1 prima di ascoltare
+  index.ts                  createServer + SELECT 1 before listening
   config/
-    env.ts                  zod su process.env (vedi §1)
-    serviceAccount.ts       carica la chiave JSON del service account Wallet
+    env.ts                  zod on process.env (see §1)
+    serviceAccount.ts       loads the Wallet service account JSON key
   db/
-    index.ts                Pool pg + drizzle (logger: true), export db e pool
-    tx.ts                   Tx e DbOrTx (service che girano da soli o in transazione)
-    schema.ts               schema Drizzle completo: 11 tabelle, 9 enum (fonte di verità)
-    types.ts                tipi derivati ($inferSelect) + enum ri-esportati
+    index.ts                pg Pool + drizzle (logger: true), exports db and pool
+    tx.ts                   Tx and DbOrTx (services that run alone or inside a transaction)
+    schema.ts               full Drizzle schema: 11 tables, 9 enums (source of truth)
+    types.ts                derived types ($inferSelect) + re-exported enums
   api/
-    routes.ts               monta /health, /auth, /venues, /requests
+    routes.ts               mounts /health, /auth, /venues, /requests
     health/
       health.router.ts      GET /api/health
       health.controller.ts  health
     auth/
-      auth.router.ts        /email/* pubblico; /me e /logout dietro isAuthenticated
+      auth.router.ts        /email/* public; /me and /logout behind isAuthenticated
       auth.controller.ts    me, logout
       auth-events/
-        auth-events.service.ts log() append-only, whitelist zod dei metadata, hashSubject
+        auth-events.service.ts log() append-only, zod whitelist of metadata, hashSubject
       email/
         email.router.ts     request/verify
         email.controller.ts request, verify
         email.dto.ts        emailDTO, verifyDTO
       identity/
-        identity.service.ts loginWithEmail: utente + identità `email`, in transazione
+        identity.service.ts loginWithEmail: user + `email` identity, in a transaction
       otp/
-        otp.service.ts      crea/consuma/invalida sfide, tentativi, cooldown, tetto orario
+        otp.service.ts      create/consume/invalidate challenges, attempts, cooldown, hourly cap
       session/
-        session.service.ts  hashToken, create, authenticate (scorrimento + tetto),
+        session.service.ts  hashToken, create, authenticate (sliding + cap),
                             revoke, sessionCookieOptions
     cards/
-      cards.service.ts      addOrGetCard (INSERT ... ON CONFLICT su user_id+venue_id)
+      cards.service.ts      addOrGetCard (INSERT ... ON CONFLICT on user_id+venue_id)
     wallet/
-      wallet.service.ts     LoyaltyClass per locale, object per card, JWT del saveUrl
+      wallet.service.ts     per-venue LoyaltyClass, per-card object, saveUrl JWT
     venues/
-      venues.router.ts      /mine, /:venueId/visit, rotte staff (ordine middleware)
-      venues.controller.ts  visit (rate limit per card), mine
+      venues.router.ts      /mine, /:venueId/visit, staff routes (middleware order)
+      venues.controller.ts  visit (per-card rate limit), mine
       venues.dto.ts         venueIdDTO
-      venues.service.ts     locale non archiviato, promozione attiva (now() del DB)
+      venues.service.ts     non-archived venue, active promotion (DB now())
       membership/
-        membership.service.ts ruolo da venue_members, locali dell'utente, venueId non-UUID -> null
+        membership.service.ts role from venue_members, user's venues, non-UUID venueId -> null
       staff/
         staff.controller.ts queue, confirm, reject
-        staff.dto.ts        params staff + confirmDTO (intero 1..50)
+        staff.dto.ts        staff params + confirmDTO (integer 1..50)
     requests/
       requests.router.ts    GET /:requestId (isAuthenticated)
       requests.controller.ts  polling: status, expiresAt, stampsCount, stampsRequired
       requests.dto.ts       requestIdDTO
-      requests.service.ts   ownership in SQL, scadenza lazy, rate limit, coda, polling
+      requests.service.ts   ownership in SQL, lazy expiry, rate limit, queue, polling
       resolve/
-        resolve.service.ts  conferma/rifiuto in transazione
-  errors/                   una classe + handler per errore; generico ULTIMO;
-                            body-parser.error.ts: JSON malformato → 400, body grande → 413
+        resolve.service.ts  confirm/reject in a transaction
+  errors/                   one class + handler per error; generic one LAST;
+                            body-parser.error.ts: malformed JSON → 400, oversized body → 413
   utils/
-    auth-context.ts         requireAuth(req) -> { user, session }, 401 se manca
+    auth-context.ts         requireAuth(req) -> { user, session }, 401 if missing
     typed-request.ts        TypedRequest<B,Q,P>, TypedAuthRequest (auth?: AuthContext)
     middlewares/
       session.middleware.ts isAuthenticated: cookie -> service -> req.auth
       membership.middleware.ts  requireRole("owner","staff")
-      ip-rate-limit.middleware.ts  express-rate-limit per IP, pass-through in sviluppo
+      ip-rate-limit.middleware.ts  express-rate-limit per IP, pass-through in development
       validation.middleware.ts  validate(dto, "body" | "query" | "params")
-    stamps.ts               splitStamps(stampsRequired, currentCount, quantity), pura
-    email/email-sender.ts   EmailSender + ConsoleEmailSender (vietato in produzione)
+    stamps.ts               splitStamps(stampsRequired, currentCount, quantity), pure
+    email/email-sender.ts   EmailSender + ConsoleEmailSender (forbidden in production)
     schemas/                branding.schema.ts, promotion-config.schema.ts
     types/auth.type.ts      AuthUser, AuthSessionInfo, AuthContext
-scripts/                    test end-to-end + utility (vedi §8)
-drizzle/                    migration 0000-0003 + meta (fonte di verità dello schema SQL)
+scripts/                    end-to-end tests + utilities (see §7)
+drizzle/                    migrations 0000-0003 + meta (source of truth of the SQL schema)
 ```
 
-Convenzione `api/`: ogni cartella di dominio espone i file `<dominio>.router.ts`,
-`<dominio>.controller.ts`, `<dominio>.service.ts` e `<dominio>.dto.ts` (dove servono);
-i file ausiliari stanno in una sottocartella con il proprio nome (`email/`, `staff/`,
-`membership/`, `resolve/`, `otp/`, `identity/`, `session/`, `auth-events/`). Tutti i
-middleware stanno in `utils/middlewares/`.
+`api/` convention: each domain folder exposes the files `<domain>.router.ts`,
+`<domain>.controller.ts`, `<domain>.service.ts` and `<domain>.dto.ts` (where needed);
+helper files live in a subfolder named after their concern (`email/`, `staff/`,
+`membership/`, `resolve/`, `otp/`, `identity/`, `session/`, `auth-events/`). All
+middlewares live in `utils/middlewares/`.
 
-## 3. Endpoint
+## 3. Endpoints
 
-| Metodo e percorso | Auth | Comportamento |
+| Method and path | Auth | Behavior |
 |---|---|---|
 | `GET /api/health` | no | `200` |
-| `POST /api/auth/email/request` | no (limiter IP) | `202 {challengeId}`; cooldown 45 s e tetto 5/ora → `429` + `Retry-After`; email fallita → `503` |
-| `POST /api/auth/email/verify` | no (limiter IP) | `200 {user:{id,email,displayName}}` + cookie `sid`; ogni fallimento → `400` con lo stesso messaggio |
-| `GET /api/auth/me` | sì | `200 {user:{id,email,displayName}}` (sonda read-only) |
-| `POST /api/auth/logout` | sì | `204`, cookie rimosso, evento `logout` |
-| `POST /api/venues/:venueId/visit` | sì | card nuova → `201 {state:"card_created", saveUrl, publicCode}`; pendente viva → `200 {state:"request_pending", requestId, expiresAt}`; nuova richiesta → `201`; oltre 10 nuove/ora per card → `429` + `Retry-After` |
-| `GET /api/requests/:requestId` | sì | `200 {status, expiresAt, stampsCount, stampsRequired}`; richiesta altrui o inesistente → `404` identico |
-| `GET /api/venues/mine` | sì | `200 {venues:[{venueId,name,slug,role}]}` |
-| `GET /api/venues/:venueId/requests` | sì + owner/staff | `200 {requests:[{requestId,publicCode,stampsCount,stampsRequired,createdAt,expiresAt}]}`, max 50, mai l'email |
-| `POST /api/venues/:venueId/requests/:requestId/confirm` | sì + owner/staff | body `{stamps}` = **prodotti consumati, premio compreso** (intero 1–50) → `200 {status:"approved", stampsCount, stampsRequired, rewards}`; `404`/`409` |
-| `POST /api/venues/:venueId/requests/:requestId/reject` | sì + owner/staff | `200 {status:"rejected"}`, non tocca la card; `404`/`409` |
+| `POST /api/auth/email/request` | no (IP limiter) | `202 {challengeId}`; 45 s cooldown and 5/hour cap → `429` + `Retry-After`; email failure → `503` |
+| `POST /api/auth/email/verify` | no (IP limiter) | `200 {user:{id,email,displayName}}` + `sid` cookie; every failure → `400` with the same message |
+| `GET /api/auth/me` | yes | `200 {user:{id,email,displayName}}` (read-only probe) |
+| `POST /api/auth/logout` | yes | `204`, cookie removed, `logout` event |
+| `POST /api/venues/:venueId/visit` | yes | new card → `201 {state:"card_created", saveUrl, publicCode}`; live pending request → `200 {state:"request_pending", requestId, expiresAt}`; new request → `201`; more than 10 new/hour per card → `429` + `Retry-After` |
+| `GET /api/requests/:requestId` | yes | `200 {status, expiresAt, stampsCount, stampsRequired}`; someone else's or missing request → identical `404` |
+| `GET /api/venues/mine` | yes | `200 {venues:[{venueId,name,slug,role}]}` |
+| `GET /api/venues/:venueId/requests` | yes + owner/staff | `200 {requests:[{requestId,publicCode,stampsCount,stampsRequired,createdAt,expiresAt}]}`, max 50, never the email |
+| `POST /api/venues/:venueId/requests/:requestId/confirm` | yes + owner/staff | body `{stamps}` = **products consumed, reward included** (integer 1–50) → `200 {status:"approved", stampsCount, stampsRequired, rewards}`; `404`/`409` |
+| `POST /api/venues/:venueId/requests/:requestId/reject` | yes + owner/staff | `200 {status:"rejected"}`, does not touch the card; `404`/`409` |
 
-Non esiste nessuna rotta `/cards`: la card nasce solo da `visit`.
+There is no `/cards` route: the card is only created by `visit`.
 
-Errori: `400` validazione (`details` con `property` e `constraints`, mai l'eco del `value`), `400 MalformedBody` JSON malformato, `413 BodyTooLarge`, `404 NotFound` JSON per ogni rotta `/api` inesistente, `400` codice OTP, `401` unico,
-`403` non membro, `404` risorsa inesistente o altrui, `409` richiesta non più valida /
-promozione cambiata, `429` limiti (sempre `{error:"TryLaterError", message:"Riprova più tardi", retryAfterSeconds}` + header `Retry-After` con lo stesso valore, anche dal limiter IP), `500` generico JSON.
+Errors: `400` validation (`details` with `property` and `constraints`, never an echo of
+`value`), `400 MalformedBody` for malformed JSON, `413 BodyTooLarge`, `404 NotFound` JSON
+for every non-existent `/api` route, `400` OTP code, single `401`, `403` non-member,
+`404` missing or someone else's resource, `409` request no longer valid / promotion
+changed, `429` limits (always `{error:"TryLaterError", message:"Riprova più tardi",
+retryAfterSeconds}` + `Retry-After` header with the same value, also from the IP
+limiter), generic JSON `500`. (The `message` strings are Italian literals in the code.)
 
-## 4. Convenzioni
+## 4. Conventions
 
-- **Ordine middleware** su una rotta protetta:
+- **Middleware order** on a protected route:
   `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`.
-  `isAuthenticated` si monta **per rotta** (mai su `/api/auth` in blocco: `/email/*` è
-  pubblico). Conseguenza accettata: senza cookie un param malformato dà **401**; con
-  ruolo mancante un `venueId` malformato dà **403**.
-- **Generics aperti su `P`** in `isAuthenticated`, `requireRole` e `requireAuth`: servono
-  per combinare più handler con controller tipizzati dal DTO dei params. Nessun cast nei
-  controller.
-- **Utente autenticato in `req.auth`**, letto con `requireAuth(req)`. **Mai `req.user`**:
-  `@types/passport` dichiara già `Express.Request.user` e un tipo nostro renderebbe
-  l'handler non assegnabile ai `RequestHandler`.
-- **Ruoli**: mai in sessione o `req.auth`; `requireRole` legge `venue_members` a ogni
-  richiesta. `venueId` non-UUID è trattato come "non membro" (evita il 22P02 di Postgres).
-- **Errori**: ogni `GenericError` va scritto con lo status. Un errore ricorrente merita
-  classe + handler registrato **prima** di `genericErrorHandler`. Il generico espone
-  status e messaggio **solo** per `GenericError`; tutto il resto → `500` JSON generico
-  con i dettagli solo nei log. Gli errori di body-parser (JSON malformato, body troppo
-  grande) hanno un handler dedicato (`400 MalformedBody`, `413 BodyTooLarge`).
-- **Tempo**: sempre `now()` del DB nelle query, mai `new Date()` per le scadenze.
-- **UPDATE di stato**: sempre con il filtro di stato nel `WHERE` (`revoked_at IS NULL`,
+  `isAuthenticated` is mounted **per route** (never on `/api/auth` as a block: `/email/*`
+  is public). Accepted consequence: without a cookie a malformed param gives **401**; with
+  a missing role a malformed `venueId` gives **403**.
+- **Open generics on `P`** in `isAuthenticated`, `requireRole` and `requireAuth`: needed
+  to combine several handlers with controllers typed by the params DTO. No casts in
+  controllers.
+- **Authenticated user in `req.auth`**, read with `requireAuth(req)`. **Never `req.user`**:
+  `@types/passport` already declares `Express.Request.user` and a type of our own would
+  make the handler not assignable to `RequestHandler`.
+- **Roles**: never in the session or `req.auth`; `requireRole` reads `venue_members` on
+  every request. A non-UUID `venueId` is treated as "not a member" (avoids Postgres 22P02).
+- **Errors**: every `GenericError` must be written with its status. A recurring error
+  deserves a class + handler registered **before** `genericErrorHandler`. The generic
+  handler exposes status and message **only** for `GenericError`; everything else → generic
+  JSON `500` with details only in the logs. Body-parser errors (malformed JSON, body too
+  large) have a dedicated handler (`400 MalformedBody`, `413 BodyTooLarge`).
+- **Time**: always the DB `now()` in queries, never `new Date()` for expiry.
+- **State UPDATEs**: always with the state filter in the `WHERE` (`revoked_at IS NULL`,
   `status = 'pending'`, `consumed_at IS NULL`, …).
-- **Risposte**: sempre mappate, mai `res.json(riga)`; il token di sessione non compare
-  mai nel body.
-- **Input**: `validate(dto, origin)`; validate usa whitelist e forbidNonWhitelisted 
-(campi extra → 400), e un body assente dà 400 "missing body" tramite GenericError.
-- **Cookie**: sempre da `sessionCookieOptions()` (httpOnly, secure solo in produzione,
-  SameSite=Lax, path `/`); il `maxAge` lo aggiunge solo il login.
+- **Responses**: always mapped, never `res.json(row)`; the session token never appears in
+  the body.
+- **Input**: `validate(dto, origin)`; validate uses whitelist and forbidNonWhitelisted
+  (extra fields → 400), and a missing body gives 400 "missing body" via GenericError.
+- **Cookies**: always from `sessionCookieOptions()` (httpOnly, secure only in production,
+  SameSite=Lax, path `/`); only login adds the `maxAge`.
 - **Audit**: `authEventsSrv.log(type, { email?, userId?, provider?, metadata? }, tx?)`;
-  l'email finisce solo in `subject_hash`, i metadata sono validati per tipo.
-- **Timbri**: la regola sta **solo** in `splitStamps`; nessun altro punto ricalcola i
-  tratti. Vale solo per `type = "stamps"`.
-- **Dati**: passare sempre `venueId` insieme agli id delle risorse (FK composite e
-  ownership). Tipi di dominio solo da `db/types.ts`; enum solo dai `pgEnum`.
+  the email only ends up in `subject_hash`, metadata is validated per type.
+- **Stamps**: the rule lives **only** in `splitStamps`; no other place recomputes the
+  segments. It applies only to `type = "stamps"`.
+- **Data**: always pass `venueId` together with resource ids (composite FKs and
+  ownership). Domain types only from `db/types.ts`; enums only from the `pgEnum`s.
 
-## 5. Flussi
+## 5. Flows
 
-**Login con email — request**: una transazione legge secondi dall'ultimo invio, invii
-nell'ultima ora ed età del più vecchio; i controlli stanno **prima** di toccare le righe
-(evento `otp_send_blocked` committato); poi chiude la sfida viva, inserisce la nuova,
-scrive `otp_sent`; 23505 dall'indice parziale → 429. Dopo il commit invia l'email
-(`ConsoleEmailSender` in sviluppo).
+**Email login — request**: one transaction reads the seconds since the last send, the
+sends in the last hour and the age of the oldest; the checks come **before** touching the
+rows (`otp_send_blocked` event committed); then it closes the live challenge, inserts the
+new one, writes `otp_sent`; 23505 from the partial index → 429. After the commit it sends
+the email (`ConsoleEmailSender` in development).
 
-**Login con email — verify**: tentativo contato atomicamente **fuori** transazione;
-codice errato → `otp_failed`, invalidazione al quinto errore, 400 generico; codice
-giusto → una transazione con consumo monouso, `loginWithEmail`, sessione, eventi
-(`otp_verified`, `identity_linked` se l'identità è stata aggiunta, `login_success`).
-Cookie scritto **dopo** il commit.
+**Email login — verify**: the attempt is counted atomically **outside** the transaction;
+wrong code → `otp_failed`, invalidation at the fifth error, generic 400; correct code →
+one transaction with single-use consumption, `loginWithEmail`, session, events
+(`otp_verified`, `identity_linked` if the identity was added, `login_success`). Cookie
+written **after** the commit.
 
-**Richiesta autenticata**: cookie `sid` → controllo di forma (43 caratteri) → SHA-256 →
-SELECT con join su `users` e filtri (`revoked_at NULL`, `expires_at > now()`,
-`created_at > now() - 90 giorni`, `anonymized_at NULL`) e `needs_touch` calcolato dal
-DB; se serve, UPDATE `last_seen_at` e `expires_at = LEAST(now()+30d, created_at+90d)`.
-Qualsiasi fallimento → stesso 401.
+**Authenticated request**: `sid` cookie → shape check (43 characters) → SHA-256 → SELECT
+with a join on `users` and filters (`revoked_at NULL`, `expires_at > now()`,
+`created_at > now() - 90 days`, `anonymized_at NULL`) and `needs_touch` computed by the
+DB; if needed, UPDATE `last_seen_at` and `expires_at = LEAST(now()+30d, created_at+90d)`.
+Any failure → same 401.
 
-**Logout**: transazione (revoca condizionata + evento solo se la revoca è avvenuta) →
-`clearCookie` → 204.
+**Logout**: transaction (conditional revocation + event only if the revocation happened)
+→ `clearCookie` → 204.
 
-**Tocco del cliente (`visit`)**: utente da `req.auth` (body ignorato) → locale e
-promozione attiva → `addOrGetCard`. Card nuova → 201 `card_created` + `saveUrl`. Card
-esistente → scadenza lazy → pendente viva? 200 **senza consumare quota** → altrimenti
-`checkCardRateLimit` (10/ora per card) → `newRequest` con `ON CONFLICT` sul vincolo
-parziale; se la race perde, restituisce la pendente appena creata.
+**Customer tap (`visit`)**: user from `req.auth` (body ignored) → venue and active
+promotion → `addOrGetCard`. New card → 201 `card_created` + `saveUrl`. Existing card →
+lazy expiry → live pending request? 200 **without consuming quota** → otherwise
+`checkCardRateLimit` (10/hour per card) → `newRequest` with `ON CONFLICT` on the partial
+constraint; if the race is lost, it returns the pending request just created.
 
-**Polling cliente**: `refreshStatus` (scadenza lazy, solo da `pending`, ownership in
-SQL) → `getRequestById` con join su card e promozione → 4 campi. Richiesta altrui → 404.
+**Customer polling**: `refreshStatus` (lazy expiry, only from `pending`, ownership in
+SQL) → `getRequestById` with a join on card and promotion → 4 fields. Someone else's
+request → 404.
 
-**Coda staff**: scadenza lazy di **tutto il locale** (una richiesta senza polling
-resterebbe `pending` per sempre) → pendenti in ordine di arrivo, max 50.
+**Staff queue**: lazy expiry of **the whole venue** (a request with no polling would stay
+`pending` forever) → pending requests in arrival order, max 50.
 
-**Conferma**: `expireIfDue` fuori transazione → transazione: UPDATE condizionato
-`status='pending' AND expires_at > now()` (mutex, doppia conferma → 409) → `SELECT …
-FOR UPDATE` della card → 409 se la promozione della card non è quella attiva →
-`splitStamps` → un `stamp_event` per tratto con `idempotency_key = {requestId}:{n}` →
-`cards.stamps_count = finalCount`. Dopo il commit **non** aggiorna il pass Google: il
-DB e il polling web sono corretti, il Wallet resta indietro (vedi `BACKLOG.md`).
+**Confirm**: `expireIfDue` outside the transaction → transaction: conditional UPDATE
+`status='pending' AND expires_at > now()` (mutex, double confirm → 409) → `SELECT …
+FOR UPDATE` on the card → 409 if the card's promotion is not the active one →
+`splitStamps` → one `stamp_event` per segment with `idempotency_key = {requestId}:{n}` →
+`cards.stamps_count = finalCount`. After the commit it does **not** update the Google
+pass: the DB and the web polling are correct, the Wallet lags behind (see `BACKLOG.md`).
 
-**Rifiuto**: stesso UPDATE condizionato con `status='rejected'`; nessuna scrittura su
-card o eventi; stessa distinzione 404/409.
+**Reject**: same conditional UPDATE with `status='rejected'`; no writes to card or
+events; same 404/409 distinction.
 
-**Primo owner**: `scripts/create-owner.ts <email> <slug> [--force]` — l'utente deve
-esistere e non essere anonimizzato, il locale non archiviato; `INSERT … ON CONFLICT DO
-NOTHING`; non promuove uno `staff` senza `--force`.
+**First owner**: `scripts/create-owner.ts <email> <slug> [--force]` — the user must exist
+and not be anonymized, the venue not archived; `INSERT … ON CONFLICT DO NOTHING`; it does
+not promote a `staff` without `--force`.
 
-**Nuovo locale**: `scripts/create-venue.ts --name … --slug … --logo … --color …
---stamps … --reward … [--banner …]` — valida con gli stessi schema zod del backend,
-crea locale + promozione attiva in transazione, idempotente sullo slug, stampa l'URL
-del tag.
+**New venue**: `scripts/create-venue.ts --name … --slug … --logo … --color … --stamps …
+--reward … [--banner …]` — validates with the same zod schemas as the backend, creates
+venue + active promotion in a transaction, idempotent on the slug, prints the tag URL.
 
-## 6. Dati
+## 6. Data
 
-Fonte di verità: `src/db/schema.ts`; per i vincoli scritti a mano, il SQL in `drizzle/`.
+Source of truth: `src/db/schema.ts`; for hand-written constraints, the SQL in `drizzle/`.
 
-**11 tabelle**: `users`, `auth_identities`, `otp_challenges`, `sessions`, `auth_events`,
+**11 tables**: `users`, `auth_identities`, `otp_challenges`, `sessions`, `auth_events`,
 `venues`, `venue_members`, `promotions`, `cards`, `stamp_requests`, `stamp_events`.
 
-**9 enum**: `member_role`, `promotion_type`, `wallet_provider`, `wallet_status`,
+**9 enums**: `member_role`, `promotion_type`, `wallet_provider`, `wallet_status`,
 `request_status`, `event_type`, `identity_provider`, `otp_channel`, `auth_event_type`.
 
-Relazioni:
+Relations:
 
 ```text
 users ──< auth_identities
   │ ──< sessions
-  │ ──< auth_events            (user_id nullable: NULL = utente sconosciuto)
+  │ ──< auth_events            (user_id nullable: NULL = unknown user)
   ├──< venue_members >── venues ──< promotions
-  └──< cards >──────────────────────┘  (card -> promotion dello stesso locale)
+  └──< cards >──────────────────────┘  (card -> promotion of the same venue)
           ├──< stamp_requests
-          └──< stamp_events (-> promotion, -> stamp_request opzionale, -> operator=users)
-otp_challenges   (nessuna FK: il destinatario può non essere ancora un utente)
+          └──< stamp_events (-> promotion, -> optional stamp_request, -> operator=users)
+otp_challenges   (no FK: the recipient may not be a user yet)
 ```
 
-Invarianti da non rompere:
+Invariants not to break:
 
-- `users.email` UNIQUE, minuscola e senza spazi (CHECK); NULL ammesso (anonimizzato).
-- `auth_identities`: UNIQUE `(provider, provider_user_id)` e `(user_id, provider)`.
-- `otp_challenges`: indice UNIQUE parziale su `(channel, destination)` dove
-  `consumed_at` e `invalidated_at` sono NULL — **una sola sfida viva**; il vincolo non
-  guarda `expires_at`, quindi una sfida scaduta va chiusa prima di inserirne una nuova.
-- `sessions.token_hash` UNIQUE (SHA-256, mai il token).
+- `users.email` UNIQUE, lowercase and without spaces (CHECK); NULL allowed (anonymized).
+- `auth_identities`: UNIQUE `(provider, provider_user_id)` and `(user_id, provider)`.
+- `otp_challenges`: partial UNIQUE index on `(channel, destination)` where `consumed_at`
+  and `invalidated_at` are NULL — **only one live challenge**; the constraint ignores
+  `expires_at`, so an expired challenge must be closed before inserting a new one.
+- `sessions.token_hash` UNIQUE (SHA-256, never the token).
 - `venues.slug` UNIQUE; `venue_members` PK `(user_id, venue_id)`.
-- `promotions_no_overlap`: EXCLUDE `btree_gist` su `(venue_id, tstzrange(starts_at,
-  ends_at))` — **scritto a mano nella migration 0001**, non in `schema.ts`. Una
-  promozione senza fine occupa il locale per sempre.
-- `cards`: UNIQUE `(user_id, venue_id)`, UNIQUE `(id, venue_id)`, FK composita
+- `promotions_no_overlap`: `btree_gist` EXCLUDE on `(venue_id, tstzrange(starts_at,
+  ends_at))` — **hand-written in migration 0001**, not in `schema.ts`. A promotion with
+  no end occupies the venue forever.
+- `cards`: UNIQUE `(user_id, venue_id)`, UNIQUE `(id, venue_id)`, composite FK
   `(promotion_id, venue_id) → promotions(id, venue_id)`.
-- `stamp_requests`: indice UNIQUE parziale su `card_id` dove `status='pending'`; indice
-  parziale `(venue_id, created_at)` per la coda.
-- `stamp_events`: `request_id` **non** UNIQUE (indice semplice); `idempotency_key`
-  UNIQUE; `quantity > 0`; FK composite su card, promozione e richiesta.
-- `stamps_count >= 0` e **nessun** tetto superiore: `= stampsRequired` è lo stato
-  normale "premio disponibile".
-- Anonimizzazione invece di cancellazione: tutte le FK sono `RESTRICT`.
+- `stamp_requests`: partial UNIQUE index on `card_id` where `status='pending'`; partial
+  index `(venue_id, created_at)` for the queue.
+- `stamp_events`: `request_id` is **not** UNIQUE (plain index); `idempotency_key` UNIQUE;
+  `quantity > 0`; composite FKs on card, promotion and request.
+- `stamps_count >= 0` and **no** upper cap: `= stampsRequired` is the normal "reward
+  available" state.
+- Anonymization instead of deletion: all FKs are `RESTRICT`.
 
-Migration (una per modifica):
+Migrations (one per change):
 
 ```bash
-npx drizzle-kit generate --config=src/drizzle.config.ts --name=NOME
+npx drizzle-kit generate --config=src/drizzle.config.ts --name=NAME
 node --env-file=.env ./node_modules/.bin/drizzle-kit migrate --config=src/drizzle.config.ts
 ```
 
-Leggere **sempre** il SQL generato prima di applicarlo. Mai `push`/`introspect`.
-Verifica dei vincoli: `scripts/verify-migration-2.sql` e `-3.sql` (transazione con
-ROLLBACK, non sporcano il DB).
+**Always** read the generated SQL before applying it. Never `push`/`introspect`.
+Constraint verification: `scripts/verify-migration-2.sql` and `-3.sql` (transaction with
+ROLLBACK, they do not dirty the DB).
 
-## 7. Test
+## 7. Tests
 
-Script TypeScript da terminale, nessun framework: ogni controllo stampa ✔/✘, il
-riepilogo da solo non basta a diagnosticare. Prerequisiti: server acceso (`npm run dev`)
-e DB di sviluppo, tranne dove indicato. Gli script creano fixture `*@test.it` e
-ripuliscono a fine run.
+TypeScript scripts run from the terminal, no framework: each check prints ✔/✘, the
+summary alone is not enough to diagnose. Prerequisites: running server (`npm run dev`)
+and dev DB, except where noted. Scripts create `*@test.it` fixtures and clean up at the
+end of the run.
 
 ```bash
-npx tsx scripts/stamps-split.ts                      # nessun server, nessun DB
-npx tsx --env-file=.env scripts/staff-requests.ts    # crea locale + membri di test
-npx tsx --env-file=.env scripts/poll-request.ts      # sceglie il locale con promo attiva
+npx tsx scripts/stamps-split.ts                      # no server, no DB
+npx tsx --env-file=.env scripts/staff-requests.ts    # creates test venue + members
+npx tsx --env-file=.env scripts/poll-request.ts      # picks the venue with an active promotion
 npx tsx --env-file=.env scripts/otp-request.ts
 npx tsx --env-file=.env scripts/otp-verify.ts
 npx tsx --env-file=.env scripts/session.ts
@@ -301,32 +306,32 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-3.sql
 ```
 
-| Script | Controlli | Copertura |
+| Script | Checks | Coverage |
 |---|---|---|
-| `stamps-split.ts` | 20 | soglie, soglia esatta, premi multipli, card piena, soglia 1, tetto 50, input impossibili |
-| `staff-requests.ts` | 24 | 401/403, `/venues/mine`, coda senza email, conferma 15 → 4/10 con 3 eventi, doppia conferma 409, validazione, rifiuto, scadenza, cross-venue 404, promozione cambiata 409, owner, soglia esatta, card piena, rate limit |
-| `poll-request.ts` | 12 | `visit`/polling con sessione, ownership, scadenza lazy, race |
-| `otp-request.ts` | 16 | JSON malformato, 400 senza eco, 404 JSON, cooldown e corpo del 429, tetto orario, finestra, race, risposta uniforme |
-| `otp-verify.ts` | 16 | tentativi, monouso, scadenza, eventi, race |
-| `session.ts` | 16 | 401 unico, scorrimento, tetto assoluto, logout, metadata |
-| `verify-migration-2.sql` | 19 | vincoli della migration 2 |
-| `verify-migration-3.sql` | 6 | vincoli della migration 3 |
+| `stamps-split.ts` | 20 | thresholds, exact threshold, multiple rewards, full card, threshold 1, cap 50, impossible inputs |
+| `staff-requests.ts` | 24 | 401/403, `/venues/mine`, queue without email, confirm 15 → 4/10 with 3 events, double confirm 409, validation, reject, expiry, cross-venue 404, promotion changed 409, owner, exact threshold, full card, rate limit |
+| `poll-request.ts` | 12 | `visit`/polling with session, ownership, lazy expiry, race |
+| `otp-request.ts` | 16 | malformed JSON, 400 without echo, JSON 404, cooldown and 429 body, hourly cap, window, race, uniform response |
+| `otp-verify.ts` | 16 | attempts, single use, expiry, events, race |
+| `session.ts` | 16 | single 401, sliding, absolute cap, logout, metadata |
+| `verify-migration-2.sql` | 19 | migration 2 constraints |
+| `verify-migration-3.sql` | 6 | migration 3 constraints |
 
-Ultima esecuzione registrata: **30 ottobre 2026, 104 controlli verdi** (20+24+12+16+16+16)
-e 25 controlli SQL verdi (19+6), `npm run typecheck:all` pulito.
+Last recorded run: **October 30, 2026, 104 checks green** (20+24+12+16+16+16) and 25 SQL
+checks green (19+6), `npm run typecheck:all` clean.
 
-Utility (non test): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
-`npm run script:all` esiste ma si ferma: `create-owner`/`create-venue` richiedono
-argomenti (vedi `BACKLOG.md` §2).
+Utilities (not tests): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
+`npm run script:all` exists but stops: `create-owner`/`create-venue` require arguments
+(see `BACKLOG.md` §3, C11).
 
-## 8. Da dove partire
+## 8. Where to start
 
-| Se devi… | Guarda prima |
+| If you need to… | Look first at |
 |---|---|
-| aggiungere una rotta protetta | `venues.router.ts` (ordine middleware) + `utils/middlewares/membership.middleware.ts` |
-| toccare la regola dei timbri | `utils/stamps.ts` + `scripts/stamps-split.ts` + `CONTEXT.md` §4.4 |
-| toccare la conferma | `requests/resolve/resolve.service.ts` + `venues/staff/staff.controller.ts` |
-| toccare l'auth | `auth/` (otp, identity, session, auth-events) + `CONTEXT.md` §5 |
-| toccare lo schema | `db/schema.ts` → `generate` → leggere il SQL → `migrate` → aggiornare §6 |
-| aggiornare il pass Wallet | `wallet/wallet.service.ts` (oggi solo creazione, nessun REST) |
-| capire cosa manca | `BACKLOG.md` |
+| add a protected route | `venues.router.ts` (middleware order) + `utils/middlewares/membership.middleware.ts` |
+| touch the stamp rule | `utils/stamps.ts` + `scripts/stamps-split.ts` + `CONTEXT.md` §4.4 |
+| touch confirm | `requests/resolve/resolve.service.ts` + `venues/staff/staff.controller.ts` |
+| touch auth | `auth/` (otp, identity, session, auth-events) + `CONTEXT.md` §5 |
+| touch the schema | `db/schema.ts` → `generate` → read the SQL → `migrate` → update §6 |
+| update the Wallet pass | `wallet/wallet.service.ts` (today creation only, no REST) |
+| find out what is missing | `BACKLOG.md` |

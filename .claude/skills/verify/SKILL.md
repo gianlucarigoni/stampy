@@ -1,41 +1,42 @@
 ---
 name: verify
-description: Esegue la verifica completa di stampy-backend (typecheck + tutti gli script end-to-end, atteso 104 controlli ✔) e riporta cosa è fallito. Usala dopo OGNI modifica al codice del backend, refactor, migration o nuovo endpoint, prima di dire che un lavoro è finito, e ogni volta che l'utente chiede "lancia i test", "verifica", "controlla che funzioni", "è tutto verde?", anche se non nomina gli script.
+description: Runs the full verification of stampy-backend (typecheck + all end-to-end scripts, expected 104 ✔ checks) and reports what failed. Use it after EVERY change to backend code, refactor, migration or new endpoint, before saying a job is finished, and whenever the user asks "run the tests", "verify", "check it works", "is everything green?", even if they do not name the scripts.
 ---
 
-# Verifica stampy-backend
+# Verify stampy-backend
 
-Il progetto non ha un test runner: i test sono script `tsx` in `stampy-backend/scripts/`
-che stampano una riga `✔`/`✘` per controllo e chiamano il server vero. `verify.sh` li lancia
-tutti in fila e conta le spunte.
+The project has no test runner: tests are `tsx` scripts in `stampy-backend/scripts/` that
+print a `✔`/`✘` line per check and call the real server. `verify.sh` runs them all in
+sequence and counts the ticks.
 
-## Procedura
+## Procedure
 
-1. Esegui:
+1. Run:
    ```bash
    .claude/skills/verify/scripts/verify.sh
    ```
-   (dalla root del repo; `--skip-typecheck` se l'hai appena lanciato).
-2. Exit 2 con "server non raggiungibile": il server `npm run dev` non è acceso. Avvialo
-   in background da `stampy-backend/` (`npm run dev`, run_in_background), attendi che
-   `/api/health` risponda, poi rilancia. Se l'hai avviato tu, fermalo alla fine.
-   Nodemon osserva solo `src/`: dopo modifiche a `src/` aspetta il riavvio prima di rilanciare.
-3. Leggi il riepilogo. Successo = exit 0 **e** `✔ 104`.
+   (from the repo root; `--skip-typecheck` if you just ran it).
+2. Exit 2 with "server non raggiungibile" (unreachable server; the message is an Italian
+   literal in `verify.sh`): the `npm run dev` server is not running. Start it in the
+   background from `stampy-backend/` (`npm run dev`, run_in_background), wait for
+   `/api/health` to answer, then rerun. If you started it, stop it at the end.
+   Nodemon only watches `src/`: after changes to `src/` wait for the restart before rerunning.
+3. Read the summary. Success = exit 0 **and** `✔ 104`.
 
-## Interpretare i fallimenti
+## Interpreting failures
 
-- Uno `✘` è un fallimento vero: indaga il codice, non adattare l'asserzione dello script
-  per farla passare, a meno che il comportamento sia cambiato di proposito (e allora dillo).
-- Totale ≠ 104 senza `✘`: qualcuno ha aggiunto/tolto controlli. Se è voluto, aggiorna
-  `EXPECTED` in `verify.sh` e il numero in `AGENTS.md`; altrimenti uno script è uscito presto.
-- Errori di connessione al DB: controlla `DATABASE_URL` in `stampy-backend/.env` e che il
-  container Postgres (`stampy-db`) sia acceso.
-- Gli script puliscono i propri dati di test; non girano con `NODE_ENV=production`.
+- A `✘` is a real failure: investigate the code, do not adapt the script's assertion to
+  make it pass, unless the behavior changed on purpose (and then say so).
+- Total ≠ 104 with no `✘`: someone added/removed checks. If intended, update `EXPECTED` in
+  `verify.sh` and the number in `AGENTS.md`; otherwise a script exited early.
+- DB connection errors: check `DATABASE_URL` in `stampy-backend/.env` and that the Postgres
+  container (`stampy-db`) is running.
+- The scripts clean up their own test data; they do not run with `NODE_ENV=production`.
 
 ## Report
 
-Riporta all'utente: typecheck ok/ko, tabella per script (✔/✘), totale vs 104, e per ogni
-`✘` la riga di errore. Se qualcosa è fallito dillo chiaramente, senza ammorbidire.
+Report to the user: typecheck ok/ko, a table per script (✔/✘), total vs 104, and for each
+`✘` the error line. If something failed, say so clearly, without softening it.
 
-Non usare `npm run script:all`: lancia anche `create-owner`/`create-venue` (non sono test)
-e non passa `--env-file=.env`.
+Do not use `npm run script:all`: it also runs `create-owner`/`create-venue` (they are not
+tests) and does not pass `--env-file=.env`.

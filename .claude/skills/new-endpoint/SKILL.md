@@ -1,25 +1,25 @@
 ---
 name: new-endpoint
-description: Procedura per aggiungere o modificare un endpoint HTTP in stampy-backend (router, controller, service, DTO class-validator, middleware, classe di errore, documentazione). Usala ogni volta che l'utente chiede una nuova rotta/API, un nuovo handler, di esporre un'operazione, aggiungere un parametro o body a una rotta esistente, o un nuovo errore HTTP — anche se dice solo "fai che lo staff possa..." o "serve una chiamata per...".
+description: Procedure for adding or changing an HTTP endpoint in stampy-backend (router, controller, service, class-validator DTO, middleware, error class, documentation). Use it whenever the user asks for a new route/API, a new handler, to expose an operation, to add a parameter or body to an existing route, or a new HTTP error — even if they only say "let staff be able to..." or "we need a call to...".
 ---
 
-# Nuovo endpoint in stampy-backend
+# New endpoint in stampy-backend
 
-Le regole stanno in `AGENTS.md`; qui c'è l'ordine in cui applicarle. Modello di riferimento
-da copiare: `src/api/venues/venues.router.ts` + `staff/` (con ruoli) e `src/api/requests/` (semplice).
+The rules live in `AGENTS.md`; here is the order in which to apply them. Reference models
+to copy: `src/api/venues/venues.router.ts` + `staff/` (with roles) and `src/api/requests/` (simple).
 
-## 1. Dove va
+## 1. Where it goes
 
-- Un dominio = una cartella `src/api/<dominio>/`. File ausiliari in sottocartella
-  (`venues/staff/staff.controller.ts`). Nuovo dominio → montalo in `src/api/routes.ts`.
-- Nessun import tra router di domini diversi. Un service può importare un service di un
-  altro dominio solo come dipendenza esplicita.
+- One domain = one folder `src/api/<domain>/`. Helper files in a subfolder
+  (`venues/staff/staff.controller.ts`). New domain → mount it in `src/api/routes.ts`.
+- No imports between routers of different domains. A service may import a service from
+  another domain only as an explicit dependency.
 
-## 2. DTO (`<nome>.dto.ts`)
+## 2. DTO (`<name>.dto.ts`)
 
-I DTO sono **classi class-validator** (non zod: zod è per `config/env.ts` e `utils/schemas/`).
-`validate` usa `whitelist` + `forbidNonWhitelisted`, quindi ogni campo accettato deve avere
-un decoratore.
+DTOs are **class-validator classes** (not zod: zod is for `config/env.ts` and `utils/schemas/`).
+`validate` uses `whitelist` + `forbidNonWhitelisted`, so every accepted field must have a
+decorator.
 
 ```ts
 import { IsUUID } from "class-validator";
@@ -29,9 +29,9 @@ export class requestIdDTO {
 }
 ```
 
-Mai campi che il server deve decidere (quantità di timbri, ruolo, prezzi): li calcola il service.
+Never fields the server must decide (stamp quantity, role, prices): the service computes them.
 
-## 3. Router — ordine middleware fisso
+## 3. Router — fixed middleware order
 
 `rate limit -> isAuthenticated -> requireRole(...) -> validate(params) -> validate(body) -> controller`
 
@@ -46,36 +46,37 @@ router.post(
 );
 ```
 
-Rate limit (`ipAuthRateLimit`) solo dove serve (auth/OTP). `requireRole` legge `venue_members`
-a ogni richiesta: il `venueId` del path seleziona, non autorizza.
+Rate limit (`ipAuthRateLimit`) only where needed (auth/OTP). `requireRole` reads `venue_members`
+on every request: the path's `venueId` selects, it does not authorize.
 
 ## 4. Controller
 
-- `req: TypedAuthRequest<Body, Query, Params>`; utente con `requireAuth(req).user.id`.
-- Tutto in `try { ... } catch (err) { next(err); }`.
-- Risposta **mappata** campo per campo: mai `res.json(riga)`.
-- Niente logica di dominio: chiama il service. Niente dati personali nei log.
+- `req: TypedAuthRequest<Body, Query, Params>`; user via `requireAuth(req).user.id`.
+- Everything in `try { ... } catch (err) { next(err); }`.
+- **Mapped** response field by field: never `res.json(row)`.
+- No domain logic: call the service. No personal data in logs.
 
 ## 5. Service
 
-- Query Drizzle; per scritture multiple `db.transaction`, passando `Tx`/`DbOrTx` da `db/tx.ts`.
-- Tempo: `now()`/`sql\`now()\`` del DB, mai `new Date()` per scadenze.
-- Ogni UPDATE di stato filtra lo stato nel WHERE (es. `status = 'pending'`) e controlla
-  quante righe ha toccato: è così che si evitano doppie conferme.
-- Tipi solo da `db/types.ts`. Timbri: solo tramite `utils/stamps.ts`.
-- Codice Google Wallet solo in `api/wallet/`.
-- Se tocchi lo schema → usa la skill `db-migration`.
+- Drizzle queries; for multiple writes `db.transaction`, passing `Tx`/`DbOrTx` from `db/tx.ts`.
+- Time: DB `now()`/`sql\`now()\``, never `new Date()` for expiry.
+- Every state UPDATE filters the state in the WHERE (e.g. `status = 'pending'`) and checks
+  how many rows it touched: that is how double confirmations are avoided.
+- Types only from `db/types.ts`. Stamps: only through `utils/stamps.ts`.
+- Google Wallet code only in `api/wallet/`.
+- If you touch the schema → use the `db-migration` skill.
 
-## 6. Errori
+## 6. Errors
 
-Errore ricorrente → nuovo file `src/errors/<nome>.error.ts` con classe + handler (copia
-`request-not-found.error.ts`), poi aggiungi l'handler in `src/errors/index.ts` **prima** di
-`genericErrorHandler`. Caso isolato → `new GenericError(msg, status)` con status sempre esplicito.
+Recurring error → new file `src/errors/<name>.error.ts` with class + handler (copy
+`request-not-found.error.ts`), then add the handler in `src/errors/index.ts` **before**
+`genericErrorHandler`. Isolated case → `new GenericError(msg, status)` with the status
+always explicit.
 
-## 7. Chiudere
+## 7. Wrap up
 
-1. Test: aggiungi controlli allo script in `scripts/` del dominio (stesso formato `✔`/`✘`)
-   o crea `scripts/<nome>.ts` copiando la struttura di uno esistente, con pulizia dei dati.
-2. Lancia la skill `verify`. Se il conteggio cambia, aggiorna il totale atteso.
-3. Aggiorna `docs/CODEBASE.md` (tabella endpoint). Se chiude un punto di `docs/BACKLOG.md`,
-   spostalo in "Chiuso di recente". Nessun nuovo file in `docs/`.
+1. Tests: add checks to the domain's script in `scripts/` (same `✔`/`✘` format) or create
+   `scripts/<name>.ts` copying the structure of an existing one, with data cleanup.
+2. Run the `verify` skill. If the count changes, update the expected total.
+3. Update `docs/CODEBASE.md` (endpoints table). If it closes an item in `docs/BACKLOG.md`,
+   move it to "Recently closed". No new files in `docs/`.

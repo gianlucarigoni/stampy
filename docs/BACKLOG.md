@@ -1,160 +1,160 @@
 # Stampy — Backlog
 
-> **Unica lista di ciò che non è ancora nel codice.** Se una cosa è stata progettata
-> in un handoff e non è stata implementata, sta qui: non si cancella e non si perde.
-> Quando è fatta, la voce si sposta in §8 con la data (la storia completa resta in
-> `archive/` e in Git).
-> Le decisioni già prese stanno in `CONTEXT.md` e **non si riaprono**: qui si dice solo
-> se sono state implementate.
-> Ultimo aggiornamento: 28 ottobre 2026.
+> **The single list of what is not yet in the code.** If something was designed in a
+> handoff and not implemented, it lives here: it is not deleted and not lost.
+> When it is done, the entry moves to §8 with a date (the full history stays in
+> `archive/` and in Git).
+> Decisions already made live in `CONTEXT.md` and **are not reopened**: here we only say
+> whether they have been implemented.
+> Last updated: October 28, 2026.
 
-**Stati**
+**Statuses**
 
-| Stato | Significato |
+| Status | Meaning |
 |---|---|
-| `DECISO` | decisione presa, implementazione non iniziata |
-| `TODO` | da fare, nessun blocco |
-| `DA-DECIDERE` | serve una scelta (di solito di prodotto): non si scrive codice prima |
-| `DA-VERIFICARE` | serve una verifica esterna (documentazione ufficiale, prova sul campo) |
-| `BLOCCATO` | dipende da un'altra voce (indicata) |
+| `DECIDED` | decision made, implementation not started |
+| `TODO` | to do, nothing blocking |
+| `TO-DECIDE` | a choice is needed (usually product): no code before it |
+| `TO-VERIFY` | an external check is needed (official documentation, field test) |
+| `BLOCKED` | depends on another entry (indicated) |
 
 ---
 
-## 1. Prossimo passo
+## 1. Next step
 
-### B1 — Aggiornamento del pass Google dopo la conferma (`DECISO`)
+### B1 — Google pass update after confirmation (`DECIDED`)
 
-**Perché è il prossimo**: il DB e il polling web sono corretti, ma dopo la conferma il
-pass nel Wallet mostra ancora il saldo vecchio. È il gate del flusso end-to-end.
+**Why it is next**: the DB and the web polling are correct, but after confirmation the
+pass in the Wallet still shows the old balance. It is the gate of the end-to-end flow.
 
-- Dopo il commit della conferma, aggiornare l'object (`loyaltyPoints.balance` e il
-  testo `user_progress`) via REST, **best effort**: se fallisce, il DB resta corretto.
-- Da verificare nella documentazione ufficiale **prima** di scrivere codice (V1):
-  auth/scope, patch vs sostituzione, campi aggiornabili, latenza, se la class è
-  modificabile, comportamento con object non ancora aggiunto al Wallet.
-- Non committare mai output con token o `saveUrl`.
-- Fatto quando: conferma → pass aggiornato entro pochi secondi; test end-to-end
-  registrato; errore REST non corrompe il DB.
-- Origine: `archive/progress.md` §5.15, `archive/Stampy_Handoff_Fase_4d.md` §5.2,
+- After the confirmation commit, update the object (`loyaltyPoints.balance` and the
+  `user_progress` text) via REST, **best effort**: if it fails, the DB stays correct.
+- To be checked in the official documentation **before** writing code (V1): auth/scope,
+  patch vs replace, updatable fields, latency, whether the class is editable, behavior
+  with an object not yet added to the Wallet.
+- Never commit output containing tokens or `saveUrl`s.
+- Done when: confirm → pass updated within a few seconds; end-to-end test recorded; a
+  REST error does not corrupt the DB.
+- Origin: `archive/progress.md` §5.15, `archive/Stampy_Handoff_Fase_4d.md` §5.2,
   `archive/stampy_contesto_progetto.md` §5.
 
 ---
 
-## 2. Implementazioni decise e non fatte
+## 2. Decided and not yet implemented
 
-| ID | Stato | Cosa manca | Origine |
+| ID | Status | What is missing | Origin |
 |---|---|---|---|
-| B2 | `DA-DECIDERE` | **Rollover lazy della promozione.** Il progetto prevedeva: se `cards.promotion_id` non è la promozione attiva, al primo timbro azzerare `stamps_count`, aggiornare `promotion_id` e aggiornare il pass (nessun cron). Oggi la `confirm` risponde **409** e il codice non ha rollover. Il "cosa fare dei timbri maturati" è una decisione di prodotto (P2), quindi la meccanica è pronta ma non va scritta prima. | `archive/stampy_db_schema.md` §6 |
-| B3 | `DECISO` | **CORS ristretto a una sola origine con `credentials`** + controllo dell'`Origin` sulle rotte che modificano stato. Oggi `app.ts` usa `cors()` aperto. Decisione 26/10: **nessun token CSRF per ora** (si appoggia a `SameSite=Lax`). | `archive/Stampy_Handoff_Fase_4c.md` §6.3 |
-| B4 | `DECISO` | **Anonimizzazione GDPR + retention.** Procedura: eliminare `auth_identities`, `users.email = NULL`, svuotare `display_name`, `anonymized_at`, revocare le sessioni; card e log restano. Retention di `otp_challenges` e `auth_events` da definire. Da decidere anche se `auth_events.subject_hash` è ancora un dato personale (azzerarlo o ruotare il segreto). **Prerequisito: primo utente reale.** | `archive/stampy_db_schema.md` §6, `archive/Stampy_Handoff_Fase_4c.md` §6.10 |
-| B5 | `DECISO` | **Login con Google** (`POST /api/auth/google`, body `{idToken}`). Verifica firma/`aud`/`iss`/`exp` con `google-auth-library` (già installata); ricerca di `(google, sub)`; collegamento all'utente con la stessa email **solo** se `@gmail.com` o `email_verified` + `hd`; email di terzi → rifiuto + evento `google_untrusted_email_rejected`; poi sessione e `login_success`. Richiede configurazione esterna (V4). Rimandato "dopo lo staff", che è chiuso. | `archive/Stampy_Handoff_Fase_4c.md` §5D, §6.8 |
-| B6 | `DECISO` | **Invio email reale**: `GmailEmailSender` + `EMAIL_PROVIDER` (`console` \| `gmail`) in `env.ts`. Oggi esiste solo `ConsoleEmailSender` (rifiuta di partire in produzione). Limiti di Gmail da verificare (V3); valutare un provider transazionale quando ci sarà un dominio (SPF/DKIM). | `archive/Stampy_Handoff_Fase_4c.md` §5E, `archive/progress.md` §5.11 |
-| B7 | `DECISO` | **Frontend Vue: staff e cliente.** Backend già pronto (`/venues/mine`, coda, confirm, reject, polling con saldo, `visit`). Da rispettare: `venueId` nell'URL con login sulla stessa pagina (no redirect), polling cliente ogni 1–2 s, **stepper della quantità di prodotti** (non dei timbri), avviso "premio applicato" quando `rewards > 0`, card piena mostrata come "premio disponibile". | `archive/Stampy_Handoff_Fase_4d.md` §5.3, `archive/Report_Fase_4d.md` §5.3 |
-| B8 | `TODO` | **Rotta "riaggiungi card"** per chi ha rimosso il pass: rigenerare il `saveUrl` della card esistente. Piccola, ma serve una scelta di prodotto sull'esposizione (link pubblico? dopo login?). | `archive/stampy_contesto_progetto.md` §5 |
-| B9 | `DA-DECIDERE` | **Branding di default** per un locale appena creato (oggi `branding = {}` fa fallire la creazione card) e personalizzazione self-service (rimandata). | `archive/stampy_contesto_progetto.md` §5 |
-| B10 | `DA-VERIFICARE` | **`wallet_status`**: oggi vale `not_added` e non viene letto né aggiornato. Diventerebbe affidabile solo con un meccanismo di notifica di Google (V1). | `archive/stampy_contesto_progetto.md` §4.6 |
-| B11 | `DECISO` | **Dashboard gestore** (iscritti, timbri assegnati, premi riscattati + grafici nel tempo). Non iniziata. | `archive/stampy_contesto_progetto.md` §4.8 |
-| B12 | `DECISO` | **Apple Wallet**, solo dopo aver validato il flusso su Google: 99 $/anno, pass `.pkpass` firmati, estrazione del codice Wallet da `wallet/wallet.service.ts`. Con Apple si valuterà anche il login con Apple. | `archive/stampy_contesto_progetto.md` §4.6, §5 |
-| B13 | `DA-DECIDERE` | **Accesso con telefono + SMS**: solo con un cliente reale (costo per messaggio, NIST lo classifica "restricted"). Schema già predisposto. | `archive/progress.md` §5.27 |
+| B2 | `TO-DECIDE` | **Lazy promotion rollover.** The project planned: if `cards.promotion_id` is not the active promotion, on the first stamp reset `stamps_count`, update `promotion_id` and update the pass (no cron). Today `confirm` answers **409** and the code has no rollover. "What to do with accrued stamps" is a product decision (P2), so the mechanics are ready but must not be written beforehand. | `archive/stampy_db_schema.md` §6 |
+| B3 | `DECIDED` | **CORS restricted to a single origin with `credentials`** + `Origin` check on state-changing routes. Today `app.ts` uses an open `cors()`. Decision of 2026-10-26: **no CSRF token for now** (relies on `SameSite=Lax`). | `archive/Stampy_Handoff_Fase_4c.md` §6.3 |
+| B4 | `DECIDED` | **GDPR anonymization + retention.** Procedure: delete `auth_identities`, `users.email = NULL`, clear `display_name`, set `anonymized_at`, revoke sessions; cards and logs remain. Retention of `otp_challenges` and `auth_events` to be defined. Also to decide whether `auth_events.subject_hash` is still personal data (null it or rotate the secret). **Prerequisite: first real user.** | `archive/stampy_db_schema.md` §6, `archive/Stampy_Handoff_Fase_4c.md` §6.10 |
+| B5 | `DECIDED` | **Google login** (`POST /api/auth/google`, body `{idToken}`). Verify signature/`aud`/`iss`/`exp` with `google-auth-library` (already installed); look up `(google, sub)`; link to the user with the same email **only** if `@gmail.com` or `email_verified` + `hd`; third-party email → rejection + `google_untrusted_email_rejected` event; then session and `login_success`. Requires external configuration (V4). Postponed "after staff", which is closed. | `archive/Stampy_Handoff_Fase_4c.md` §5D, §6.8 |
+| B6 | `DECIDED` | **Real email delivery**: `GmailEmailSender` + `EMAIL_PROVIDER` (`console` \| `gmail`) in `env.ts`. Today only `ConsoleEmailSender` exists (it refuses to start in production). Gmail limits to be verified (V3); consider a transactional provider once there is a domain (SPF/DKIM). | `archive/Stampy_Handoff_Fase_4c.md` §5E, `archive/progress.md` §5.11 |
+| B7 | `DECIDED` | **Vue frontend: staff and customer.** Backend already ready (`/venues/mine`, queue, confirm, reject, polling with balance, `visit`). To respect: `venueId` in the URL with login on the same page (no redirect), customer polling every 1–2 s, **product quantity stepper** (not stamps), "reward applied" notice when `rewards > 0`, full card shown as "reward available". | `archive/Stampy_Handoff_Fase_4d.md` §5.3, `archive/Report_Fase_4d.md` §5.3 |
+| B8 | `TODO` | **"Re-add card" route** for someone who removed the pass: regenerate the `saveUrl` of the existing card. Small, but it needs a product choice on exposure (public link? after login?). | `archive/stampy_contesto_progetto.md` §5 |
+| B9 | `TO-DECIDE` | **Default branding** for a newly created venue (today `branding = {}` makes card creation fail) and self-service customization (postponed). | `archive/stampy_contesto_progetto.md` §5 |
+| B10 | `TO-VERIFY` | **`wallet_status`**: today it is `not_added` and is neither read nor updated. It would become reliable only with a Google notification mechanism (V1). | `archive/stampy_contesto_progetto.md` §4.6 |
+| B11 | `DECIDED` | **Venue manager dashboard** (members, stamps awarded, rewards redeemed + charts over time). Not started. | `archive/stampy_contesto_progetto.md` §4.8 |
+| B12 | `DECIDED` | **Apple Wallet**, only after validating the flow on Google: $99/year, signed `.pkpass` passes, extraction of the Wallet code from `wallet/wallet.service.ts`. With Apple, login with Apple will also be considered. | `archive/stampy_contesto_progetto.md` §4.6, §5 |
+| B13 | `TO-DECIDE` | **Phone + SMS access**: only with a real customer (cost per message, NIST classifies it as "restricted"). Schema already prepared. | `archive/progress.md` §5.27 |
 
 ---
 
-## 3. Debito tecnico verificato nel codice
+## 3. Technical debt verified in the code
 
-Nessuna di queste voci blocca lo sviluppo; quasi tutte bloccano il deploy.
+None of these blocks development; almost all of them block the deploy.
 
-| ID | Stato | Cosa | Dove |
+| ID | Status | What | Where |
 |---|---|---|---|
-| C1 | `TODO` | `logger: true` stampa query e parametri (quindi anche email e hash dei codici). Da togliere prima del deploy. | `src/db/index.ts` |
-| C5 | `TODO` | `start` usa `tsx` e `build`/`dist` sono scollegati; `dist/` è vecchio e ignorato da Git. Decidere il deploy (tsx o build) e allineare gli script. | `package.json`, `dist/` |
-| C6 | `TODO` | `visit` non è in transazione (gli step sono idempotenti, ma una card può restare senza richiesta se fallisce a metà). | `src/api/venues/venues.controller.ts` |
-| C7 | `TODO` | Il **409** di `visit` ha lo status nel codice ma non è esercitabile senza forzare una race: nessun test lo copre. | `venues.controller.ts` |
-| C11 | `TODO` | `npm run script:all` si ferma: `create-owner` e `create-venue` richiedono argomenti ed escono con 1; inoltre la catena non passa `--env-file=.env`. O si tolgono dalla catena o si accettano argomenti. | `package.json` |
-| C13 | `TODO` | `addOrGetCard` fa `INSERT` prima del `SELECT` (scelta accettata: evita la race). Se il codice cresce, valutare un `CardsService` più esplicito. | `cards.service.ts` |
-| C14 | `TODO` | `.vscode/settings.json` è tracciato: decidere se tenerlo. | `.vscode/` |
-| C15 | `TODO` | Tag `fase-4d-chiusa` mai creato (in repo esiste solo `refactor-struttura-chiuso`). I tag non sono indispensabili, ma la chiusura delle fasi è tracciata solo dai commit. | Git |
+| C1 | `TODO` | `logger: true` prints queries and parameters (so also emails and code hashes). To be removed before the deploy. | `src/db/index.ts` |
+| C5 | `TODO` | `start` uses `tsx` and `build`/`dist` are disconnected; `dist/` is stale and ignored by Git. Decide the deploy (tsx or build) and align the scripts. | `package.json`, `dist/` |
+| C6 | `TODO` | `visit` is not in a transaction (the steps are idempotent, but a card can be left without a request if it fails halfway). | `src/api/venues/venues.controller.ts` |
+| C7 | `TODO` | The **409** of `visit` has its status in the code but cannot be exercised without forcing a race: no test covers it. | `venues.controller.ts` |
+| C11 | `TODO` | `npm run script:all` stops: `create-owner` and `create-venue` require arguments and exit with 1; moreover the chain does not pass `--env-file=.env`. Either remove them from the chain or accept arguments. | `package.json` |
+| C13 | `TODO` | `addOrGetCard` does `INSERT` before `SELECT` (accepted choice: avoids the race). If the code grows, consider a more explicit `CardsService`. | `cards.service.ts` |
+| C14 | `TODO` | `.vscode/settings.json` is tracked: decide whether to keep it. | `.vscode/` |
+| C15 | `TODO` | Tag `fase-4d-chiusa` was never created (the repo only has `refactor-struttura-chiuso`). Tags are not essential, but phase closure is tracked only by commits. | Git |
 
 ---
 
-## 4. Test
+## 4. Tests
 
-| ID | Stato | Cosa |
+| ID | Status | What |
 |---|---|---|
-| T2 | `TODO` | Un fallimento isolato e non riprodotto in `otp-request.ts` ("5 richieste simultanee" dopo un riavvio di nodemon). Se ricapita, salvare l'output prima di indagare. | 
-| T3 | `TODO` | Test da aggiungere quando la feature esiste: aggiornamento del pass end-to-end (B1), login Google con token valido/alterato/`aud` errato/email di terzi (B5), anonimizzazione (B4), 409 di `visit` (C7). |
-| T4 | `TODO` | **Collection Bruno** per test manuali strutturati: solo proposta, nulla creato. Il piano prevedeva cartelle `00–09` e fixture generate da script (Bruno non ha accesso al DB né ai codici OTP). |
-| T5 | `TODO` | Prova reale su browser/iPhone/HTTPS: cookie `Secure`, `SameSite=Lax` dall'apertura da tag, scorrimento della sessione. Oggi tutto testato solo via HTTP in locale. |
+| T2 | `TODO` | An isolated, unreproduced failure in `otp-request.ts` ("5 simultaneous requests" after a nodemon restart). If it happens again, save the output before investigating. |
+| T3 | `TODO` | Tests to add when the feature exists: end-to-end pass update (B1), Google login with valid/tampered token/wrong `aud`/third-party email (B5), anonymization (B4), `visit` 409 (C7). |
+| T4 | `TODO` | **Bruno collection** for structured manual tests: proposal only, nothing created. The plan had folders `00–09` and fixtures generated by scripts (Bruno has no access to the DB or the OTP codes). |
+| T5 | `TODO` | Real test on browser/iPhone/HTTPS: `Secure` cookie, `SameSite=Lax` when opened from a tag, session sliding. Today everything is tested only over local HTTP. |
 
 ---
 
-## 5. Verifiche esterne (solo su richiesta esplicita dell'utente)
+## 5. External verifications (only on the user's explicit request)
 
-Non inventare API, SDK o limiti: queste voci si chiudono leggendo la documentazione
-ufficiale o provando sul campo, e la risposta va scritta qui.
+Do not invent APIs, SDKs or limits: these entries are closed by reading the official
+documentation or testing in the field, and the answer is written here.
 
-| ID | Cosa verificare |
+| ID | What to verify |
 |---|---|
-| V1 | **Google Wallet REST**: auth/scope, patch vs sostituzione, campi aggiornabili (`loyaltyPoints.balance`, `user_progress`), latenza, se la class è modificabile, notifiche per `wallet_status`. |
-| V2 | **Google publishing access**: tempi di review, requisiti del Business Profile per un individuo senza P.IVA, limiti dei pass in demo/test, screenshot richiesti. |
-| V3 | **Gmail**: limiti di invio e consegna per email automatiche, autenticazione (app password vs OAuth). |
-| V4 | **Google Sign-In**: client ID, schermata di consenso, requisiti di verifica, **come ottenere un ID token in test** senza frontend. |
-| V5 | **Apple**: `id_token`, se `email_verified` può essere falso (Work & School), gestione "Hide My Email". |
-| V6 | **NFC fisico**: lettura in background su iPhone (XS/XR in poi) e Android; comportamento con cover e superfici metalliche. |
-| V7 | **Cloudflare**: tunnel con nome/URL fisso; numero di hop per `TRUST_PROXY` dietro il proxy di staging (mai `true`). |
-| V8 | **Safari ITP**: il cookie `httpOnly` scritto dal server non dovrebbe rientrare nei 7 giorni, ma se l'IP del server è scollegato dal sito può scattare → frontend e `/api` sulla stessa origine. |
-| V9 | **Grafica del pass**: dimensioni e requisiti del logo (PNG, meglio quadrato). `public/logo.png` non è servito da nessuna rotta. |
+| V1 | **Google Wallet REST**: auth/scope, patch vs replace, updatable fields (`loyaltyPoints.balance`, `user_progress`), latency, whether the class is editable, notifications for `wallet_status`. |
+| V2 | **Google publishing access**: review times, Business Profile requirements for an individual without a VAT number, pass limits in demo/test, required screenshots. |
+| V3 | **Gmail**: sending and delivery limits for automated emails, authentication (app password vs OAuth). |
+| V4 | **Google Sign-In**: client ID, consent screen, verification requirements, **how to obtain an ID token in tests** without a frontend. |
+| V5 | **Apple**: `id_token`, whether `email_verified` can be false (Work & School), handling of "Hide My Email". |
+| V6 | **Physical NFC**: background reading on iPhone (XS/XR onwards) and Android; behavior with cases and metal surfaces. |
+| V7 | **Cloudflare**: tunnel with a fixed name/URL; number of hops for `TRUST_PROXY` behind the staging proxy (never `true`). |
+| V8 | **Safari ITP**: the `httpOnly` cookie written by the server should not fall under the 7-day cap, but if the server IP is disconnected from the site it can kick in → frontend and `/api` on the same origin. |
+| V9 | **Pass graphics**: logo size and requirements (PNG, preferably square). `public/logo.png` is not served by any route. |
 
 ---
 
-## 6. Prodotto e campo
+## 6. Product and field
 
-| ID | Stato | Cosa |
+| ID | Status | What |
 |---|---|---|
-| P1 | `TODO` | **Parlare con 2-3 gestori reali** (bar, gelaterie, pizzerie): prerequisito per modello di business e decisioni su scadenza/rollover. Non è un compito tecnico rimandabile. |
-| P2 | `DA-DECIDERE` | Cosa succede ai timbri maturati alla **scadenza o al cambio di promozione** (azzerare, tenere, avvisare sulla card). Blocca B2. |
-| P3 | `DA-DECIDERE` | **Modello di business** e prezzo. |
-| P4 | `TODO` | **Supporto fisico per il locale**, a fasi: prototipo (adesivo NTAG213 su porta-menù in acrilico a L + QR stampato), pilota (stampa col brand), scala (plexiglass su misura con chip incassato). Non bloccare mai i tag in sola lettura prima dell'URL definitivo. |
-| P5 | `TODO` | **Dominio** (~10 €/anno) e **hosting di staging** (es. Railway, Fly.io) con URL fisso; il dominio serve anche per SPF/DKIM dell'email. |
-| P6 | `DA-DECIDERE` | Tenere il barcode sul pass? L'identificazione avviene dal tag/QR del banco; potrebbe bastare `accountId`. Decidere anche come mostrare il `publicCode` leggibile. |
-| P7 | `DA-DECIDERE` | Dashboard: quali numeri servono davvero al gestore (oltre a iscritti, timbri, premi). |
-| P8 | `TODO` | **Anteprima dei tratti** per lo staff prima della conferma (rimandata: prima il flusso base). |
-| P9 | `TODO` | Mostrare i **premi anche al cliente** nel polling (oggi `rewards` compare solo nella risposta di `confirm`, quindi lo vede solo lo staff). |
+| P1 | `TODO` | **Talk to 2-3 real venue managers** (bars, gelaterias, pizzerias): prerequisite for the business model and for decisions on expiry/rollover. Not a technical task that can be postponed. |
+| P2 | `TO-DECIDE` | What happens to accrued stamps at **expiry or promotion change** (reset, keep, warn on the card). Blocks B2. |
+| P3 | `TO-DECIDE` | **Business model** and price. |
+| P4 | `TODO` | **Physical support for the venue**, in phases: prototype (NTAG213 sticker on an L-shaped acrylic menu holder + printed QR), pilot (branded print), scale (custom plexiglass with embedded chip). Never lock tags to read-only before the final URL. |
+| P5 | `TODO` | **Domain** (~€10/year) and **staging hosting** (e.g. Railway, Fly.io) with a fixed URL; the domain is also needed for email SPF/DKIM. |
+| P6 | `TO-DECIDE` | Keep the barcode on the pass? Identification happens from the counter tag/QR; `accountId` might be enough. Also decide how to show the readable `publicCode`. |
+| P7 | `TO-DECIDE` | Dashboard: which numbers the venue manager really needs (beyond members, stamps, rewards). |
+| P8 | `TODO` | **Segment preview** for staff before confirmation (postponed: basic flow first). |
+| P9 | `TODO` | Show **rewards to the customer too** in polling (today `rewards` only appears in the `confirm` response, so only staff sees it). |
 
 ---
 
-## 7. Regole di sicurezza da rispettare nelle API vere
+## 7. Security rules to follow in the real APIs
 
-Promemoria operativo (le decisioni stanno in `CONTEXT.md` §5).
+Operational reminder (the decisions are in `CONTEXT.md` §5).
 
-- Auth prima della validazione: `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`.
-- Il `venueId` del path è un **selettore**, mai una prova di autorizzazione: il ruolo si
-  legge da `venue_members` a ogni richiesta.
-- **Ownership** su ogni risorsa: la verifica è in SQL (join su `cards.user_id`); una
-  risorsa altrui dà lo **stesso 404** di una inesistente e non viene mai scritta.
-- La conferma è idempotente per costruzione: UPDATE condizionato a `status='pending'` +
-  `idempotency_key` univoca. Doppia conferma → 409, mai doppio conteggio.
-- Validazione: niente campi non previsti, tetto su ogni valore numerico, niente
-  coercizione implicita, 400 (non 500) per input mancanti.
-- Limiti a due livelli (card e IP), mai un contatore globale; `TRUST_PROXY` = numero di hop.
-- Segreti: service account, `OTP_HMAC_SECRET`, credenziali email mai in Git, in chat o
-  nei documenti; in produzione nei secret dell'hosting.
-- Mai `res.json(riga)`; mai dati personali nei log o in `auth_events.metadata`.
-- Ogni UPDATE di stato con il filtro di stato nel `WHERE`.
+- Auth before validation: `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`.
+- The path's `venueId` is a **selector**, never proof of authorization: the role is read
+  from `venue_members` on every request.
+- **Ownership** on every resource: the check is in SQL (join on `cards.user_id`); someone
+  else's resource gives the **same 404** as a missing one and is never written.
+- Confirmation is idempotent by construction: UPDATE conditioned on `status='pending'` +
+  unique `idempotency_key`. Double confirm → 409, never a double count.
+- Validation: no unexpected fields, a cap on every numeric value, no implicit coercion,
+  400 (not 500) for missing input.
+- Limits at two levels (card and IP), never a global counter; `TRUST_PROXY` = number of hops.
+- Secrets: service account, `OTP_HMAC_SECRET`, email credentials never in Git, in chat or
+  in documents; in production in the hosting secrets.
+- Never `res.json(row)`; never personal data in logs or in `auth_events.metadata`.
+- Every state UPDATE with the state filter in the `WHERE`.
 
 ---
 
-## 8. Chiuso di recente
+## 8. Recently closed
 
-Non si riapre: se serve il dettaglio, è in `archive/` e nei commit.
+Not reopened: if you need the detail, it is in `archive/` and in the commits.
 
-| Data | Cosa |
+| Date | What |
 |---|---|
-| 30/10/2026 | **C2, C4, C8 chiusi**: 404 JSON sulle rotte `/api` inesistenti; 400 di validazione senza `value`; 429 unico `TryLaterError` / "Riprova più tardi" / `retryAfterSeconds` (anche dal limiter IP). `otp-request.ts` 13→16 controlli, totale 104. |
-| 30/10/2026 | **C3, C9, C10, C12 chiusi**: JSON malformato → 400 (handler `bodyParserHandler`); rimossi `users.service.ts`, `UserNotFoundError`, `PromotionExpiredError`, `CardNotFoundError`; commento `req.auth` corretto; retry su collisione di `public_code`. 101 controlli verdi, `typecheck:all` pulito. |
-| 30/10/2026 | **Cartella `docs/` spostata nella radice del repo** (da `stampy-backend/docs/`); riferimenti allineati in `README.md`, `AGENTS.md`, `opencode.json`. `archive/` lasciato invariato. |
-| 28/10/2026 | **Suite rieseguita** dopo l'ultimo commit: 101 controlli verdi (20+24+12+13+16+16) e 25 controlli SQL (19+6), `typecheck:all` pulito. |
-| 28/10/2026 | **Documentazione riorganizzata**: 3 file vivi (`CONTEXT.md`, `CODEBASE.md`, `BACKLOG.md`), i 7 doc storici in `docs/archive/`. |
-| 27/10/2026 | **Fase 4d**: rate limit di `visit` (10 nuove/ora per card), auth staff con ruoli, `/venues/mine`, coda, conferma/rifiuto in transazione, migration 3, regola dei timbri corretta. 101 controlli verdi. |
-| 26/10/2026 | Percorso email (OTP), `isAuthenticated`, sessione scorrevole con tetto assoluto, logout, `visit`/polling con l'utente di sessione e ownership in SQL. |
-| 24/10/2026 | Migration 2 (`auth_identities`, `otp_challenges`, `sessions`, `auth_events`; email su `users`, telefono rimosso), decisioni di auth. |
-| 27-28/10/2026 | Script `typecheck:all` (scripts inclusi), rimozione dipendenze inutilizzate, enum derivati dai `pgEnum`, `CardsService` separato dal Wallet, `create-venue`. |
+| 2026-10-30 | **C2, C4, C8 closed**: JSON 404 on non-existent `/api` routes; validation 400 without `value`; single 429 `TryLaterError` / "Riprova più tardi" / `retryAfterSeconds` (also from the IP limiter). `otp-request.ts` 13→16 checks, total 104. |
+| 2026-10-30 | **C3, C9, C10, C12 closed**: malformed JSON → 400 (`bodyParserHandler` handler); removed `users.service.ts`, `UserNotFoundError`, `PromotionExpiredError`, `CardNotFoundError`; `req.auth` comment fixed; retry on `public_code` collision. 101 checks green, `typecheck:all` clean. |
+| 2026-10-30 | **`docs/` folder moved to the repo root** (from `stampy-backend/docs/`); references aligned in `README.md`, `AGENTS.md`, `opencode.json`. `archive/` left unchanged. |
+| 2026-10-28 | **Suite re-run** after the last commit: 101 checks green (20+24+12+13+16+16) and 25 SQL checks (19+6), `typecheck:all` clean. |
+| 2026-10-28 | **Documentation reorganized**: 3 living files (`CONTEXT.md`, `CODEBASE.md`, `BACKLOG.md`), the 7 historical docs in `docs/archive/`. |
+| 2026-10-27 | **Phase 4d**: `visit` rate limit (10 new/hour per card), staff auth with roles, `/venues/mine`, queue, confirm/reject in a transaction, migration 3, stamp rule fixed. 101 checks green. |
+| 2026-10-26 | Email (OTP) path, `isAuthenticated`, sliding session with absolute cap, logout, `visit`/polling with the session user and ownership in SQL. |
+| 2026-10-24 | Migration 2 (`auth_identities`, `otp_challenges`, `sessions`, `auth_events`; email on `users`, phone removed), auth decisions. |
+| 2026-10-27/28 | `typecheck:all` script (scripts included), removal of unused dependencies, enums derived from the `pgEnum`s, `CardsService` separated from the Wallet, `create-venue`. |

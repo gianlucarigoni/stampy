@@ -1,65 +1,65 @@
 ---
 name: db-migration
-description: Procedura per modificare lo schema Postgres di stampy-backend con Drizzle (schema.ts -> generate -> lettura SQL -> migrate -> tipi -> verifica). Usala ogni volta che serve aggiungere/togliere una colonna, tabella, indice, vincolo, enum o FK, o quando l'utente parla di migration, schema, drizzle-kit, o di un dato che "va salvato nel DB" — anche se non dice esplicitamente "migration".
+description: Procedure for changing the Postgres schema of stampy-backend with Drizzle (schema.ts -> generate -> read SQL -> migrate -> types -> verify). Use it whenever a column, table, index, constraint, enum or FK must be added/removed, or when the user talks about migrations, schema, drizzle-kit, or data that "has to be saved in the DB" — even if they do not explicitly say "migration".
 ---
 
 # Migration in stampy-backend
 
-Una migration applicata al DB non si annulla facilmente: per questo il SQL va letto prima.
-Tutti i comandi da `stampy-backend/`.
+A migration applied to the DB is not easily undone: that is why the SQL must be read first.
+All commands from `stampy-backend/`.
 
-## 1. Modifica `src/db/schema.ts`
+## 1. Edit `src/db/schema.ts`
 
-- Enum: solo `pgEnum` qui, mai enum TS paralleli.
-- FK `RESTRICT` (anonimizzazione invece di cancellazione); vincoli `check` dove servono.
-- Una migration per modifica logica.
+- Enums: only `pgEnum` here, never parallel TS enums.
+- `RESTRICT` FKs (anonymization instead of deletion); `check` constraints where needed.
+- One migration per logical change.
 
-## 2. Genera
+## 2. Generate
 
 ```bash
-npx drizzle-kit generate --config=src/drizzle.config.ts --name=<nome_snake_case>
+npx drizzle-kit generate --config=src/drizzle.config.ts --name=<snake_case_name>
 ```
 
-Mai `drizzle-kit push` né `introspect`.
+Never `drizzle-kit push` or `introspect`.
 
-## 3. Leggi il SQL generato (`drizzle/NNNN_<nome>.sql`)
+## 3. Read the generated SQL (`drizzle/NNNN_<name>.sql`)
 
-Controlla e riporta all'utente:
-- `DROP` di colonne/tabelle o rename interpretati come drop+add → perdita di dati.
-- `NOT NULL` aggiunto a una tabella con righe senza `DEFAULT` → fallisce o serve backfill.
-- Cambi di tipo, enum (aggiungere valori va bene; toglierli no).
-- Vincoli/indici con il nome atteso.
+Check and report to the user:
+- `DROP` of columns/tables, or renames interpreted as drop+add → data loss.
+- `NOT NULL` added to a table with rows and no `DEFAULT` → fails or needs a backfill.
+- Type changes, enums (adding values is fine; removing them is not).
+- Constraints/indexes with the expected name.
 
-Se il SQL non va bene, correggi lo schema e rigenera (cancella il file e la voce in
-`drizzle/meta/_journal.json` + snapshot generati, solo se la migration **non** è ancora
-applicata). Chiedi conferma all'utente prima di applicare migration distruttive.
+If the SQL is wrong, fix the schema and regenerate (delete the file and the generated
+entry in `drizzle/meta/_journal.json` + snapshot, only if the migration is **not** yet
+applied). Ask the user for confirmation before applying destructive migrations.
 
-## 4. Applica
+## 4. Apply
 
 ```bash
 node --env-file=.env ./node_modules/.bin/drizzle-kit migrate --config=src/drizzle.config.ts
 ```
 
-Solo sul DB di sviluppo.
+Only on the development DB.
 
-## 5. Tipi
+## 5. Types
 
-Aggiorna `src/db/types.ts`: `typeof tabella.$inferSelect` per le tabelle,
-`(typeof enumX.enumValues)[number]` per gli enum. Mai tipi scritti a mano.
-Poi `npm run typecheck && npm run typecheck:all` e sistema gli usi.
+Update `src/db/types.ts`: `typeof table.$inferSelect` for tables,
+`(typeof enumX.enumValues)[number]` for enums. Never hand-written types.
+Then `npm run typecheck && npm run typecheck:all` and fix the usages.
 
-## 6. Verifica dei vincoli (se ne hai aggiunti)
+## 6. Constraint verification (if you added any)
 
-Crea `scripts/verify-migration-<N>.sql` sul modello di `verify-migration-3.sql`:
-`BEGIN; DO $$ ... RAISE NOTICE 'OK ...' ... $$; ROLLBACK;` così non sporca il DB.
+Create `scripts/verify-migration-<N>.sql` modeled on `verify-migration-3.sql`:
+`BEGIN; DO $$ ... RAISE NOTICE 'OK ...' ... $$; ROLLBACK;` so it does not dirty the DB.
 
 ```bash
 docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration-<N>.sql
 ```
 
-## 7. Chiudere
+## 7. Wrap up
 
-- Codice che scrive le nuove colonne: `now()` del DB per i tempi, filtro di stato nel WHERE.
-- Skill `verify` per tutti gli script.
-- Aggiorna la sezione dati di `docs/CODEBASE.md`; la motivazione di un vincolo va in
+- Code that writes the new columns: DB `now()` for times, state filter in the WHERE.
+- `verify` skill for all scripts.
+- Update the data section of `docs/CODEBASE.md`; the rationale for a constraint goes in
   `docs/CONTEXT.md`.
