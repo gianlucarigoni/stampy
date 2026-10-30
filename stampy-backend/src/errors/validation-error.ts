@@ -22,7 +22,6 @@ export const validationHandler = (err: Error, req: Request, res: Response, next:
       message: err.message,
       details: err.originalErrors.map(err => ({
         property: err.property,
-        value: err.value,
         constraints: err.constraints
       }))
     });

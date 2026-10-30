@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, type RateLimitInfo } from "express-rate-limit";
 import { env } from "../../config/env";
+import { TryLaterError } from "../../errors/try-later.error";
 
 /**
  * Rete di sicurezza generica contro l'abuso scriptato delle rotte `/auth/email/*`
@@ -28,6 +29,12 @@ export const ipAuthRateLimit = ipRateLimitEnabled
       limit: IP_RATE_LIMIT_MAX,
       standardHeaders: "draft-7",
       legacyHeaders: false,
-      message: { error: "TooManyRequests", message: "Troppe richieste, riprova più tardi" },
+      // Stesso 429 delle altre rotte (TryLaterError). resetTime è l'orologio in memoria
+      // del limiter, non una scadenza nel DB.
+      handler: (req, _res, next) => {
+        const resetTime = (req as Request & { rateLimit?: RateLimitInfo }).rateLimit?.resetTime;
+        const resetMs = resetTime ? resetTime.getTime() - Date.now() : IP_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
+        next(new TryLaterError(Math.max(1, Math.ceil(resetMs / 1000))));
+      },
     })
   : (_req: Request, _res: Response, next: NextFunction) => next();

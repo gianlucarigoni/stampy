@@ -66,17 +66,10 @@ Nessuna di queste voci blocca lo sviluppo; quasi tutte bloccano il deploy.
 | ID | Stato | Cosa | Dove |
 |---|---|---|---|
 | C1 | `TODO` | `logger: true` stampa query e parametri (quindi anche email e hash dei codici). Da togliere prima del deploy. | `src/db/index.ts` |
-| C2 | `TODO` | Rotta inesistente → pagina **HTML** di Express invece del JSON. Serve un 404 JSON. | `src/app.ts` |
-| C3 | `TODO` | JSON malformato nel body → **500** (atteso 400): l'errore di body-parser ha `status` ma non è un `GenericError`. | `src/errors/generic.ts` |
-| C4 | `TODO` | Il 400 della validazione restituisce anche `value` (eco dell'input). | `src/errors/validation-error.ts` |
 | C5 | `TODO` | `start` usa `tsx` e `build`/`dist` sono scollegati; `dist/` è vecchio e ignorato da Git. Decidere il deploy (tsx o build) e allineare gli script. | `package.json`, `dist/` |
 | C6 | `TODO` | `visit` non è in transazione (gli step sono idempotenti, ma una card può restare senza richiesta se fallisce a metà). | `src/api/venues/venues.controller.ts` |
 | C7 | `TODO` | Il **409** di `visit` ha lo status nel codice ma non è esercitabile senza forzare una race: nessun test lo copre. | `venues.controller.ts` |
-| C8 | `TODO` | `TryLaterError` ha `name = "TryLaterFound"` (refuso) e messaggio inglese `"Try again later"`; il corpo del 429 non è concordato con il frontend. | `src/errors/try-later.error.ts` |
-| C9 | `TODO` | **Codice morto**: `src/api/users/users.service.ts` non è importato da nessuna rotta; `UserNotFoundError` e `PromotionExpiredError` (+ handler registrati) non vengono mai lanciati; `CardNotFoundError` copre un ramo impossibile. | `src/api/users/`, `src/errors/` |
-| C10 | `TODO` | Commento sbagliato: dice che l'utente autenticato sta in `req.user`, ma sta in `req.auth`. | `src/utils/types/auth.type.ts` |
 | C11 | `TODO` | `npm run script:all` si ferma: `create-owner` e `create-venue` richiedono argomenti ed escono con 1; inoltre la catena non passa `--env-file=.env`. O si tolgono dalla catena o si accettano argomenti. | `package.json` |
-| C12 | `TODO` | `public_code` generato con nanoid senza retry: una collisione (23505) darebbe 500. Probabilità bassissima, ma il fix è di due righe. | `src/api/cards/cards.service.ts` |
 | C13 | `TODO` | `addOrGetCard` fa `INSERT` prima del `SELECT` (scelta accettata: evita la race). Se il codice cresce, valutare un `CardsService` più esplicito. | `cards.service.ts` |
 | C14 | `TODO` | `.vscode/settings.json` è tracciato: decidere se tenerlo. | `.vscode/` |
 | C15 | `TODO` | Tag `fase-4d-chiusa` mai creato (in repo esiste solo `refactor-struttura-chiuso`). I tag non sono indispensabili, ma la chiusura delle fasi è tracciata solo dai commit. | Git |
@@ -156,6 +149,9 @@ Non si riapre: se serve il dettaglio, è in `archive/` e nei commit.
 
 | Data | Cosa |
 |---|---|
+| 30/10/2026 | **C2, C4, C8 chiusi**: 404 JSON sulle rotte `/api` inesistenti; 400 di validazione senza `value`; 429 unico `TryLaterError` / "Riprova più tardi" / `retryAfterSeconds` (anche dal limiter IP). `otp-request.ts` 13→16 controlli, totale 104. |
+| 30/10/2026 | **C3, C9, C10, C12 chiusi**: JSON malformato → 400 (handler `bodyParserHandler`); rimossi `users.service.ts`, `UserNotFoundError`, `PromotionExpiredError`, `CardNotFoundError`; commento `req.auth` corretto; retry su collisione di `public_code`. 101 controlli verdi, `typecheck:all` pulito. |
+| 30/10/2026 | **Cartella `docs/` spostata nella radice del repo** (da `stampy-backend/docs/`); riferimenti allineati in `README.md`, `AGENTS.md`, `opencode.json`. `archive/` lasciato invariato. |
 | 28/10/2026 | **Suite rieseguita** dopo l'ultimo commit: 101 controlli verdi (20+24+12+13+16+16) e 25 controlli SQL (19+6), `typecheck:all` pulito. |
 | 28/10/2026 | **Documentazione riorganizzata**: 3 file vivi (`CONTEXT.md`, `CODEBASE.md`, `BACKLOG.md`), i 7 doc storici in `docs/archive/`. |
 | 27/10/2026 | **Fase 4d**: rate limit di `visit` (10 nuove/ora per card), auth staff con ruoli, `/venues/mine`, coda, conferma/rifiuto in transazione, migration 3, regola dei timbri corretta. 101 controlli verdi. |

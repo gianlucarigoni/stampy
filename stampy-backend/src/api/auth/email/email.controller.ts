@@ -23,8 +23,7 @@ export const request = async (req: TypedRequest<emailDTO>, res: Response, next: 
 
     const result = await otpSrv.createChallenge("email", email);
     if (!result.ok) {
-      res.set("Retry-After", String(result.retryAfterSeconds));
-      throw new TryLaterError();
+      throw new TryLaterError(result.retryAfterSeconds);
     }
 
     try {

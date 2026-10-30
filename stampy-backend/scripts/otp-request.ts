@@ -93,6 +93,29 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function main() {
   // ---------- VALIDAZIONE INPUT ----------
+  await test("JSON malformato -> 400 MalformedBody (non 500)", async () => {
+    const r = await fetch(BASE_URL + PATH, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{bad" });
+    const body = await r.json().catch(() => null);
+    return [check("status 400", r.status === 400, `status=${r.status}`), check("error MalformedBody", body?.error === "MalformedBody")];
+  });
+
+  await test("Email non valida -> 400 senza eco dell'input", async () => {
+    const bad = "non-una-email";
+    const r = await post({ email: bad });
+    show(r);
+    return [
+      check("status 400", r.status === 400),
+      check("details senza value", Array.isArray(r.body?.details) && r.body.details.every((d: any) => !("value" in d))),
+      check("l'input non compare nella risposta", !JSON.stringify(r.body).includes(bad)),
+    ];
+  });
+
+  await test("Rotta /api inesistente -> 404 JSON", async () => {
+    const r = await post(undefined, "GET", "/api/non-esiste");
+    show(r);
+    return [check("status 404", r.status === 404), check("body JSON NotFound", r.body?.error === "NotFound")];
+  });
+
   await test("Body vuoto -> 400", async () => {
     const r = await post({});
     show(r);
@@ -182,6 +205,8 @@ async function main() {
         (r.retryAfter ?? 0) >= 1 && (r.retryAfter ?? 0) <= 45,
         `valore=${r.retryAfter}`,
       ),
+      check("body: error TryLaterError, messaggio italiano", r.body?.error === "TryLaterError" && r.body?.message === "Riprova più tardi"),
+      check("body: retryAfterSeconds uguale all'header", r.body?.retryAfterSeconds === r.retryAfter),
       check("la sfida viva e' rimasta la stessa", before.rows[0]?.id === after.rows[0]?.id),
       check("nessuna nuova riga creata", (await total(e1)) === 1),
       check("auth_event otp_send_blocked scritto", (await events(e1, "otp_send_blocked")) >= 1),

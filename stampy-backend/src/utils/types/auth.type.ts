@@ -1,6 +1,6 @@
 import { IdentityProvider } from "../../db/types";
 
-// Utente autenticato messo in `req.user` da isAuthenticated.
+// Utente autenticato messo in `req.auth` da isAuthenticated (leggerlo con requireAuth).
 // Niente ruoli: quelli dello staff si leggono da venue_members a ogni richiesta.
 export type AuthUser = {
   id: string;

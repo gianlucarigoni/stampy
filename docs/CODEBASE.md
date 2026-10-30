@@ -18,7 +18,7 @@ aggiornamento del pass Google, login Google, invio email reale e frontend.
 - `cookie-parser` senza segreto (cookie non firmati), `express-rate-limit` per il limiter IP.
 - `class-validator`/`class-transformer` per i DTO, `zod` per env, branding, config
   promozione, metadata di audit.
-- `jsonwebtoken` per firmare il link Wallet, `nanoid` per `public_code`,
+- `jsonwebtoken` per firmare il link Wallet, `nanoid` per `public_code` (fino a 3 tentativi se collide),
   `google-auth-library` è installata ma **non usata** (serve al login Google futuro).
 
 ```bash
@@ -91,9 +91,8 @@ src/
       requests.service.ts   ownership in SQL, scadenza lazy, rate limit, coda, polling
       resolve/
         resolve.service.ts  conferma/rifiuto in transazione
-    users/
-      users.service.ts      NON USATO da nessuna rotta (vedi BACKLOG.md §2)
-  errors/                   una classe + handler per errore; generico ULTIMO
+  errors/                   una classe + handler per errore; generico ULTIMO;
+                            body-parser.error.ts: JSON malformato → 400, body grande → 413
   utils/
     auth-context.ts         requireAuth(req) -> { user, session }, 401 se manca
     typed-request.ts        TypedRequest<B,Q,P>, TypedAuthRequest (auth?: AuthContext)
@@ -134,9 +133,9 @@ middleware stanno in `utils/middlewares/`.
 
 Non esiste nessuna rotta `/cards`: la card nasce solo da `visit`.
 
-Errori: `400` validazione (`details` con `value`), `400` codice OTP, `401` unico,
+Errori: `400` validazione (`details` con `property` e `constraints`, mai l'eco del `value`), `400 MalformedBody` JSON malformato, `413 BodyTooLarge`, `404 NotFound` JSON per ogni rotta `/api` inesistente, `400` codice OTP, `401` unico,
 `403` non membro, `404` risorsa inesistente o altrui, `409` richiesta non più valida /
-promozione cambiata, `429` limiti, `500` generico JSON.
+promozione cambiata, `429` limiti (sempre `{error:"TryLaterError", message:"Riprova più tardi", retryAfterSeconds}` + header `Retry-After` con lo stesso valore, anche dal limiter IP), `500` generico JSON.
 
 ## 4. Convenzioni
 
@@ -156,7 +155,8 @@ promozione cambiata, `429` limiti, `500` generico JSON.
 - **Errori**: ogni `GenericError` va scritto con lo status. Un errore ricorrente merita
   classe + handler registrato **prima** di `genericErrorHandler`. Il generico espone
   status e messaggio **solo** per `GenericError`; tutto il resto → `500` JSON generico
-  con i dettagli solo nei log.
+  con i dettagli solo nei log. Gli errori di body-parser (JSON malformato, body troppo
+  grande) hanno un handler dedicato (`400 MalformedBody`, `413 BodyTooLarge`).
 - **Tempo**: sempre `now()` del DB nelle query, mai `new Date()` per le scadenze.
 - **UPDATE di stato**: sempre con il filtro di stato nel `WHERE` (`revoked_at IS NULL`,
   `status = 'pending'`, `consumed_at IS NULL`, …).
@@ -306,13 +306,13 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 | `stamps-split.ts` | 20 | soglie, soglia esatta, premi multipli, card piena, soglia 1, tetto 50, input impossibili |
 | `staff-requests.ts` | 24 | 401/403, `/venues/mine`, coda senza email, conferma 15 → 4/10 con 3 eventi, doppia conferma 409, validazione, rifiuto, scadenza, cross-venue 404, promozione cambiata 409, owner, soglia esatta, card piena, rate limit |
 | `poll-request.ts` | 12 | `visit`/polling con sessione, ownership, scadenza lazy, race |
-| `otp-request.ts` | 13 | cooldown, tetto orario, finestra, race, risposta uniforme |
+| `otp-request.ts` | 16 | JSON malformato, 400 senza eco, 404 JSON, cooldown e corpo del 429, tetto orario, finestra, race, risposta uniforme |
 | `otp-verify.ts` | 16 | tentativi, monouso, scadenza, eventi, race |
 | `session.ts` | 16 | 401 unico, scorrimento, tetto assoluto, logout, metadata |
 | `verify-migration-2.sql` | 19 | vincoli della migration 2 |
 | `verify-migration-3.sql` | 6 | vincoli della migration 3 |
 
-Ultima esecuzione registrata: **28 ottobre 2026, 101 controlli verdi** (20+24+12+13+16+16)
+Ultima esecuzione registrata: **30 ottobre 2026, 104 controlli verdi** (20+24+12+16+16+16)
 e 25 controlli SQL verdi (19+6), `npm run typecheck:all` pulito.
 
 Utility (non test): `scripts/create-owner.ts`, `scripts/create-venue.ts`.

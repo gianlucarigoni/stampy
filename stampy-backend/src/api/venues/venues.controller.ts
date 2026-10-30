@@ -1,5 +1,4 @@
 import { NextFunction, Response } from "express";
-import { CardNotFoundError } from "../../errors/card-not-found.error";
 import { GenericError } from "../../errors/generic";
 import { PromotionNotFoundError } from "../../errors/promotion-not-found.error";
 import { TryLaterError } from "../../errors/try-later.error";
@@ -29,9 +28,7 @@ export const visit = async (req: TypedAuthRequest<unknown, unknown, venueIdDTO>,
     const promotion = await venueSrv.getActivePromotion(venueId);
     if (!promotion) throw new PromotionNotFoundError();
 
-    const result = await cardsSrv.addOrGetCard(userId, venueId, promotion.id);
-    if (!result || !result.card) throw new CardNotFoundError();
-    const { card, created } = result;
+    const { card, created } = await cardsSrv.addOrGetCard(userId, venueId, promotion.id);
 
     if (created) {
       const saveUrl = googleWalletSrv.buildSaveUrl(venue, card, promotion);
@@ -54,8 +51,7 @@ export const visit = async (req: TypedAuthRequest<unknown, unknown, venueIdDTO>,
     // (dopo un rifiuto o una scadenza il cliente deve poter rifare subito il tocco).
     const rate = await requestSrv.checkCardRateLimit(card.id);
     if (!rate.allowed) {
-      res.set("Retry-After", String(rate.retryAfterSeconds));
-      throw new TryLaterError();
+      throw new TryLaterError(rate.retryAfterSeconds);
     }
 
     const newRequest = await requestSrv.newRequest(card.id, venueId);

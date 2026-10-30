@@ -1,56 +1,85 @@
-# Stampy backend: struttura e convenzioni
+# Stampy
 
-Documenti in `stampy-backend/docs/`: `CONTEXT.md` (contesto e decisioni, statico),
-`CODEBASE.md` (mappa del codice, endpoint, dati, test), `BACKLOG.md` (cosa manca,
-incluse le cose progettate e mai fatte). `docs/archive/` è congelato: non aggiornarlo.
-Se un documento contraddice il codice, vince il codice: correggi il documento.
+Digital loyalty (stamp) cards in Google Wallet for local food & beverage venues.
+Customers need no app: tap NFC tag / scan QR → email-code login → card in Wallet →
+staff confirms each stamp request in a web app.
 
-## Struttura
+Backend: Node.js + Express 5 + TypeScript (strict), Drizzle ORM, PostgreSQL 16.
+Frontend (Vue) not started. Solo developer, near-zero budget, no pilot customer yet.
 
-src/
-  api/<dominio>/     <dominio>.router, .controller, .service, .dto (dove servono)
-    auth/ cards/ health/ requests/ users/ venues/ wallet/
-    <ausiliario>/    file ausiliari raggruppati per nome (email, staff, membership, resolve, otp, identity, session, auth-events)
-  config/            env.ts (zod), serviceAccount.ts
-  db/                index.ts (pool, db), schema.ts, tx.ts (Tx, DbOrTx), types.ts (tipi e enum derivati)
-  errors/            una classe + un handler per errore; generico per ultimo
-  utils/             auth-context, typed-request, stamps, email, schemas (zod), middlewares/
-scripts/             test end-to-end e utility (create-owner, create-venue)
+## Read these first (in `docs/` at the repo root; in Italian — keep them in Italian)
 
-Un dominio = una cartella. Nessun import tra router di domini diversi;
-i service si importano tra domini solo come dipendenze esplicite.
-Tutti i middleware stanno in `utils/middlewares/`.
+| File | What it is | When to touch it |
+|---|---|---|
+| `docs/CONTEXT.md` | Product/architecture/security **decisions** (static) | Only when a decision changes |
+| `docs/CODEBASE.md` | How the code is **right now** (living) | In the SAME change that alters code, endpoints, schema or tests |
+| `docs/BACKLOG.md` | Everything not yet implemented | Move items to §8 with a date when done |
 
-## Regole
+Decisions in `CONTEXT.md` are **closed**: do not reopen or re-litigate them. If the code
+contradicts `CODEBASE.md`, the code wins and the doc must be fixed.
+Before any task, check `CODEBASE.md` §8 ("Da dove partire") for the relevant files.
 
-- Tipi di dominio SOLO da `db/types.ts` (derivati da Drizzle). Mai tipi scritti a mano per tabelle.
-- Enum: derivati dai `pgEnum` in `schema.ts`. Mai enum TS paralleli.
-- Wallet: tutto il codice Google in `api/wallet/`. `cards.service` conosce solo `buildObjectId`.
-- Ordine middleware: rate limit -> isAuthenticated -> requireRole -> validate(params) -> validate(body) -> controller.
-- Utente autenticato in `req.auth` (letto con `requireAuth`). Ruoli mai in sessione: da `venue_members` a ogni richiesta.
-- Il `venueId` del path è un selettore, mai una prova di autorizzazione. Mai fidarsi del client per quantità o tratti.
-- `new GenericError(msg, status)`: lo status è sempre obbligatorio. Errori ricorrenti: classe + handler prima del generico.
-- Tempo: `now()` del DB nelle query, mai `new Date()` per scadenze.
-- Ogni UPDATE di stato ha il filtro di stato nel WHERE.
-- Risposte sempre mappate, mai `res.json(riga)`. Nessun dato personale nei log o in `auth_events.metadata`.
-- Timbri: la regola sta solo in `utils/stamps.ts` (`splitStamps`).
-- Migration: `generate` + `migrate`, mai `push`. Leggere il SQL prima di applicarlo.
-- Documentazione: nessun nuovo file in `docs/`. Una decisione va in `CONTEXT.md`, una modifica al codice in `CODEBASE.md`, un lavoro futuro in `BACKLOG.md`.
+## Commands
 
-## Test (server acceso con `npm run dev`, DB di sviluppo)
+```bash
+npm run dev             # nodemon; .env is read only at startup
+npm run typecheck:all   # tsc over src + scripts — must be clean before finishing
+npx tsx scripts/stamps-split.ts                     # pure test, no server/DB
+npx tsx --env-file=.env scripts/<test>.ts           # e2e tests: need `npm run dev` + dev DB
+```
 
-npm run typecheck && npm run typecheck:all
-npx tsx scripts/stamps-split.ts
-npx tsx --env-file=.env scripts/staff-requests.ts
-npx tsx --env-file=.env scripts/poll-request.ts
-npx tsx --env-file=.env scripts/otp-request.ts
-npx tsx --env-file=.env scripts/otp-verify.ts
-npx tsx --env-file=.env scripts/session.ts
+Test scripts print ✔/✘ per check (no framework). Full list and prerequisites: `CODEBASE.md` §7.
+After changing behavior, run the relevant scripts and report the check counts.
 
-Atteso: 101 controlli verdi. Dopo ogni refactor: typecheck + tutti gli script.
+Migrations: `drizzle-kit generate` then `migrate` (exact commands in `CODEBASE.md` §6).
+**Always read the generated SQL before applying. Never `push` or `introspect`** — it would
+drop hand-written constraints (e.g. `promotions_no_overlap`, a `btree_gist` EXCLUDE).
 
-## Da non fare
+## Non-negotiable rules
 
-- Non reintrodurre repository, DI container o layer `domain/` senza un motivo concreto.
-- Non reintrodurre un'interfaccia "wallet provider" astratta finché non c'è Apple.
-- Non committare `.env`, `secrets/`, `bundle*.txt`.
+Security / auth
+- Protected route middleware order: `rate limit → isAuthenticated → requireRole → validate(params) → validate(body) → controller`.
+- Authenticated user lives in `req.auth` via `requireAuth(req)`. **Never `req.user`.**
+- Roles are read from `venue_members` on every request. Never in session, `req.auth`, or body.
+  The `venueId` in the path is a selector, not proof of authorization.
+- Ownership is checked in SQL. Someone else's resource returns the **same 404** as a missing one.
+- Never trust the client for authorization, quantities, or stamp splits.
+- Never put personal data (emails, codes, IPs) in logs or `auth_events.metadata`.
+- Never `res.json(row)` — always map the response. Session token never appears in a body.
+- Cookies only via `sessionCookieOptions()`.
+
+Data / correctness
+- Time: always DB `now()` in queries, **never `new Date()`** for expiry.
+- Every state UPDATE carries the state filter in `WHERE` (`status='pending'`, `revoked_at IS NULL`, …).
+- Always pass `venueId` together with resource ids (composite FKs enforce tenant isolation).
+- Stamp rule lives **only** in `utils/stamps.ts` (`splitStamps`). Never recompute it elsewhere.
+  Full card (`stamps_count = stampsRequired`) = reward available, not a bug.
+- `stamp_events.request_id` is NOT unique (one request → several events); uniqueness is on `idempotency_key`.
+- Users are anonymized, never deleted. All FKs are `RESTRICT`.
+- Domain types only from `db/types.ts`; enums only from the `pgEnum` definitions.
+
+Errors
+- Every `GenericError` carries an explicit status. Recurring error = class + handler registered
+  **before** `genericErrorHandler`. Unknown errors → generic JSON 500, details only in logs.
+
+## Do not
+
+- Add password login, unverified-email login, a "wallet provider" abstraction (until Apple exists),
+  Web NFC API, a generic promotion rule engine, or Apple Wallet before Google is validated.
+- Build features marked `DA-DECIDERE` in `BACKLOG.md` (e.g. promotion rollover B2) — they need a product decision first.
+- Invent behavior of external APIs (Google Wallet REST, Gmail, Google Sign-In). Items in
+  `BACKLOG.md` §5 must be verified against official docs; say so instead of guessing.
+- Commit secrets, service-account keys, `.env`, tokens, or Wallet `saveUrl`s.
+
+## Working style
+
+- Small, focused changes. No speculative abstractions; this is an MVP.
+- Follow the `api/` folder convention: `<domain>.router.ts / .controller.ts / .service.ts / .dto.ts`,
+  helpers in a subfolder named after their concern, middlewares in `utils/middlewares/`.
+- New logic with regression risk → add or extend a test script in `scripts/` (same ✔/✘ style).
+- If a request conflicts with a decision in `CONTEXT.md`, or looks premature/insecure/over-engineered,
+  say so with the reason and an alternative before implementing. The owner has the final say.
+- Distinguish facts, assumptions, and things to validate. Ask only when truly blocked; otherwise
+  state your assumption and proceed.
+- Finish by: `npm run typecheck:all` clean, relevant tests run, `CODEBASE.md` updated,
+  `BACKLOG.md` updated if an item was completed or a new gap was found.

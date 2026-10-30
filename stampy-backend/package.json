@@ -16,7 +16,7 @@
     "script:staff-requests": "tsx ./scripts/staff-requests",
     "script:stamps-split": "tsx ./scripts/stamps-split",
     "script:create-venue": "tsx ./scripts/create-venue",
-    "script:all": "tsx ./scripts/poll-request && tsx ./scripts/otp-request && tsx ./scripts/otp-verify && tsx ./scripts/session && tsx ./scripts/create-owner && tsx ./scripts/staff-requests && tsx ./scripts/stamps-split && tsx ./scripts/create-venue",
+    "script:all": "tsx ./scripts/poll-request && tsx ./scripts/otp-request && tsx ./scripts/otp-verify && tsx ./scripts/session  && tsx ./scripts/staff-requests && tsx ./scripts/stamps-split",
     "typecheck:all": "tsc --noEmit -p tsconfig.check.json"
   },
   "keywords": [],
