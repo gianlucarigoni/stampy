@@ -22,21 +22,9 @@
 
 ## 1. Next step
 
-### B1 — Google pass update after confirmation (`DECIDED`)
-
-**Why it is next**: the DB and the web polling are correct, but after confirmation the
-pass in the Wallet still shows the old balance. It is the gate of the end-to-end flow.
-
-- After the confirmation commit, update the object (`loyaltyPoints.balance` and the
-  `user_progress` text) via REST, **best effort**: if it fails, the DB stays correct.
-- To be checked in the official documentation **before** writing code (V1): auth/scope,
-  patch vs replace, updatable fields, latency, whether the class is editable, behavior
-  with an object not yet added to the Wallet.
-- Never commit output containing tokens or `saveUrl`s.
-- Done when: confirm → pass updated within a few seconds; end-to-end test recorded; a
-  REST error does not corrupt the DB.
-- Origin: `archive/progress.md` §5.15, `archive/Stampy_Handoff_Fase_4d.md` §5.2,
-  `archive/stampy_contesto_progetto.md` §5.
+No item is currently blocking the end-to-end flow. B1 (Google pass update after
+confirmation) was implemented on 2026-10-31 and is recorded in §8; what remains of it is
+B14 and V1 below, plus B8 (a customer who never saved the pass cannot get the link again).
 
 ---
 
@@ -55,6 +43,7 @@ pass in the Wallet still shows the old balance. It is the gate of the end-to-end
 | B10 | `TO-VERIFY` | **`wallet_status`**: today it is `not_added` and is neither read nor updated. It would become reliable only with a Google notification mechanism (V1). | `archive/stampy_contesto_progetto.md` §4.6 |
 | B11 | `DECIDED` | **Venue manager dashboard** (members, stamps awarded, rewards redeemed + charts over time). Not started. | `archive/stampy_contesto_progetto.md` §4.8 |
 | B12 | `DECIDED` | **Apple Wallet**, only after validating the flow on Google: $99/year, signed `.pkpass` passes, extraction of the Wallet code from `wallet/wallet.service.ts`. With Apple, login with Apple will also be considered. | `archive/stampy_contesto_progetto.md` §4.6, §5 |
+| B14 | `TO-VERIFY` | **Push notification when the reward is reached** (`stamps_count = stampsRequired`) via `notifyPreference` on the PATCH, at most once per card cycle (cap ≈3 pushes/24 h). The accepted literal is not known (`notifyOnUpdate` / `NOTIFY` / `NOTIFY_ON_UPDATE`): test on a demo issuer before writing code (V1). Today every pass update is silent. | `google/wallet-pass-update.md` |
 | B13 | `TO-DECIDE` | **Phone + SMS access**: only with a real customer (cost per message, NIST classifies it as "restricted"). Schema already prepared. | `archive/progress.md` §5.27 |
 
 ---
@@ -94,7 +83,7 @@ documentation or testing in the field, and the answer is written here.
 
 | ID | What to verify |
 |---|---|
-| V1 | **Google Wallet REST**: auth/scope, patch vs replace, updatable fields (`loyaltyPoints.balance`, `user_progress`), latency, whether the class is editable, notifications for `wallet_status`. |
+| V1 | **Google Wallet REST**: the PATCH is implemented but never run against a real demo issuer. Still to test: patch vs replace for `textModulesData` (all 3 modules are always sent), the response for an object **not yet saved** (404?), latency, `notifyPreference` literal, whether the class is editable, notifications for `wallet_status`. See `google/wallet-pass-update.md` (UNVERIFIED table). |
 | V2 | **Google publishing access**: review times, Business Profile requirements for an individual without a VAT number, pass limits in demo/test, required screenshots. |
 | V3 | **Gmail**: sending and delivery limits for automated emails, authentication (app password vs OAuth). |
 | V4 | **Google Sign-In**: client ID, consent screen, verification requirements, **how to obtain an ID token in tests** without a frontend. |
@@ -149,6 +138,7 @@ Not reopened: if you need the detail, it is in `archive/` and in the commits.
 
 | Date | What |
 |---|---|
+| 2026-10-31 | **B1 closed (code side)**: after the confirm commit, `staff.controller.ts` calls `GoogleWalletService.updateCard` (authenticated PATCH of `loyaltyPoints` + 3 text modules; 5 s timeout, 2 retries) in a best-effort wrapper that only logs card id + status/code, so a Google failure never changes the 200. `confirm` now returns `cardId` (internal, stripped from the body). New `scripts/wallet-update.ts` (11 checks, mocked client). Removed the unscoped `getRequestById` and the unused `CardNotFoundError`. Real-issuer behavior still open (V1). |
 | 2026-10-30 | **C2, C4, C8 closed**: JSON 404 on non-existent `/api` routes; validation 400 without `value`; single 429 `TryLaterError` / "Riprova più tardi" / `retryAfterSeconds` (also from the IP limiter). `otp-request.ts` 13→16 checks, total 104. |
 | 2026-10-30 | **C3, C9, C10, C12 closed**: malformed JSON → 400 (`bodyParserHandler` handler); removed `users.service.ts`, `UserNotFoundError`, `PromotionExpiredError`, `CardNotFoundError`; `req.auth` comment fixed; retry on `public_code` collision. 101 checks green, `typecheck:all` clean. |
 | 2026-10-30 | **`docs/` folder moved to the repo root** (from `stampy-backend/docs/`); references aligned in `README.md`, `AGENTS.md`, `opencode.json`. `archive/` left unchanged. |

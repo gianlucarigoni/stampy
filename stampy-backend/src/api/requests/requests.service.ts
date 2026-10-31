@@ -75,7 +75,7 @@ export class RequestsService {
    * da una inesistente. Il saldo serve al client nel momento in cui lo stato passa ad
    * `approved` (decisione 27/10/2026).
    */
-  async getRequestById(id: string, userId: string): Promise<CardStateOfRequest | null> {
+  async getRequestByUserId(id: string, userId: string): Promise<CardStateOfRequest | null> {
     const [row] = await db
       .select({
         request: stampRequests,

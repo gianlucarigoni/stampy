@@ -12,6 +12,12 @@ const PUBLIC_CODE_ATTEMPTS = 3;
 export class CardsService {
   private publicCodeGenerator = customAlphabet("23456789ABCDEFGHJKMNPQRSTUVWXYZ", 8);
 
+  async getCardById(cardId: string): Promise<Card | null> {
+    const [card] = await db.select().from(cards).where(eq(cards.id, cardId));
+    if (!card) return null;
+    return card;
+  }
+
   async addOrGetCard(userId: string, venueId: string, promotionId: string): Promise<{ card: Card; created: boolean }> {
     // ON CONFLICT senza target: copre sia (user_id, venue_id) già esistente sia una
     // collisione di public_code, senza 23505. Se non c'è una card esistente, il conflitto

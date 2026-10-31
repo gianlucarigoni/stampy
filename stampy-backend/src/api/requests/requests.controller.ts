@@ -17,7 +17,7 @@ export const find = async (
     // scadenza lazy (solo da pending); poi una sola lettura con il saldo della card
     await requestsSrv.refreshStatus(requestId, userId);
 
-    const request = await requestsSrv.getRequestById(requestId, userId);
+    const request = await requestsSrv.getRequestByUserId(requestId, userId);
     if (!request) throw new RequestNotFoundError();
 
     res.status(200).json({

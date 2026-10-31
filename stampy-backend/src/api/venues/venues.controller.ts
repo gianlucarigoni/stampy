@@ -30,8 +30,11 @@ export const visit = async (req: TypedAuthRequest<unknown, unknown, venueIdDTO>,
 
     const { card, created } = await cardsSrv.addOrGetCard(userId, venueId, promotion.id);
 
+    const loyaltyClass = googleWalletSrv.buildLoyaltyClass(venue);
+    const loyaltyObject = googleWalletSrv.buildLoyaltyObject(card, promotion, loyaltyClass.id);
+
     if (created) {
-      const saveUrl = googleWalletSrv.buildSaveUrl(venue, card, promotion);
+      const saveUrl = googleWalletSrv.createSaveUrl(loyaltyClass, loyaltyObject);
 
       res.status(201).json({ state: VISIT_STATES[0], saveUrl, publicCode: card.publicCode });
       return;

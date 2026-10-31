@@ -5,6 +5,34 @@ import requestsSrv from "../../requests/requests.service";
 import resolveSrv from "../../requests/resolve/resolve.service";
 import { confirmDTO, staffRequestParamsDTO } from "./staff.dto";
 import { venueIdDTO } from "../venues.dto";
+import walletSrv from "../../wallet/wallet.service";
+import venuesSrv from "../venues.service";
+import cardsSrv from "../../cards/cards.service";
+
+/**
+ * Aggiorna il pass Google dopo il commit della conferma. Best effort: il DB è la fonte di
+ * verità e il Wallet una vista derivata, quindi qualunque errore (pass non ancora salvato,
+ * Google down, timeout) è solo loggato e non fa fallire la risposta allo staff.
+ * Nel log solo cardId e status/codice: niente dati personali, token o payload.
+ */
+async function syncWalletPass(venueId: string, cardId: string) {
+  try {
+    const [venue, promotion, card] = await Promise.all([
+      venuesSrv.getVenueById(venueId),
+      venuesSrv.getActivePromotion(venueId),
+      cardsSrv.getCardById(cardId),
+    ]);
+    if (!venue || !promotion || !card) {
+      console.warn(`[wallet] sync saltata: dati mancanti (card ${cardId})`);
+      return;
+    }
+    await walletSrv.updateCard(card, promotion, venue);
+  } catch (err: any) {
+    console.warn(
+      `[wallet] aggiornamento pass fallito (card ${cardId}): ${err?.response?.status ?? err?.code ?? "errore"}`,
+    );
+  }
+}
 
 /** Coda delle richieste pendenti del locale dello staff (solo lettura). */
 export const queue = async (
@@ -32,7 +60,15 @@ export const confirm = async (
     const operatorId = requireAuth(req).user.id;
     const { venueId, requestId } = req.params;
 
-    const result = await resolveSrv.confirm(venueId, requestId, operatorId, req.body.stamps);
+    const { cardId, ...result } = await resolveSrv.confirm(
+      venueId,
+      requestId,
+      operatorId,
+      req.body.stamps,
+    );
+
+    await syncWalletPass(venueId, cardId);
+
     res.status(200).json(result);
   } catch (err) {
     next(err);

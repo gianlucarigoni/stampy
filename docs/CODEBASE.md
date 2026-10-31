@@ -74,7 +74,8 @@ src/
     cards/
       cards.service.ts      addOrGetCard (INSERT ... ON CONFLICT on user_id+venue_id)
     wallet/
-      wallet.service.ts     per-venue LoyaltyClass, per-card object, saveUrl JWT
+      wallet.service.ts     per-venue LoyaltyClass, per-card object, saveUrl JWT,
+                            `updateCard` (REST PATCH of balance + text modules)
     venues/
       venues.router.ts      /mine, /:venueId/visit, staff routes (middleware order)
       venues.controller.ts  visit (per-card rate limit), mine
@@ -129,7 +130,7 @@ middlewares live in `utils/middlewares/`.
 | `GET /api/requests/:requestId` | yes | `200 {status, expiresAt, stampsCount, stampsRequired}`; someone else's or missing request → identical `404` |
 | `GET /api/venues/mine` | yes | `200 {venues:[{venueId,name,slug,role}]}` |
 | `GET /api/venues/:venueId/requests` | yes + owner/staff | `200 {requests:[{requestId,publicCode,stampsCount,stampsRequired,createdAt,expiresAt}]}`, max 50, never the email |
-| `POST /api/venues/:venueId/requests/:requestId/confirm` | yes + owner/staff | body `{stamps}` = **products consumed, reward included** (integer 1–50) → `200 {status:"approved", stampsCount, stampsRequired, rewards}`; `404`/`409` |
+| `POST /api/venues/:venueId/requests/:requestId/confirm` | yes + owner/staff | body `{stamps}` = **products consumed, reward included** (integer 1–50) → `200 {status:"approved", stampsCount, stampsRequired, rewards}`; `404`/`409`; after the commit the Google pass is updated best effort (a Wallet failure never changes the response) |
 | `POST /api/venues/:venueId/requests/:requestId/reject` | yes + owner/staff | `200 {status:"rejected"}`, does not touch the card; `404`/`409` |
 
 There is no `/cards` route: the card is only created by `visit`.
@@ -208,7 +209,7 @@ lazy expiry → live pending request? 200 **without consuming quota** → otherw
 constraint; if the race is lost, it returns the pending request just created.
 
 **Customer polling**: `refreshStatus` (lazy expiry, only from `pending`, ownership in
-SQL) → `getRequestById` with a join on card and promotion → 4 fields. Someone else's
+SQL) → `getRequestByUserId` with a join on card and promotion → 4 fields. Someone else's
 request → 404.
 
 **Staff queue**: lazy expiry of **the whole venue** (a request with no polling would stay
@@ -218,8 +219,15 @@ request → 404.
 `status='pending' AND expires_at > now()` (mutex, double confirm → 409) → `SELECT …
 FOR UPDATE` on the card → 409 if the card's promotion is not the active one →
 `splitStamps` → one `stamp_event` per segment with `idempotency_key = {requestId}:{n}` →
-`cards.stamps_count = finalCount`. After the commit it does **not** update the Google
-pass: the DB and the web polling are correct, the Wallet lags behind (see `BACKLOG.md`).
+`cards.stamps_count = finalCount`. `confirm` also returns the `cardId` (internal, the controller strips it from the body).
+After the commit the controller runs `syncWalletPass`: it loads venue, active promotion
+and the card (fresh `stamps_count`) and calls `GoogleWalletService.updateCard`, a PATCH
+on `loyaltyObject/{walletObjectId}` with `loyaltyPoints` and the 3 text modules (absolute
+values, so repeatable; 5 s timeout, 2 retries on transient errors; silent, no
+notification). Any error (pass not yet saved, Google down) is only logged as
+`[wallet] … (card <id>): <status|code>` — no personal data — and the response stays 200:
+the DB is the source of truth, the pass a derived view. Behavior against a real issuer is
+still unverified (`BACKLOG.md` V1).
 
 **Reject**: same conditional UPDATE with `status='rejected'`; no writes to card or
 events; same 404/409 distinction.
@@ -297,6 +305,7 @@ end of the run.
 
 ```bash
 npx tsx scripts/stamps-split.ts                      # no server, no DB
+npx tsx --env-file=.env scripts/wallet-update.ts     # mocked Google client, no server/DB
 npx tsx --env-file=.env scripts/staff-requests.ts    # creates test venue + members
 npx tsx --env-file=.env scripts/poll-request.ts      # picks the venue with an active promotion
 npx tsx --env-file=.env scripts/otp-request.ts
@@ -310,6 +319,7 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 |---|---|---|
 | `stamps-split.ts` | 20 | thresholds, exact threshold, multiple rewards, full card, threshold 1, cap 50, impossible inputs |
 | `staff-requests.ts` | 24 | 401/403, `/venues/mine`, queue without email, confirm 15 → 4/10 with 3 events, double confirm 409, validation, reject, expiry, cross-venue 404, promotion changed 409, owner, exact threshold, full card, rate limit |
+| `wallet-update.ts` | 11 | `updateCard` with a mocked client: PATCH, URL, balance, 3 modules, no id/classId in the body, timeout/retry, no notify, error propagates (needs `.env`, no server/DB) |
 | `poll-request.ts` | 12 | `visit`/polling with session, ownership, lazy expiry, race |
 | `otp-request.ts` | 16 | malformed JSON, 400 without echo, JSON 404, cooldown and 429 body, hourly cap, window, race, uniform response |
 | `otp-verify.ts` | 16 | attempts, single use, expiry, events, race |
@@ -317,7 +327,7 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 | `verify-migration-2.sql` | 19 | migration 2 constraints |
 | `verify-migration-3.sql` | 6 | migration 3 constraints |
 
-Last recorded run: **October 30, 2026, 104 checks green** (20+24+12+16+16+16) and 25 SQL
+Last recorded run: **October 31, 2026, 115 checks green** (20+24+12+16+16+16 + 11 of `wallet-update.ts`) and 25 SQL
 checks green (19+6), `npm run typecheck:all` clean.
 
 Utilities (not tests): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
@@ -333,5 +343,5 @@ Utilities (not tests): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
 | touch confirm | `requests/resolve/resolve.service.ts` + `venues/staff/staff.controller.ts` |
 | touch auth | `auth/` (otp, identity, session, auth-events) + `CONTEXT.md` §5 |
 | touch the schema | `db/schema.ts` → `generate` → read the SQL → `migrate` → update §6 |
-| update the Wallet pass | `wallet/wallet.service.ts` (today creation only, no REST) |
+| update the Wallet pass | `wallet/wallet.service.ts` (`updateCard`) + `syncWalletPass` in `venues/staff/staff.controller.ts` + `docs/google/wallet-pass-update.md` |
 | find out what is missing | `BACKLOG.md` |
