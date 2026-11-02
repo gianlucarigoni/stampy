@@ -57,6 +57,7 @@ async function main() {
   const [existing] = await db.select({ id: venues.id }).from(venues).where(eq(venues.slug, slug)).limit(1);
   if (existing) {
     console.log(`= Locale già esistente, nessuna modifica. venueId: ${existing.id}`);
+    console.log(`  URL del tag: ${env.APP_ORIGIN}/v/${existing.id}`);
     return;
   }
 
@@ -83,7 +84,7 @@ async function main() {
   console.log(`✔ Locale creato`);
   console.log(`  venueId:     ${created.venueId}`);
   console.log(`  promotionId: ${created.promotionId}`);
-  console.log(`  URL del tag: ${env.APP_ORIGIN}/api/venues/${created.venueId}/visit`);
+  console.log(`  URL del tag: ${env.APP_ORIGIN}/v/${created.venueId}`);
 }
 
 main()

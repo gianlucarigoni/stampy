@@ -5,7 +5,7 @@ Customers need no app: tap NFC tag / scan QR → email-code login → card in Wa
 staff confirms each stamp request in a web app.
 
 Backend: Node.js + Express 5 + TypeScript (strict), Drizzle ORM, PostgreSQL 16.
-Frontend (Vue) not started. Solo developer, near-zero budget, no pilot customer yet.
+Frontend (Vue) in `stampy-frontend/`: email login, customer page, staff queue. Solo developer, near-zero budget, no pilot customer yet.
 
 ## Language
 
@@ -34,7 +34,8 @@ Before any task, check `CODEBASE.md` §8 ("Where to start") for the relevant fil
 ## Commands
 
 ```bash
-npm run dev             # nodemon; .env is read only at startup
+npm run dev             # from the repo root: backend + frontend together
+                        # (in stampy-backend/: nodemon only; .env is read only at startup)
 npm run typecheck:all   # tsc over src + scripts — must be clean before finishing
 npx tsx scripts/stamps-split.ts                     # pure test, no server/DB
 npx tsx --env-file=.env scripts/<test>.ts           # e2e tests: need `npm run dev` + dev DB

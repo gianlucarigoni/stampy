@@ -4,11 +4,13 @@
 > change that alters code, endpoints, schema or tests. If this file contradicts the code,
 > **the code wins** and this file must be fixed.
 > It contains neither product decisions (`CONTEXT.md`) nor things to do (`BACKLOG.md`).
-> Last aligned with the code: October 28, 2026.
+> Last aligned with the code: November 1, 2026.
 
 **State in one line**: backend complete from the tag tap to staff confirmation (card,
-requests, email auth, sessions, roles, queue, confirm/reject). Still missing: Google pass
-update, Google login, real email delivery and the frontend.
+requests, email auth, sessions, roles, queue, confirm/reject, Google pass update). Still
+missing: Google login and real email delivery. `stampy-frontend/` (Vue 3 + TS + Vite + Vue
+Router, `/api` proxied to `:3000` in dev) has the email login, the customer page and the
+staff queue.
 
 ---
 
@@ -23,6 +25,10 @@ update, Google login, real email delivery and the frontend.
   Google login).
 
 ```bash
+# from the repo root (root package.json: `concurrently` only, no workspaces)
+npm run dev            # backend + frontend (http://localhost:5173)
+
+# from stampy-backend/
 npm run dev            # nodemon on src (restarts by itself; .env is read only at startup)
 npm start              # tsx src/index.ts
 npm run typecheck      # tsc --noEmit (src only)
@@ -116,6 +122,58 @@ drizzle/                    migrations 0000-0003 + meta (source of truth of the 
 helper files live in a subfolder named after their concern (`email/`, `staff/`,
 `membership/`, `resolve/`, `otp/`, `identity/`, `session/`, `auth-events/`). All
 middlewares live in `utils/middlewares/`.
+
+### Frontend (`stampy-frontend/src/`)
+
+```text
+api/client.ts               api(): single fetch wrapper, ApiError, 401 handler hook
+api/endpoints.ts            typed backend calls (contracts: §3)
+router/index.ts             routes, `beforeEach` guard, 401 handler (-> /login?next=)
+composables/useAuth.ts      session state (module-level), checkSession (cached), setUser, logout
+composables/usePolling.ts   non-overlapping polling, stops on unmount
+composables/useCountdown.ts countdown from the server's retryAfterSeconds
+utils/tabStorage.ts         sessionStorage wrapped in try/catch
+utils/redirect.ts           safeNext (open-redirect guard), destinationAfterLogin
+utils/format.ts             wait and time formatting
+styles/stampy.scss          Bootstrap 5.3 (Sass only, no JS): variables, then the parts we use
+components/AppLayout.vue    layout route for authenticated pages: header, logout, <RouterView>
+components/EmailLogin.vue   /login page (own layout): email -> code; challenge kept across tab reloads
+components/StampProgress.vue balance; full card shown as "Premio disponibile"
+views/CustomerVisitView.vue /v/:venueId  (where tags point): visit, Wallet-save screen
+views/CustomerRequestView.vue /r/:requestId  (polling only, never calls visit)
+views/NoVenueView.vue       /scan  (logged in, no venue, no `next`)
+views/StaffVenuesView.vue   /staff  (single venue: goes straight to its queue)
+views/StaffQueueView.vue    /staff/:venueId  (queue, quantity stepper, confirm/reject)
+views/SessionErrorView.vue  /session-error  (the session probe failed for a non-401 reason)
+views/NotFoundView.vue      any other path
+```
+
+- **One login page, redirect after login** (BACKLOG B7, reversed on 2026-11-01): routes under
+  `AppLayout` carry `meta.requiresAuth`. `router.beforeEach` calls `checkSession` once per tab
+  load (cached); no session -> `/login?next=<fullPath>`. Opening `/login` while logged in
+  continues as if just logged in. A `401` from any call mid-session (and a user already set)
+  clears the user and goes to `/login?next=<current path>`.
+- **`next` is validated** (`safeNext`): a string starting with `/`, not `//`, not `/\`, no
+  control characters, not `/login...`; anything else is ignored. After login: valid `next`
+  always wins (even for staff); otherwise `GET /venues/mine`: 0 venues -> `/scan`, 1 ->
+  `/staff/:venueId` (replace), 2+ -> `/staff`. `logout()` clears tab storage and goes to `/login`.
+- **Customer flow is split** (closes B16): `/v/:venueId` calls `POST /visit` on load.
+  `card_created` shows the Wallet-save screen (kept in `sessionStorage` per user and venue,
+  because `saveUrl` is returned only once, so a reload opens no stamp request);
+  "Richiedi il timbro" calls `visit` again. `request_pending` / a new request ->
+  `router.replace` to `/r/:requestId`. `/r/:requestId` only polls `GET /requests/:id`
+  (every 2 s), so reloading it never creates a request. Its "try again" needs the venue, which
+  the API does not return (B15): `/v` stores it in `sessionStorage` under
+  `stampy.request.<requestId>`; without it the page asks to tap the tag again.
+- **Polling**: customer every 2 s, staff every 3 s on the queue. Network and `5xx` errors keep
+  polling.
+- **Stamps are never computed here**: the stepper sends products consumed, and the balance
+  and `rewards` shown come from the backend's answer.
+- **Styling**: Bootstrap 5.3 via Sass only. `styles/stampy.scss` overrides variables
+  (`$primary` `#c2410c` for contrast with white text; the logo orange `#f16417` only as
+  `--stampy-brand`, used by the wordmark and stamp dots), then imports the used parts.
+  `main.ts` sets `data-bs-theme` from `prefers-color-scheme` and follows changes.
+- UI text is Italian, written directly in the components; no i18n, Pinia, Bootstrap JS or bootstrap-vue.
 
 ## 3. Endpoints
 
@@ -238,7 +296,8 @@ not promote a `staff` without `--force`.
 
 **New venue**: `scripts/create-venue.ts --name … --slug … --logo … --color … --stamps …
 --reward … [--banner …]` — validates with the same zod schemas as the backend, creates
-venue + active promotion in a transaction, idempotent on the slug, prints the tag URL.
+venue + active promotion in a transaction, idempotent on the slug, prints the tag URL
+(`APP_ORIGIN/v/<venueId>`; in dev `APP_ORIGIN` is `:3000`, so open it on `:5173`).
 
 ## 6. Data
 
@@ -330,6 +389,11 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 Last recorded run: **October 31, 2026, 115 checks green** (20+24+12+16+16+16 + 11 of `wallet-update.ts`) and 25 SQL
 checks green (19+6), `npm run typecheck:all` clean.
 
+Frontend: `npm run build` in `stampy-frontend/` runs `vue-tsc` and the production build.
+There is no committed frontend test suite (`BACKLOG.md` B17). Last manual browser run:
+November 1, 2026 (after the login/redirect and bootstrap change), 47 checks green (headless
+Chromium at 360 px against the dev servers, throwaway script outside the repo).
+
 Utilities (not tests): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
 `npm run script:all` exists but stops: `create-owner`/`create-venue` require arguments
 (see `BACKLOG.md` §3, C11).
@@ -344,4 +408,6 @@ Utilities (not tests): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
 | touch auth | `auth/` (otp, identity, session, auth-events) + `CONTEXT.md` §5 |
 | touch the schema | `db/schema.ts` → `generate` → read the SQL → `migrate` → update §6 |
 | update the Wallet pass | `wallet/wallet.service.ts` (`updateCard`) + `syncWalletPass` in `venues/staff/staff.controller.ts` + `docs/google/wallet-pass-update.md` |
+| touch the frontend login | `stampy-frontend/src/components/EmailLogin.vue`, `router/index.ts`, `utils/redirect.ts`, `composables/useAuth.ts` |
+| touch the customer or staff screens | `stampy-frontend/src/views/` + `api/endpoints.ts` |
 | find out what is missing | `BACKLOG.md` |
