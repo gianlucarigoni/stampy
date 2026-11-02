@@ -37,7 +37,7 @@ npm run build          # tsc -> dist/ (dist is NOT used by start: build and star
 ```
 
 Environment variables (`src/config/env.ts`, zod, the process exits if invalid):
-`PORT`, `NODE_ENV`, `DATABASE_URL`, `APP_ORIGIN`, `WALLET_ISSUER_ID`,
+`PORT`, `NODE_ENV`, `DATABASE_URL`, `APP_ORIGIN` (frontend origin), `WALLET_ISSUER_ID`,
 `WALLET_SERVICE_ACCOUNT_EMAIL`, `WALLET_SERVICE_ACCOUNT_KEY_PATH`, `OTP_HMAC_SECRET`,
 `TRUST_PROXY` (number of hops, default 0), `IP_RATE_LIMIT` (`on`/`off`, optional).
 
@@ -297,7 +297,7 @@ not promote a `staff` without `--force`.
 **New venue**: `scripts/create-venue.ts --name … --slug … --logo … --color … --stamps …
 --reward … [--banner …]` — validates with the same zod schemas as the backend, creates
 venue + active promotion in a transaction, idempotent on the slug, prints the tag URL
-(`APP_ORIGIN/v/<venueId>`; in dev `APP_ORIGIN` is `:3000`, so open it on `:5173`).
+(`APP_ORIGIN/v/<venueId>`). `APP_ORIGIN` is the **frontend** origin (dev: `http://localhost:5173`): the tag must open the customer page in the browser, and it is also the `origins` of the Wallet save JWT. Restart the backend after changing `.env`.
 
 ## 6. Data
 
