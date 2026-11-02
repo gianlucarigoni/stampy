@@ -393,6 +393,8 @@ Frontend: `npm run build` in `stampy-frontend/` runs `vue-tsc` and the productio
 There is no committed frontend test suite (`BACKLOG.md` B17). Last manual browser run:
 November 1, 2026 (after the login/redirect and bootstrap change), 47 checks green (headless
 Chromium at 360 px against the dev servers, throwaway script outside the repo).
+Manual test pass of the frontend (`BACKLOG.md` T6), November 2, 2026: **A (login) done**;
+**B (redirects and guards), C (customer flow) and D (staff flow) not tested yet.**
 
 Utilities (not tests): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
 `npm run script:all` exists but stops: `create-owner`/`create-venue` require arguments
