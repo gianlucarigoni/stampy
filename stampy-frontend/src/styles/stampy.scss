@@ -1,0 +1,88 @@
+// Bootstrap 5.3, Sass only (no Bootstrap JS). Variables first, then only the parts we use.
+
+// Brand: the logo orange is for the wordmark and stamp dots only. $primary is darker so white
+// text on buttons has about 5:1 contrast. success/danger stay at Bootstrap defaults.
+$brand: #f16417;
+$primary: #c2410c;
+$body-bg-dark: #171310;
+$body-secondary-bg-dark: #221c18;
+$link-color-dark: #f4813f; // $primary is too dark for links on the dark background
+$link-hover-color-dark: #f89a63;
+
+// 16px+ inputs (iOS does not zoom on focus) and 48px touch targets.
+$font-size-base: 1rem;
+$input-font-size: 1.0625rem;
+$input-padding-y: 0.625rem;
+$btn-padding-y: 0.625rem;
+$btn-font-weight: 600;
+$input-btn-focus-width: 0.2rem;
+
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/utilities';
+@import 'bootstrap/scss/root';
+@import 'bootstrap/scss/reboot';
+@import 'bootstrap/scss/type';
+@import 'bootstrap/scss/containers';
+@import 'bootstrap/scss/grid';
+@import 'bootstrap/scss/forms';
+@import 'bootstrap/scss/buttons';
+@import 'bootstrap/scss/card';
+@import 'bootstrap/scss/alert';
+@import 'bootstrap/scss/helpers';
+@import 'bootstrap/scss/utilities/api';
+
+// Brand color as a CSS variable: the same orange reads well on both themes.
+:root {
+  --stampy-brand: #{$brand};
+}
+
+// Dark theme: the darker $primary on dark cards is too heavy for outline buttons.
+[data-bs-theme='dark'] {
+  .btn-outline-primary {
+    --bs-btn-color: #f4813f;
+    --bs-btn-border-color: #f4813f;
+    --bs-btn-hover-bg: #c2410c;
+    --bs-btn-hover-border-color: #c2410c;
+    --bs-btn-hover-color: #fff;
+  }
+}
+
+.btn {
+  min-height: 3rem;
+}
+
+.btn-link {
+  min-height: 2.75rem;
+}
+
+.form-control {
+  min-height: 3rem;
+}
+
+.form-control-code {
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.wordmark {
+  color: var(--stampy-brand);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--stampy-brand);
+  outline-offset: 2px;
+}
+
+// Phone-first column used by every page.
+.narrow {
+  max-width: 28rem;
+}
