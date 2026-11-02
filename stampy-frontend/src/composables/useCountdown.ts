@@ -22,7 +22,13 @@ export function useCountdown() {
     }, 1000)
   }
 
+  /** Drops the wait: the server rule that caused it no longer applies. */
+  function reset() {
+    stop()
+    remaining.value = 0
+  }
+
   onUnmounted(stop)
 
-  return { remaining, start }
+  return { remaining, start, reset }
 }

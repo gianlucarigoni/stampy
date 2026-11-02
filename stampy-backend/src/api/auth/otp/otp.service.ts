@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import crypto, { timingSafeEqual } from "crypto";
 import { db } from "../../../db";
 import { DbOrTx } from "../../../db/tx";
@@ -52,8 +52,21 @@ export class OtpService {
           .from(otpChallenges)
           .where(and(eq(otpChallenges.channel, channel), eq(otpChallenges.destination, destination)));
 
+        // Il cooldown protegge dall'invio a raffica mentre un codice è ancora in gioco. Se
+        // l'ultimo è già morto (scaduto o tentativi esauriti, mai consumato) non c'è nulla da
+        // proteggere: si può chiederne subito un altro. Il tetto orario resta sempre valido.
+        const [latest] = await tx
+          .select({
+            dead: sql<boolean>`(${otpChallenges.consumedAt} is null and (${otpChallenges.expiresAt} <= now() or ${otpChallenges.attempts} >= ${MAX_OTP_ATTEMPTS}))`,
+          })
+          .from(otpChallenges)
+          .where(and(eq(otpChallenges.channel, channel), eq(otpChallenges.destination, destination)))
+          .orderBy(desc(otpChallenges.createdAt))
+          .limit(1);
+        const latestIsDead = latest?.dead === true;
+
         // controlli PRIMA di toccare qualsiasi riga
-        if (stats.secondsSinceLast !== null && stats.secondsSinceLast < COOLDOWN_SECONDS) {
+        if (!latestIsDead && stats.secondsSinceLast !== null && stats.secondsSinceLast < COOLDOWN_SECONDS) {
           await authEventsSrv.log(
             "otp_send_blocked",
             { email: destination, provider: "email", metadata: { reason: "cooldown" } },

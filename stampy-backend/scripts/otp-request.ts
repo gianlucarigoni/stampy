@@ -229,6 +229,58 @@ async function main() {
     ];
   });
 
+  // ---------- COOLDOWN SALTATO SE L'ULTIMO CODICE E' MORTO ----------
+  await test("Codice con tentativi esauriti -> nuovo invio SUBITO (202), senza cooldown", async () => {
+    const e = track(mail("dead-attempts"));
+    await post({ email: e });
+    await pool.query(`UPDATE otp_challenges SET attempts = 5, invalidated_at = now() WHERE destination = $1`, [e]);
+    const r = await post({ email: e });
+    show(r);
+    return [check("status 202", r.status === 202), check("2 righe", (await total(e)) === 2), check("1 viva", (await alive(e)) === 1)];
+  });
+
+  await test("Codice scaduto -> nuovo invio SUBITO (202)", async () => {
+    const e = track(mail("dead-expired"));
+    await post({ email: e });
+    await pool.query(`UPDATE otp_challenges SET expires_at = now() - interval '1 second' WHERE destination = $1`, [e]);
+    const r = await post({ email: e });
+    show(r);
+    return [check("status 202", r.status === 202), check("1 viva", (await alive(e)) === 1)];
+  });
+
+  await test("Codice ancora vivo (anche con 4 errori) -> cooldown vale ancora (429)", async () => {
+    const e = track(mail("live-4"));
+    await post({ email: e });
+    await pool.query(`UPDATE otp_challenges SET attempts = 4 WHERE destination = $1`, [e]);
+    const r = await post({ email: e });
+    show(r);
+    return [check("status 429", r.status === 429), check("1 riga", (await total(e)) === 1)];
+  });
+
+  await test("Codice consumato (login riuscito al 5o tentativo) -> cooldown vale ancora (429)", async () => {
+    const e = track(mail("consumed-5"));
+    await post({ email: e });
+    await pool.query(`UPDATE otp_challenges SET attempts = 5, consumed_at = now() WHERE destination = $1`, [e]);
+    const r = await post({ email: e });
+    show(r);
+    return [check("status 429", r.status === 429)];
+  });
+
+  await test("Sfide morte non aggirano il tetto orario: 5 invii bruciati -> il 6o 429", async () => {
+    const e = track(mail("dead-hourly"));
+    const out: boolean[] = [];
+    for (let i = 1; i <= 5; i++) {
+      const r = await post({ email: e });
+      out.push(check(`invio ${i} -> 202`, r.status === 202, `status=${r.status}`));
+      await pool.query(`UPDATE otp_challenges SET attempts = 5, invalidated_at = now() WHERE destination = $1 AND invalidated_at IS NULL`, [e]);
+    }
+    const r6 = await post({ email: e });
+    show(r6);
+    out.push(check("6o -> 429", r6.status === 429));
+    out.push(check("Retry-After > 45 (e' il tetto orario)", (r6.retryAfter ?? 0) > 45, `valore=${r6.retryAfter}`));
+    return out;
+  });
+
   // ---------- TETTO ORARIO ----------
   const e3 = track(mail("hourly"));
   await test("5 invii ok, il 6o -> 429 e la sfida viva resta viva", async () => {

@@ -15,7 +15,7 @@ Frontend (Vue) in `stampy-frontend/`: email login, customer page, staff queue. S
   *challenge*, *lazy expiry*, *absolute cap*); do not introduce synonyms.
 - Backlog statuses are `DECIDED`, `TODO`, `TO-DECIDE`, `TO-VERIFY`, `BLOCKED`.
 - User-facing API strings and code identifiers currently in Italian (e.g. `"Riprova più
-  tardi"`, `"Codice non valido o scaduto"`) are code literals: leave them as they are
+  tardi"`, `"Codice scaduto"`) are code literals: leave them as they are
   unless the owner asks to change them, and quote them verbatim in docs.
 - `docs/archive/` is frozen history, kept in its original Italian; do not translate it.
 

@@ -17,7 +17,6 @@ const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000";
 const PATH = "/api/auth/email/verify";
 const COOKIE_NAME = "sid";
 const RUN = Date.now().toString(36);
-const GENERIC_MESSAGE_PART = "non valido"; // "Codice non valido o scaduto"
 
 if (process.env.NODE_ENV === "production") {
   console.error("Rifiuto di girare con NODE_ENV=production");
@@ -132,8 +131,17 @@ async function test(name: string, fn: () => Promise<boolean[]>) {
 }
 const show = (r: Res) =>
   console.log(`   risposta: ${r.status} ${JSON.stringify(r.body)} set-cookie=${r.cookies.length ? "si" : "no"}`);
-const isGeneric400 = (r: Res) =>
-  r.status === 400 && typeof r.body?.message === "string" && r.body.message.includes(GENERIC_MESSAGE_PART);
+// "non valido" = codice sbagliato su sfida viva (con tentativi rimasti); "scaduto" = sfida non piu' utilizzabile
+const isInvalid = (r: Res, remaining?: number) =>
+  r.status === 400 &&
+  r.body?.error === "InvalidCode" &&
+  r.body?.message === "Codice non valido" &&
+  (remaining === undefined || r.body?.attemptsRemaining === remaining);
+const isExpired = (r: Res) =>
+  r.status === 400 &&
+  r.body?.error === "CodeExpired" &&
+  r.body?.message === "Codice scaduto" &&
+  r.body?.attemptsRemaining === undefined;
 
 async function main() {
   const okId = await makeChallenge(track(mail("seed")), "000000"); // solo per avere un UUID valido nei test di validazione
@@ -232,7 +240,7 @@ async function main() {
     const sess = await sessionsOf(u.id);
     return [
       check("primo 200", first.status === 200),
-      check("secondo 400 generico", isGeneric400(second)),
+      check("secondo 400 scaduto", isExpired(second)),
       check("secondo senza cookie", !cookieToken(second)),
       check("sessioni totali = 2 (prima + questa)", sess.length === 2, `sessioni=${sess.length}`),
     ];
@@ -246,7 +254,7 @@ async function main() {
     show(r);
     const c = await challenge(id);
     return [
-      check("400 generico", isGeneric400(r), "il messaggio deve contenere 'non valido'"),
+      check("400 non valido, 4 tentativi rimasti", isInvalid(r, 4)),
       check("il messaggio non contiene il challengeId", !JSON.stringify(r.body).includes(id)),
       check("nessun cookie", !cookieToken(r)),
       check("attempts = 1", c.attempts === 1, `attempts=${c.attempts}`),
@@ -264,14 +272,14 @@ async function main() {
     const out: boolean[] = [];
     for (let i = 1; i <= 5; i++) {
       const r = await verify({ challengeId: id, code: "000001" });
-      out.push(check(`errato ${i} -> 400`, isGeneric400(r), `status=${r.status}`));
+      out.push(check(`errato ${i} -> 400 non valido, restano ${5 - i}`, isInvalid(r, 5 - i), `status=${r.status}`));
     }
     const c = await challenge(id);
     out.push(check("attempts = 5", c.attempts === 5, `attempts=${c.attempts}`));
     out.push(check("sfida invalidata", !!c.invalidated_at));
     const r6 = await verify({ challengeId: id, code: "333333" });
     show(r6);
-    out.push(check("6o con il codice GIUSTO -> 400 generico", isGeneric400(r6)));
+    out.push(check("6o con il codice GIUSTO -> 400 scaduto", isExpired(r6)));
     out.push(check("nessun utente creato", (await userByEmail(e3)).length === 0));
     out.push(check("5 eventi otp_failed", (await eventCount(e3, "otp_failed")) === 5));
     return out;
@@ -291,47 +299,40 @@ async function main() {
     const id = await makeChallenge(e, "555555", { attempts: 5 });
     const r = await verify({ challengeId: id, code: "555555" });
     show(r);
-    return [check("400 generico", isGeneric400(r)), check("nessun utente", (await userByEmail(e)).length === 0)];
+    return [check("400 scaduto", isExpired(r)), check("nessun utente", (await userByEmail(e)).length === 0)];
   });
 
   // ---------- SCADUTA / INVALIDATA / INESISTENTE ----------
-  await test("Sfida scaduta -> 400 generico, attempts non incrementato", async () => {
+  await test("Sfida scaduta -> 400 scaduto, attempts non incrementato", async () => {
     const e = track(mail("expired"));
     const id = await makeChallenge(e, "666666", { expiredSecondsAgo: 10 });
     const r = await verify({ challengeId: id, code: "666666" });
     show(r);
     const c = await challenge(id);
     return [
-      check("400 generico", isGeneric400(r)),
+      check("400 scaduto", isExpired(r)),
       check("attempts = 0", c.attempts === 0),
       check("non consumata", !c.consumed_at),
       check("nessun utente", (await userByEmail(e)).length === 0),
     ];
   });
 
-  await test("Sfida invalidata (sostituita da un nuovo invio) -> 400 generico", async () => {
+  await test("Sfida invalidata (sostituita da un nuovo invio) -> 400 scaduto", async () => {
     const e = track(mail("replaced"));
     const oldId = await makeChallenge(e, "777777");
     await makeChallenge(e, "888888"); // chiude la precedente, come farebbe un nuovo invio
     const r = await verify({ challengeId: oldId, code: "777777" });
     show(r);
     return [
-      check("il vecchio codice non funziona piu'", isGeneric400(r)),
+      check("il vecchio codice non funziona piu' (scaduto)", isExpired(r)),
       check("nessun utente", (await userByEmail(e)).length === 0),
     ];
   });
 
-  await test("challengeId inesistente -> 400 generico, stesso corpo del codice errato", async () => {
+  await test("challengeId inesistente -> 400 scaduto (non distinguibile da una sfida morta)", async () => {
     const r = await verify({ challengeId: crypto.randomUUID(), code: "123456" });
     show(r);
-    const wrong = await verify({ challengeId: await makeChallenge(track(mail("cmp")), "121212"), code: "000000" });
-    return [
-      check("400 generico", isGeneric400(r)),
-      check(
-        "stesso status e messaggio di un codice errato",
-        r.status === wrong.status && r.body?.message === wrong.body?.message,
-      ),
-    ];
+    return [check("400 scaduto", isExpired(r))];
   });
 
   // ---------- UTENTE GIA' ESISTENTE ----------

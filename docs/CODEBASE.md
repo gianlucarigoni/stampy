@@ -181,7 +181,7 @@ views/NotFoundView.vue      any other path
 |---|---|---|
 | `GET /api/health` | no | `200` |
 | `POST /api/auth/email/request` | no (IP limiter) | `202 {challengeId}`; 45 s cooldown and 5/hour cap → `429` + `Retry-After`; email failure → `503` |
-| `POST /api/auth/email/verify` | no (IP limiter) | `200 {user:{id,email,displayName}}` + `sid` cookie; every failure → `400` with the same message |
+| `POST /api/auth/email/verify` | no (IP limiter) | `200 {user:{id,email,displayName}}` + `sid` cookie; wrong code on a live challenge → `400 {error:"InvalidCode", message:"Codice non valido", attemptsRemaining}`; any unusable challenge (expired, attempts used up, used, replaced, unknown) → `400 {error:"CodeExpired", message:"Codice scaduto"}` |
 | `GET /api/auth/me` | yes | `200 {user:{id,email,displayName}}` (read-only probe) |
 | `POST /api/auth/logout` | yes | `204`, cookie removed, `logout` event |
 | `POST /api/venues/:venueId/visit` | yes | new card → `201 {state:"card_created", saveUrl, publicCode}`; live pending request → `200 {state:"request_pending", requestId, expiresAt}`; new request → `201`; more than 10 new/hour per card → `429` + `Retry-After` |
@@ -380,13 +380,13 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 | `staff-requests.ts` | 24 | 401/403, `/venues/mine`, queue without email, confirm 15 → 4/10 with 3 events, double confirm 409, validation, reject, expiry, cross-venue 404, promotion changed 409, owner, exact threshold, full card, rate limit |
 | `wallet-update.ts` | 11 | `updateCard` with a mocked client: PATCH, URL, balance, 3 modules, no id/classId in the body, timeout/retry, no notify, error propagates (needs `.env`, no server/DB) |
 | `poll-request.ts` | 12 | `visit`/polling with session, ownership, lazy expiry, race |
-| `otp-request.ts` | 16 | malformed JSON, 400 without echo, JSON 404, cooldown and 429 body, hourly cap, window, race, uniform response |
+| `otp-request.ts` | 21 | malformed JSON, 400 without echo, JSON 404, cooldown and 429 body, cooldown skipped for a dead code (attempts used up / expired), hourly cap, window, race, uniform response |
 | `otp-verify.ts` | 16 | attempts, single use, expiry, events, race |
 | `session.ts` | 16 | single 401, sliding, absolute cap, logout, metadata |
 | `verify-migration-2.sql` | 19 | migration 2 constraints |
 | `verify-migration-3.sql` | 6 | migration 3 constraints |
 
-Last recorded run: **October 31, 2026, 115 checks green** (20+24+12+16+16+16 + 11 of `wallet-update.ts`) and 25 SQL
+Last recorded run: **November 2, 2026, 120 checks green** (20+24+12+21+16+16 + 11 of `wallet-update.ts`; `poll-request.ts` assumes the first venue has a 10-stamp promotion, so run it on a DB without other venues) and 25 SQL
 checks green (19+6), `npm run typecheck:all` clean.
 
 Frontend: `npm run build` in `stampy-frontend/` runs `vue-tsc` and the production build.

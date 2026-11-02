@@ -163,8 +163,16 @@ a structure that can be extended to Apple and phone without a rewrite.
 - **45 seconds** between two sends to the same recipient (server side).
 - **5 sends/hour** per recipient (sliding window), then a 1-hour suspension.
 - Limits are **per recipient**, never a global counter (it would block the whole app).
-- A single error `400 "Codice non valido o scaduto"` (Italian literal in code) for every
-  verification failure.
+- **Two** `400` errors on verify (decision changed 2026-11-02, owner's request; it replaces
+  the single `"Codice non valido o scaduto"`): `InvalidCode` / `"Codice non valido"` = wrong
+  code on a live challenge, with `attemptsRemaining`; `CodeExpired` / `"Codice scaduto"` =
+  the challenge is unusable (past `expires_at` by DB `now()`, attempts used up, already
+  used, replaced by a new send, or unknown `challengeId`). Accepted trade-off: only the
+  holder of a `challengeId` sees this, and the send endpoint stays identical for existing
+  and non-existing emails (§5.1), so no account enumeration is added.
+- **Cooldown skipped when the last code is dead**: the 45 s between sends does not apply if
+  the latest challenge is unconsumed and either expired or out of attempts (the user can ask
+  for a new code at once). The 5 sends/hour cap always applies.
 - Our own values, not standard ones: the standards (NIST/OWASP) set looser caps.
 
 ### 5.3 Google (login not implemented yet)

@@ -12,10 +12,13 @@ import authEventsSrv from "../auth-events/auth-events.service";
 import { db } from "../../../db";
 import { TryLaterError } from "../../../errors/try-later.error";
 import { GenericError } from "../../../errors/generic";
+import { InvalidCodeError } from "../../../errors/invalid-code.error";
+import { CodeExpiredError } from "../../../errors/code-expired.error";
 import { emailSender } from "../../../utils/email/email-sender";
 
-// stessa risposta per codice errato, scaduto, usato, inesistente o tentativi esauriti
-const invalidCode = () => new GenericError("Codice non valido o scaduto", 400);
+// Due risposte 400 distinte (CONTEXT.md §5.2):
+//  - CodeExpired: scaduto, tentativi esauriti, già usato, sostituito o inesistente
+//  - InvalidCode: codice sbagliato su una sfida ancora viva (con i tentativi rimasti)
 
 export const request = async (req: TypedRequest<emailDTO>, res: Response, next: NextFunction) => {
   try {
@@ -44,7 +47,7 @@ export const verify = async (req: TypedRequest<verifyDTO>, res: Response, next: 
 
     // 1) tentativo contato in modo atomico, FUORI dalla transazione: resta anche se il resto fallisce
     const attempt = await otpSrv.registerAttempt(challengeId);
-    if (!attempt) throw invalidCode();
+    if (!attempt) throw new CodeExpiredError();
 
     // 2) codice errato: evento, invalidazione all'ultimo tentativo, errore generico
     if (!otpSrv.checkCode(challengeId, code, attempt.codeHash)) {
@@ -54,7 +57,7 @@ export const verify = async (req: TypedRequest<verifyDTO>, res: Response, next: 
         metadata: { attempts: attempt.attempts },
       });
       if (attempt.attempts >= MAX_OTP_ATTEMPTS) await otpSrv.invalidateChallenge(challengeId);
-      throw invalidCode();
+      throw new InvalidCodeError(Math.max(0, MAX_OTP_ATTEMPTS - attempt.attempts));
     }
 
     // 3) codice giusto: consumo + utente + identità + sessione + eventi in UNA transazione
@@ -62,10 +65,10 @@ export const verify = async (req: TypedRequest<verifyDTO>, res: Response, next: 
 
     const { user, token } = await db.transaction(async (tx) => {
       const consumed = await otpSrv.consumeChallenge(challengeId, tx);
-      if (!consumed) throw invalidCode(); // un'altra richiesta l'ha già usata
+      if (!consumed) throw new CodeExpiredError(); // un'altra richiesta l'ha già usata (o è scaduta nel frattempo)
 
       const login = await identitySrv.loginWithEmail(consumed.destination, tx);
-      if (!login) throw invalidCode(); // anonimizzato o identità incoerente: stessa risposta
+      if (!login) throw new CodeExpiredError(); // anonimizzato o identità incoerente: il codice non serve più
 
       const { token } = await sessionSrv.create(login.user.id, "email", userAgent, tx);
 

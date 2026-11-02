@@ -21,7 +21,7 @@ interface SavedLogin {
 const route = useRoute()
 const router = useRouter()
 const { setUser } = useAuth()
-const { remaining: waitSeconds, start: startWait } = useCountdown()
+const { remaining: waitSeconds, start: startWait, reset: resetWait } = useCountdown()
 
 const saved = readTab<SavedLogin>(STORAGE_KEY)
 const email = ref(saved?.email ?? '')
@@ -30,16 +30,48 @@ const code = ref('')
 const busy = ref(false)
 const error = ref('')
 const notice = ref('')
+// The current code can no longer be used (expired, or out of attempts): only "new code" is left.
+const codeDead = ref(false)
 
+// The server's waits are per recipient: a countdown only means something for the email that
+// caused it. Another address starts clean.
+let waitEmail = ''
 const waiting = computed(() => waitSeconds.value > 0)
+watch(email, (value) => {
+  if (waitSeconds.value > 0 && value.trim().toLowerCase() !== waitEmail) resetWait()
+})
 
 function showError(err: unknown, fallback: string) {
   if (err instanceof ApiError && err.status === 429) {
     error.value = ''
+    waitEmail = email.value.trim().toLowerCase()
     startWait(err.retryAfterSeconds ?? 60)
     return
   }
   error.value = err instanceof ApiError ? err.message : fallback
+}
+
+// "Non valido" = wrong code on a live challenge; "scaduto" = the challenge is gone (time,
+// attempts used up, already used, replaced). The backend tells them apart.
+function showCodeError(err: unknown) {
+  if (err instanceof ApiError && err.code === 'InvalidCode') {
+    const left = err.attemptsRemaining ?? 0
+    if (left <= 0) {
+      codeDead.value = true
+      resetWait() // a pending "wait before a new code" no longer applies: the backend lets a dead code be replaced at once
+      error.value = 'Codice non valido. Hai finito i tentativi: richiedi un nuovo codice.'
+    } else {
+      error.value = `Codice non valido. ${left === 1 ? 'Ti resta 1 tentativo' : `Ti restano ${left} tentativi`}.`
+    }
+    return
+  }
+  if (err instanceof ApiError && err.code === 'CodeExpired') {
+    codeDead.value = true
+    resetWait()
+    error.value = 'Codice scaduto. Richiedi un nuovo codice.'
+    return
+  }
+  showError(err, 'Impossibile verificare il codice, riprova')
 }
 
 async function sendCode() {
@@ -50,6 +82,7 @@ async function sendCode() {
   try {
     const result = await requestCode(email.value.trim())
     challengeId.value = result.challengeId
+    codeDead.value = false
     code.value = ''
     writeTab(STORAGE_KEY, { email: email.value.trim(), challengeId: result.challengeId })
     notice.value = `Codice inviato a ${email.value.trim()}`
@@ -72,9 +105,7 @@ async function submitCode() {
     setUser(result.user)
     await router.replace(await destinationAfterLogin(route.query.next))
   } catch (err) {
-    // One message for every failure, including the attempt that invalidates the code: the
-    // UI cannot tell them apart, so "send a new code" stays available below.
-    showError(err, 'Codice non valido o scaduto')
+    showCodeError(err)
     code.value = ''
   } finally {
     busy.value = false
@@ -82,8 +113,10 @@ async function submitCode() {
 }
 
 function changeEmail() {
+  resetWait()
   removeTab(STORAGE_KEY)
   challengeId.value = ''
+  codeDead.value = false
   code.value = ''
   error.value = ''
   notice.value = ''
@@ -158,6 +191,7 @@ watch(code, (value) => {
               name="code"
               inputmode="numeric"
               autocomplete="one-time-code"
+              :disabled="codeDead"
               required
             />
           </div>
@@ -171,14 +205,19 @@ watch(code, (value) => {
           <button
             class="btn btn-primary w-100"
             type="submit"
-            :disabled="busy || waiting || code.length !== 6"
+            :disabled="busy || waiting || codeDead || code.length !== 6"
           >
             {{ busy ? 'Verifica…' : 'Accedi' }}
           </button>
         </form>
 
         <div class="d-flex flex-wrap justify-content-between column-gap-3 mt-2">
-          <button type="button" class="btn btn-link px-0" :disabled="busy || waiting" @click="sendCode">
+          <button
+            type="button"
+            :class="codeDead ? 'btn btn-primary' : 'btn btn-link px-0'"
+            :disabled="busy || waiting"
+            @click="sendCode"
+          >
             Invia un nuovo codice
           </button>
           <button type="button" class="btn btn-link px-0" :disabled="busy" @click="changeEmail">
