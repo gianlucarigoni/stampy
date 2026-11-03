@@ -49,7 +49,7 @@ export const requestCode = (email: string) =>
 export const verifyCode = (challengeId: string, code: string) =>
   api<{ user: AuthUser }>('/auth/email/verify', { method: 'POST', body: { challengeId, code } })
 
-export const getMe = () => api<{ user: AuthUser }>('/auth/me')
+export const getMe = () => api<{ user: AuthUser }>('/auth/me', { timeoutMs: 4000 })
 
 export const logout = () => api<void>('/auth/logout', { method: 'POST' })
 

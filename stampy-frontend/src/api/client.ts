@@ -17,6 +17,8 @@ export class ApiError extends Error {
   }
 }
 
+const REQUEST_TIMEOUT_MS = 8000
+
 let onUnauthorized = () => {}
 
 /** Every 401 means the same thing (`CONTEXT.md` §5.4): there is no valid session. */
@@ -36,7 +38,7 @@ async function parseBody(response: Response): Promise<Record<string, unknown>> {
 
 export async function api<T>(
   path: string,
-  options: { method?: 'GET' | 'POST'; body?: unknown } = {},
+  options: { method?: 'GET' | 'POST'; body?: unknown; timeoutMs?: number } = {},
 ): Promise<T> {
   let response: Response
   try {
@@ -44,6 +46,9 @@ export async function api<T>(
       method: options.method ?? 'GET',
       headers: options.body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      // The dev proxy hangs (no answer, no error) when the backend is down: without a
+      // timeout the app would wait forever on a white page.
+      signal: AbortSignal.timeout(options.timeoutMs ?? REQUEST_TIMEOUT_MS),
     })
   } catch {
     throw new ApiError(0, 'NetworkError', 'Connessione non riuscita, riprova')

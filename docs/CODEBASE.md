@@ -126,7 +126,7 @@ middlewares live in `utils/middlewares/`.
 ### Frontend (`stampy-frontend/src/`)
 
 ```text
-api/client.ts               api(): single fetch wrapper, ApiError, 401 handler hook
+api/client.ts               api(): single fetch wrapper, ApiError, 401 handler hook, request timeout (8 s; 4 s for `getMe`)
 api/endpoints.ts            typed backend calls (contracts: §3)
 router/index.ts             routes, `beforeEach` guard, 401 handler (-> /login?next=)
 composables/useAuth.ts      session state (module-level), checkSession (cached), setUser, logout
@@ -393,8 +393,8 @@ Frontend: `npm run build` in `stampy-frontend/` runs `vue-tsc` and the productio
 There is no committed frontend test suite (`BACKLOG.md` B17). Last manual browser run:
 November 1, 2026 (after the login/redirect and bootstrap change), 47 checks green (headless
 Chromium at 360 px against the dev servers, throwaway script outside the repo).
-Manual test pass of the frontend (`BACKLOG.md` T6), November 2, 2026: **A (login) done**;
-**B (redirects and guards), C (customer flow) and D (staff flow) not tested yet.**
+Manual test pass of the frontend (`BACKLOG.md` T6), November 2, 2026: **A (login) and B (redirects and guards) done**;
+**C (customer flow) and D (staff flow) not tested yet.**
 
 Utilities (not tests): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
 `npm run script:all` exists but stops: `create-owner`/`create-venue` require arguments
