@@ -9,13 +9,13 @@ import cardsSrv from "../cards/cards.service";
 import googleWalletSrv from "../wallet/wallet.service";
 import requestSrv from "../requests/requests.service";
 import membershipSrv from "./membership/membership.service";
-import { venueIdDTO } from "./venues.dto";
+import { venueIdDTO, visitQueryDTO } from "./venues.dto";
 import venueSrv from "./venues.service";
 
-export const VISIT_STATES = ["card_created", "request_pending"] as const;
+export const VISIT_STATES = ["card_created", "request_pending", "card_not_added"] as const;
 export type VisitState = (typeof VISIT_STATES)[number];
 
-export const visit = async (req: TypedAuthRequest<unknown, unknown, venueIdDTO>, res: Response, next: NextFunction) => {
+export const visit = async (req: TypedAuthRequest<unknown, visitQueryDTO, venueIdDTO>, res: Response, next: NextFunction) => {
   // L'utente viene dalla sessione (isAuthenticated l'ha già verificato: esiste, non è
   // anonimizzato, sessione valida). Il body non contiene più userId.
   const userId = requireAuth(req).user.id;
@@ -47,6 +47,15 @@ export const visit = async (req: TypedAuthRequest<unknown, unknown, venueIdDTO>,
     const pending = await requestSrv.getPendingRequest(card.id);
     if (pending) {
       res.status(200).json({ state: VISIT_STATES[1], requestId: pending.id, expiresAt: pending.expiresAt });
+      return;
+    }
+
+    // Card never added to the wallet and no explicit "Richiedi il timbro": show the wallet
+    // screen instead of opening a request. The saveUrl is signed locally, so it can be
+    // regenerated on every visit.
+    if (card.walletStatus === "not_added" && req.query.requestStamp !== "1") {
+      const saveUrl = googleWalletSrv.createSaveUrl(loyaltyClass, loyaltyObject);
+      res.status(200).json({ state: VISIT_STATES[2], saveUrl, publicCode: card.publicCode });
       return;
     }
 
@@ -82,6 +91,18 @@ export const mine = async (req: TypedAuthRequest, res: Response, next: NextFunct
     const userId = requireAuth(req).user.id;
     const venues = await membershipSrv.listVenuesOfUser(userId);
     res.status(200).json({ venues });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** The customer tapped "Aggiungi a Google Wallet": not_added -> active (idempotent). */
+export const walletAdded = async (req: TypedAuthRequest<unknown, unknown, venueIdDTO>, res: Response, next: NextFunction) => {
+  try {
+    const userId = requireAuth(req).user.id;
+    const found = await cardsSrv.markWalletAdded(userId, req.params.venueId);
+    if (!found) throw new GenericError("Card non trovata", 404);
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

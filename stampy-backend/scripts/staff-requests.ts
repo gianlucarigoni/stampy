@@ -46,7 +46,7 @@ async function request(
 }
 
 const visit = (venueId: string, cookie?: string) =>
-  request(`/api/venues/${venueId}/visit`, { method: "POST", cookie });
+  request(`/api/venues/${venueId}/visit?requestStamp=1`, { method: "POST", cookie });
 const poll = (requestId: string, cookie?: string) => request(`/api/requests/${requestId}`, { cookie });
 const queue = (venueId: string, cookie?: string) => request(`/api/venues/${venueId}/requests`, { cookie });
 const confirm = (venueId: string, requestId: string, cookie?: string, body?: unknown) =>

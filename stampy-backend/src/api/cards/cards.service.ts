@@ -18,6 +18,26 @@ export class CardsService {
     return card;
   }
 
+  /**
+   * "Add to Google Wallet" was tapped: not_added -> active. It records the tap, not that the
+   * pass is really in the wallet (that needs Google notifications, BACKLOG V1/B10).
+   * Idempotent: an already active card is left alone. Returns false if the user has no card
+   * for this venue (same answer for a missing card and for someone else's).
+   */
+  async markWalletAdded(userId: string, venueId: string): Promise<boolean> {
+    await db
+      .update(cards)
+      .set({ walletStatus: "active" })
+      .where(and(eq(cards.userId, userId), eq(cards.venueId, venueId), eq(cards.walletStatus, "not_added")));
+
+    const [card] = await db
+      .select({ id: cards.id })
+      .from(cards)
+      .where(and(eq(cards.userId, userId), eq(cards.venueId, venueId)))
+      .limit(1);
+    return !!card;
+  }
+
   async addOrGetCard(userId: string, venueId: string, promotionId: string): Promise<{ card: Card; created: boolean }> {
     // ON CONFLICT senza target: copre sia (user_id, venue_id) già esistente sia una
     // collisione di public_code, senza 23505. Se non c'è una card esistente, il conflitto

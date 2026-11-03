@@ -109,7 +109,7 @@ threshold 10, card 0, quantity 15
   banner); everything that depends on the promotion (reward, threshold, counter) lives in
   the card's object, so the card survives a promotion change.
 - The "Add to Google Wallet" link is signed locally (RS256 JWT with the service account key).
-- `wallet_status` is `not_added` and is **neither read nor updated**.
+- `wallet_status` records only that the customer **tapped "Aggiungi a Google Wallet"** (decided 2026-11-03): `not_added` → `active`, set by `POST /venues/:venueId/card/wallet-added`. It does **not** prove the pass is in the wallet (that needs Google notifications, BACKLOG B10/V1). A plain tap on the tag with a `not_added` card shows the wallet screen ("Aggiungi a Google Wallet" / "Richiedi il timbro") and opens no stamp request; once `active`, every tap opens the request on its own. `removed` is unused.
 - Issuer account in demo mode; publishing access still has to be requested.
 
 ### 4.7 Multi-tenant

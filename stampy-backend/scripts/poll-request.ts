@@ -48,8 +48,11 @@ async function request(
   return { status: r.status, body: parsed };
 }
 
-const visit = (venueId: string, cookie?: string, body?: unknown) =>
-  request(`/api/venues/${venueId}/visit`, { method: "POST", cookie, body });
+// Default: "Richiedi il timbro" (requestStamp=1). Pass `query: ""` for a plain tap on the tag.
+const visit = (venueId: string, cookie?: string, body?: unknown, query = "?requestStamp=1") =>
+  request(`/api/venues/${venueId}/visit${query}`, { method: "POST", cookie, body });
+const walletAdded = (venueId: string, cookie?: string) =>
+  request(`/api/venues/${venueId}/card/wallet-added`, { method: "POST", cookie });
 const poll = (requestId: string, cookie?: string) => request(`/api/requests/${requestId}`, { cookie });
 
 const mail = (tag: string) => `visit-test-${RUN}-${tag}@test.it`;
@@ -96,6 +99,11 @@ async function cardOf(userId: string, venueId: string): Promise<{ id: string; st
     venueId,
   ]);
   return r.rows[0] ?? null;
+}
+
+async function walletStatusOf(userId: string, venueId: string): Promise<string | null> {
+  const r = await pool.query(`SELECT wallet_status FROM cards WHERE user_id = $1 AND venue_id = $2`, [userId, venueId]);
+  return r.rows[0]?.wallet_status ?? null;
 }
 
 async function requestState(requestId: string): Promise<{ status: string; resolved_at: string | null } | null> {
@@ -295,6 +303,82 @@ async function main() {
       check("nuovo requestId diverso dal precedente", typeof newId === "string" && newId !== firstRequestId),
       check("nuova richiesta pending nel DB", (await requestState(newId))?.status === "pending"),
       check("una sola pending per la card", (await pendingCount(cardId)) === 1, `${await pendingCount(cardId)}`),
+    ];
+  });
+
+  // ---------- WALLET: not_added -> active ----------
+  await test("tap sul tag con card not_added: 200 card_not_added, nessuna richiesta creata", async () => {
+    const w = await createUser(track(mail("wallet")));
+    const wToken = await createSession(w);
+    const created = await visit(venueId, wToken, undefined, "");
+    const again = await visit(venueId, wToken, undefined, "");
+    show(again);
+    const c = await cardOf(w, venueId);
+    return [
+      check("primo tocco 201 card_created", created.status === 201 && created.body?.state === "card_created"),
+      check("secondo tocco 200 card_not_added", again.status === 200 && again.body?.state === "card_not_added", `${again.status} ${again.body?.state}`),
+      check("saveUrl e publicCode presenti", typeof again.body?.saveUrl === "string" && again.body?.publicCode?.length === 8),
+      check("nessuna richiesta creata", (await pendingCount(c?.id ?? "")) === 0),
+      check("wallet_status resta not_added", (await walletStatusOf(w, venueId)) === "not_added"),
+    ];
+  });
+
+  await test("'Richiedi il timbro' (requestStamp=1) con card not_added apre la richiesta, wallet_status invariato", async () => {
+    const w = await createUser(track(mail("wallet2")));
+    const wToken = await createSession(w);
+    await visit(venueId, wToken, undefined, "");
+    const r = await visit(venueId, wToken, undefined, "?requestStamp=1");
+    show(r);
+    const plain = await visit(venueId, wToken, undefined, "");
+    return [
+      check("201 request_pending", r.status === 201 && r.body?.state === "request_pending", `${r.status} ${r.body?.state}`),
+      check("wallet_status resta not_added", (await walletStatusOf(w, venueId)) === "not_added"),
+      check("tap con richiesta viva -> stessa richiesta, non la schermata wallet", plain.body?.state === "request_pending" && plain.body?.requestId === r.body?.requestId),
+    ];
+  });
+
+  await test("wallet-added: not_added -> active, idempotente; poi il tap apre la richiesta da solo", async () => {
+    const w = await createUser(track(mail("wallet3")));
+    const wToken = await createSession(w);
+    await visit(venueId, wToken, undefined, "");
+    const a = await walletAdded(venueId, wToken);
+    const b = await walletAdded(venueId, wToken);
+    const tap = await visit(venueId, wToken, undefined, "");
+    show(tap);
+    return [
+      check("204", a.status === 204, `status=${a.status}`),
+      check("seconda chiamata 204 (idempotente)", b.status === 204, `status=${b.status}`),
+      check("wallet_status = active", (await walletStatusOf(w, venueId)) === "active"),
+      check("tap senza query -> 201 request_pending", tap.status === 201 && tap.body?.state === "request_pending", `${tap.status} ${tap.body?.state}`),
+    ];
+  });
+
+  await test("wallet-added: senza sessione 401; senza card 404; UUID malformato 400; query non valida 400", async () => {
+    const noCard = await createUser(track(mail("wallet4")));
+    const noCardToken = await createSession(noCard);
+    const anon = await walletAdded(venueId);
+    const missing = await walletAdded(venueId, noCardToken);
+    const bad = await walletAdded("non-un-uuid", noCardToken);
+    const badQuery = await visit(venueId, noCardToken, undefined, "?requestStamp=2");
+    return [
+      check("senza sessione 401", is401(anon), `status=${anon.status}`),
+      check("senza card 404", missing.status === 404, `status=${missing.status}`),
+      check("UUID malformato 400", bad.status === 400, `status=${bad.status}`),
+      check("requestStamp non valido 400", badQuery.status === 400, `status=${badQuery.status}`),
+      check("nessuna card creata dalla chiamata 404", (await cardOf(noCard, venueId)) === null),
+    ];
+  });
+
+  await test("wallet-added non tocca la card di un altro utente", async () => {
+    const x = await createUser(track(mail("wallet5")));
+    const xToken = await createSession(x);
+    const y = await createUser(track(mail("wallet6")));
+    const yToken = await createSession(y);
+    await visit(venueId, xToken, undefined, "");
+    const r = await walletAdded(venueId, yToken);
+    return [
+      check("y senza card -> 404", r.status === 404, `status=${r.status}`),
+      check("la card di x resta not_added", (await walletStatusOf(x, venueId)) === "not_added"),
     ];
   });
 

@@ -3,7 +3,7 @@
 set -u
 cd "$(dirname "$0")/../../../../stampy-backend" || exit 2
 BASE_URL="${TEST_BASE_URL:-http://localhost:3000}"
-EXPECTED=104
+EXPECTED=109
 fail=0
 
 if [ "${1:-}" != "--skip-typecheck" ]; then

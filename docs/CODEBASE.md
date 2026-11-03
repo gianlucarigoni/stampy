@@ -158,9 +158,11 @@ views/NotFoundView.vue      any other path
   always wins (even for staff); otherwise `GET /venues/mine`: 0 venues -> `/scan`, 1 ->
   `/staff/:venueId` (replace), 2+ -> `/staff`. `logout()` clears tab storage and goes to `/login`.
 - **Customer flow is split** (closes B16): `/v/:venueId` calls `POST /visit` on load.
-  `card_created` shows the Wallet-save screen (kept in `sessionStorage` per user and venue,
-  because `saveUrl` is returned only once, so a reload opens no stamp request);
-  "Richiedi il timbro" calls `visit` again. `request_pending` / a new request ->
+  `card_created` / `card_not_added` show the Wallet screen (the backend returns `saveUrl`
+  every time, so nothing is kept in `sessionStorage` and a reload opens no stamp request).
+  "Aggiungi a Google Wallet" opens `saveUrl` and fires `POST /card/wallet-added`
+  (best effort); "Richiedi il timbro" calls `visit?requestStamp=1`. Once the card is
+  `active`, a plain tap opens the request by itself. `request_pending` / a new request ->
   `router.replace` to `/r/:requestId`. `/r/:requestId` only polls `GET /requests/:id`
   (every 2 s), so reloading it never creates a request. Its "try again" needs the venue, which
   the API does not return (B15): `/v` stores it in `sessionStorage` under
@@ -184,7 +186,8 @@ views/NotFoundView.vue      any other path
 | `POST /api/auth/email/verify` | no (IP limiter) | `200 {user:{id,email,displayName}}` + `sid` cookie; wrong code on a live challenge → `400 {error:"InvalidCode", message:"Codice non valido", attemptsRemaining}`; any unusable challenge (expired, attempts used up, used, replaced, unknown) → `400 {error:"CodeExpired", message:"Codice scaduto"}` |
 | `GET /api/auth/me` | yes | `200 {user:{id,email,displayName}}` (read-only probe) |
 | `POST /api/auth/logout` | yes | `204`, cookie removed, `logout` event |
-| `POST /api/venues/:venueId/visit` | yes | new card → `201 {state:"card_created", saveUrl, publicCode}`; live pending request → `200 {state:"request_pending", requestId, expiresAt}`; new request → `201`; more than 10 new/hour per card → `429` + `Retry-After` |
+| `POST /api/venues/:venueId/visit[?requestStamp=1]` | yes | new card → `201 {state:"card_created", saveUrl, publicCode}`; live pending request → `200 {state:"request_pending", requestId, expiresAt}`; card `not_added` and no `requestStamp=1` → `200 {state:"card_not_added", saveUrl, publicCode}` (no request); new request → `201`; more than 10 new/hour per card → `429` + `Retry-After`; `requestStamp` other than `1` → `400` |
+| `POST /api/venues/:venueId/card/wallet-added` | yes | `204`; `not_added` → `active` (conditional UPDATE, idempotent); no card for this user and venue → `404` |
 | `GET /api/requests/:requestId` | yes | `200 {status, expiresAt, stampsCount, stampsRequired}`; someone else's or missing request → identical `404` |
 | `GET /api/venues/mine` | yes | `200 {venues:[{venueId,name,slug,role}]}` |
 | `GET /api/venues/:venueId/requests` | yes + owner/staff | `200 {requests:[{requestId,publicCode,stampsCount,stampsRequired,createdAt,expiresAt}]}`, max 50, never the email |
@@ -262,7 +265,9 @@ Any failure → same 401.
 
 **Customer tap (`visit`)**: user from `req.auth` (body ignored) → venue and active
 promotion → `addOrGetCard`. New card → 201 `card_created` + `saveUrl`. Existing card →
-lazy expiry → live pending request? 200 **without consuming quota** → otherwise
+lazy expiry → live pending request? 200 **without consuming quota** → card `not_added`
+and no `?requestStamp=1` → 200 `card_not_added` + `saveUrl` (signed again locally) +
+`publicCode`, **no request created** → otherwise
 `checkCardRateLimit` (10/hour per card) → `newRequest` with `ON CONFLICT` on the partial
 constraint; if the race is lost, it returns the pending request just created.
 
@@ -379,22 +384,24 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 | `stamps-split.ts` | 20 | thresholds, exact threshold, multiple rewards, full card, threshold 1, cap 50, impossible inputs |
 | `staff-requests.ts` | 24 | 401/403, `/venues/mine`, queue without email, confirm 15 → 4/10 with 3 events, double confirm 409, validation, reject, expiry, cross-venue 404, promotion changed 409, owner, exact threshold, full card, rate limit |
 | `wallet-update.ts` | 11 | `updateCard` with a mocked client: PATCH, URL, balance, 3 modules, no id/classId in the body, timeout/retry, no notify, error propagates (needs `.env`, no server/DB) |
-| `poll-request.ts` | 12 | `visit`/polling with session, ownership, lazy expiry, race |
+| `poll-request.ts` | 17 | `visit`/polling with session, ownership, lazy expiry, race; wallet screen for `not_added`, `requestStamp=1`, `wallet-added` (204, idempotent, 401/404/400, other user's card untouched) |
 | `otp-request.ts` | 21 | malformed JSON, 400 without echo, JSON 404, cooldown and 429 body, cooldown skipped for a dead code (attempts used up / expired), hourly cap, window, race, uniform response |
 | `otp-verify.ts` | 16 | attempts, single use, expiry, events, race |
 | `session.ts` | 16 | single 401, sliding, absolute cap, logout, metadata |
 | `verify-migration-2.sql` | 19 | migration 2 constraints |
 | `verify-migration-3.sql` | 6 | migration 3 constraints |
 
-Last recorded run: **November 2, 2026, 120 checks green** (20+24+12+21+16+16 + 11 of `wallet-update.ts`; `poll-request.ts` assumes the first venue has a 10-stamp promotion, so run it on a DB without other venues) and 25 SQL
+After the wallet change (2026-11-03) `poll-request.ts` has 17 checks (total 125): its 5 new checks pass, but the full suite was **not** re-run green on a seeded DB (the dev DB holds the T6 venue: 1 venue, 5 stamps, so `staff-requests.ts` cannot run and `poll-request.ts` fails only on `stampsRequired 10`). `verify.sh` EXPECTED is now 109 (it counts tests, not single checks).
+
+Last recorded run before that: **November 2, 2026, 120 checks green** (20+24+12+21+16+16 + 11 of `wallet-update.ts`; `poll-request.ts` assumes the first venue has a 10-stamp promotion, so run it on a DB without other venues) and 25 SQL
 checks green (19+6), `npm run typecheck:all` clean.
 
 Frontend: `npm run build` in `stampy-frontend/` runs `vue-tsc` and the production build.
 There is no committed frontend test suite (`BACKLOG.md` B17). Last manual browser run:
 November 1, 2026 (after the login/redirect and bootstrap change), 47 checks green (headless
 Chromium at 360 px against the dev servers, throwaway script outside the repo).
-Manual test pass of the frontend (`BACKLOG.md` T6), November 2, 2026: **A (login) and B (redirects and guards) done**;
-**C (customer flow) and D (staff flow) not tested yet.**
+Manual test pass of the frontend (`BACKLOG.md` T6), November 2–3, 2026: **A (login), B (redirects and guards) and C (customer flow) done**;
+**D (staff flow) not tested yet.**
 
 Utilities (not tests): `scripts/create-owner.ts`, `scripts/create-venue.ts`.
 `npm run script:all` exists but stops: `create-owner`/`create-venue` require arguments

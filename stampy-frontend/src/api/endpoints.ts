@@ -9,6 +9,7 @@ export interface AuthUser {
 
 export type VisitResult =
   | { state: 'card_created'; saveUrl: string; publicCode: string }
+  | { state: 'card_not_added'; saveUrl: string; publicCode: string }
   | { state: 'request_pending'; requestId: string; expiresAt: string }
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'expired'
@@ -53,8 +54,19 @@ export const getMe = () => api<{ user: AuthUser }>('/auth/me', { timeoutMs: 4000
 
 export const logout = () => api<void>('/auth/logout', { method: 'POST' })
 
-export const visitVenue = (venueId: string) =>
-  api<VisitResult>(`/venues/${encodeURIComponent(venueId)}/visit`, { method: 'POST' })
+/**
+ * A plain tap on the tag. With `requestStamp` ("Richiedi il timbro") a stamp request is
+ * opened even if the card was never added to Wallet.
+ */
+export const visitVenue = (venueId: string, requestStamp = false) =>
+  api<VisitResult>(
+    `/venues/${encodeURIComponent(venueId)}/visit${requestStamp ? '?requestStamp=1' : ''}`,
+    { method: 'POST' },
+  )
+
+/** "Aggiungi a Google Wallet" was tapped: the card goes from not_added to active. */
+export const markWalletAdded = (venueId: string) =>
+  api<void>(`/venues/${encodeURIComponent(venueId)}/card/wallet-added`, { method: 'POST' })
 
 export const getRequest = (requestId: string) =>
   api<StampRequest>(`/requests/${encodeURIComponent(requestId)}`)

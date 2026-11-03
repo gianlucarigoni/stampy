@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Runs the full verification of stampy-backend (typecheck + all end-to-end scripts, expected 104 ✔ checks) and reports what failed. Use it after EVERY change to backend code, refactor, migration or new endpoint, before saying a job is finished, and whenever the user asks "run the tests", "verify", "check it works", "is everything green?", even if they do not name the scripts.
+description: Runs the full verification of stampy-backend (typecheck + all end-to-end scripts, expected 109 ✔ checks) and reports what failed. Use it after EVERY change to backend code, refactor, migration or new endpoint, before saying a job is finished, and whenever the user asks "run the tests", "verify", "check it works", "is everything green?", even if they do not name the scripts.
 ---
 
 # Verify stampy-backend
@@ -21,13 +21,13 @@ sequence and counts the ticks.
    background from `stampy-backend/` (`npm run dev`, run_in_background), wait for
    `/api/health` to answer, then rerun. If you started it, stop it at the end.
    Nodemon only watches `src/`: after changes to `src/` wait for the restart before rerunning.
-3. Read the summary. Success = exit 0 **and** `✔ 104`.
+3. Read the summary. Success = exit 0 **and** `✔ 109`.
 
 ## Interpreting failures
 
 - A `✘` is a real failure: investigate the code, do not adapt the script's assertion to
   make it pass, unless the behavior changed on purpose (and then say so).
-- Total ≠ 104 with no `✘`: someone added/removed checks. If intended, update `EXPECTED` in
+- Total ≠ 109 with no `✘`: someone added/removed checks. If intended, update `EXPECTED` in
   `verify.sh` and the number in `AGENTS.md`; otherwise a script exited early.
 - DB connection errors: check `DATABASE_URL` in `stampy-backend/.env` and that the Postgres
   container (`stampy-db`) is running.
@@ -35,7 +35,7 @@ sequence and counts the ticks.
 
 ## Report
 
-Report to the user: typecheck ok/ko, a table per script (✔/✘), total vs 104, and for each
+Report to the user: typecheck ok/ko, a table per script (✔/✘), total vs 109, and for each
 `✘` the error line. If something failed, say so clearly, without softening it.
 
 Do not use `npm run script:all`: it also runs `create-owner`/`create-venue` (they are not

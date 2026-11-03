@@ -2,10 +2,9 @@
 import { onMounted, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
-import { visitVenue } from '@/api/endpoints'
-import { useAuth } from '@/composables/useAuth'
+import { markWalletAdded, visitVenue } from '@/api/endpoints'
 import { formatWait } from '@/utils/format'
-import { readTab, removeTab, writeTab } from '@/utils/tabStorage'
+import { writeTab } from '@/utils/tabStorage'
 
 const props = defineProps<{ venueId: string }>()
 
@@ -20,13 +19,7 @@ type Screen =
   | { kind: 'error'; message: string; canRetry: boolean }
 
 const router = useRouter()
-const { user } = useAuth()
 const screen = shallowRef<Screen>({ kind: 'loading' })
-
-// `saveUrl` is returned only once, when the card is created, and there is no way to get it
-// back yet (BACKLOG B8). Without this, reloading the page on return from Wallet would lose
-// it and also open a stamp request the customer did not ask for.
-const cardKey = () => `stampy.card.${user.value?.id}.${props.venueId}`
 
 function showFailure(err: unknown) {
   if (!(err instanceof ApiError)) {
@@ -47,15 +40,14 @@ function showFailure(err: unknown) {
   }
 }
 
-async function runVisit() {
-  removeTab(cardKey())
+// `requestStamp` = the customer tapped "Richiedi il timbro". A plain tap on a card that was
+// never added to Wallet shows the two buttons and opens no stamp request.
+async function runVisit(requestStamp = false) {
   screen.value = { kind: 'loading' }
   try {
-    const result = await visitVenue(props.venueId)
-    if (result.state === 'card_created') {
-      const card: NewCard = { saveUrl: result.saveUrl, publicCode: result.publicCode }
-      writeTab(cardKey(), card)
-      screen.value = { kind: 'card', ...card }
+    const result = await visitVenue(props.venueId, requestStamp)
+    if (result.state === 'card_created' || result.state === 'card_not_added') {
+      screen.value = { kind: 'card', saveUrl: result.saveUrl, publicCode: result.publicCode }
     } else {
       // GET /requests/:id does not return the venue (BACKLOG B15): the request page needs it
       // to offer "try again", so it is kept for this tab.
@@ -67,11 +59,13 @@ async function runVisit() {
   }
 }
 
-onMounted(() => {
-  const card = readTab<NewCard>(cardKey())
-  if (card) screen.value = { kind: 'card', ...card }
-  else void runVisit()
-})
+// The link opens in a new tab on its own; this only records the tap (not_added -> active).
+// A failure here is harmless: the card stays not_added and the next tap shows this screen.
+function walletTapped() {
+  void markWalletAdded(props.venueId).catch(() => {})
+}
+
+onMounted(() => void runVisit())
 </script>
 
 <template>
@@ -85,10 +79,11 @@ onMounted(() => {
       :href="screen.saveUrl"
       target="_blank"
       rel="noopener noreferrer"
+      @click="walletTapped"
     >
       Aggiungi a Google Wallet
     </a>
-    <button type="button" class="btn btn-outline-primary" @click="runVisit">
+    <button type="button" class="btn btn-outline-primary" @click="runVisit(true)">
       Richiedi il timbro
     </button>
     <p class="text-body-secondary mb-0">Codice card: {{ screen.publicCode }}</p>
@@ -96,7 +91,7 @@ onMounted(() => {
 
   <section v-else class="card card-body">
     <p class="alert alert-danger" role="alert">{{ screen.message }}</p>
-    <button v-if="screen.canRetry" type="button" class="btn btn-primary" @click="runVisit">
+    <button v-if="screen.canRetry" type="button" class="btn btn-primary" @click="runVisit()">
       Riprova
     </button>
   </section>
