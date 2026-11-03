@@ -13,6 +13,8 @@ export type ConfirmResult = {
   stampsCount: number; // saldo dopo la conferma
   stampsRequired: number; // soglia della promozione applicata
   rewards: number; // premi consumati in questa conferma (eventi `redeem`)
+  stampsAdded: number; // timbri aggiunti in questa conferma (somma dei tratti `stamp`)
+  reward: string; // nome del premio della promozione applicata
   cardId: string; // uso interno (sync Wallet): il controller non lo espone nel body
 };
 
@@ -136,7 +138,18 @@ export class ResolveService {
       // 5) saldo sulla card: la riga è lockata, nessun read-modify-write concorrente
       await tx.update(cards).set({ stampsCount: finalCount }).where(eq(cards.id, card.id));
 
-      return { status: "approved" as const, stampsCount: finalCount, stampsRequired, rewards, cardId: card.id };
+      const stampsAdded = segments.reduce((sum, s) => (s.type === "stamp" ? sum + s.quantity : sum), 0);
+      const { reward } = promotionConfigSchema.parse(active.config);
+
+      return {
+        status: "approved" as const,
+        stampsCount: finalCount,
+        stampsRequired,
+        rewards,
+        stampsAdded,
+        reward,
+        cardId: card.id,
+      };
     });
   }
 

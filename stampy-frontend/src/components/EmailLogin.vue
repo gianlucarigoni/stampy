@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { requestCode, verifyCode } from '@/api/endpoints'
@@ -27,6 +27,7 @@ const saved = readTab<SavedLogin>(STORAGE_KEY)
 const email = ref(saved?.email ?? '')
 const challengeId = ref(saved?.challengeId ?? '')
 const code = ref('')
+const codeInput = ref<HTMLInputElement | null>(null)
 const busy = ref(false)
 const error = ref('')
 const notice = ref('')
@@ -37,6 +38,13 @@ const codeDead = ref(false)
 // caused it. Another address starts clean.
 let waitEmail = ''
 const waiting = computed(() => waitSeconds.value > 0)
+// Screen readers hear a coarse message that changes at most once a minute; the per-second
+// countdown is visual only (A11Y-03), otherwise it would be announced every second.
+const waitAnnouncement = computed(() =>
+  waitSeconds.value > 60
+    ? `Riprova tra ${Math.ceil(waitSeconds.value / 60)} minuti`
+    : 'Riprova tra meno di un minuto',
+)
 watch(email, (value) => {
   if (waitSeconds.value > 0 && value.trim().toLowerCase() !== waitEmail) resetWait()
 })
@@ -86,6 +94,8 @@ async function sendCode() {
     code.value = ''
     writeTab(STORAGE_KEY, { email: email.value.trim(), challengeId: result.challengeId })
     notice.value = `Codice inviato a ${email.value.trim()}`
+    await nextTick()
+    codeInput.value?.focus() // the code field replaces the email one: keep the keyboard flow going
   } catch (err) {
     if (err instanceof ApiError && err.status === 400) error.value = 'Email non valida'
     else showError(err, 'Impossibile inviare il codice, riprova')
@@ -136,6 +146,7 @@ watch(code, (value) => {
 <template>
   <div class="container narrow py-3">
     <AppHeader />
+    <main id="main" tabindex="-1">
     <section class="card card-body">
       <template v-if="!challengeId">
         <h1 class="h4">Accedi</h1>
@@ -155,12 +166,15 @@ watch(code, (value) => {
               autocapitalize="none"
               spellcheck="false"
               required
+              :aria-invalid="error ? 'true' : undefined"
+              :aria-describedby="error ? 'login-error' : undefined"
             />
           </div>
 
-          <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
-          <p v-if="waiting" class="alert alert-danger" role="alert">
-            Riprova tra {{ formatWait(waitSeconds) }}
+          <p v-if="error" id="login-error" class="alert alert-danger" role="alert">{{ error }}</p>
+          <p v-if="waiting" class="alert alert-warning">
+            <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
+            <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
           </p>
 
           <button
@@ -193,13 +207,17 @@ watch(code, (value) => {
               autocomplete="one-time-code"
               :disabled="codeDead"
               required
+              ref="codeInput"
+              :aria-invalid="error ? 'true' : undefined"
+              :aria-describedby="error ? 'login-error' : undefined"
             />
           </div>
 
           <p v-if="notice" class="alert alert-success" role="status">{{ notice }}</p>
-          <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
-          <p v-if="waiting" class="alert alert-danger" role="alert">
-            Riprova tra {{ formatWait(waitSeconds) }}
+          <p v-if="error" id="login-error" class="alert alert-danger" role="alert">{{ error }}</p>
+          <p v-if="waiting" class="alert alert-warning">
+            <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
+            <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
           </p>
 
           <button
@@ -226,5 +244,6 @@ watch(code, (value) => {
         </div>
       </template>
     </section>
+    </main>
   </div>
 </template>

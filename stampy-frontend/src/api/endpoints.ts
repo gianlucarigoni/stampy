@@ -19,6 +19,10 @@ export interface StampRequest {
   expiresAt: string
   stampsCount: number
   stampsRequired: number
+  // Only on `approved`: what that confirmation recorded (backend-computed, never inferred here).
+  stampsAdded?: number
+  rewardsRedeemed?: number
+  reward?: string
 }
 
 export interface MemberVenue {
@@ -41,7 +45,9 @@ export interface ConfirmResult {
   status: 'approved'
   stampsCount: number
   stampsRequired: number
-  rewards: number
+  rewards: number // rewards consumed by this confirmation
+  stampsAdded: number
+  reward: string // name of the promotion's reward
 }
 
 export const requestCode = (email: string) =>

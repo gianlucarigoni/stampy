@@ -13,6 +13,11 @@ async function load() {
   error.value = ''
   try {
     const result = await getMyVenues()
+    // Not a member anywhere: this is a customer who opened `/`, not a staff screen.
+    if (result.venues.length === 0) {
+      await router.replace({ name: 'no-venue' })
+      return
+    }
     const only = result.venues.length === 1 ? result.venues[0] : undefined
     if (only) {
       await router.replace({ name: 'staff-queue', params: { venueId: only.venueId } })
@@ -35,12 +40,7 @@ onMounted(load)
 
   <p v-else-if="!venues" class="text-body-secondary" role="status">Caricamento…</p>
 
-  <section v-else-if="venues.length === 0" class="card card-body">
-    <h1 class="h4">Nessun locale</h1>
-    <p class="mb-0">Questo account non è associato a nessun locale.</p>
-  </section>
-
-  <section v-else class="card card-body d-grid gap-3">
+  <section v-else-if="venues.length > 0" class="card card-body d-grid gap-3">
     <h1 class="h4 mb-0">I tuoi locali</h1>
     <RouterLink
       v-for="venue in venues"

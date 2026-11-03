@@ -139,6 +139,9 @@ styles/stampy.scss          Bootstrap 5.3 (Sass only, no JS): variables, then th
 components/AppLayout.vue    layout route for authenticated pages: header, logout, <RouterView>
 components/EmailLogin.vue   /login page (own layout): email -> code; challenge kept across tab reloads
 components/StampProgress.vue balance; full card shown as "Premio disponibile"
+components/RewardDialog.vue native <dialog> (showModal) for a redeemed reward, closed only by "Chiudi"/Esc
+components/ToastStack.vue  non-blocking toasts (staff reward notice), aria-live, dismissible
+utils/seenStorage.ts        localStorage flag "reward modal of this request was dismissed"
 views/CustomerVisitView.vue /v/:venueId  (where tags point): visit, Wallet-save screen
 views/CustomerRequestView.vue /r/:requestId  (polling only, never calls visit)
 views/NoVenueView.vue       /scan  (logged in, no venue, no `next`)
@@ -168,7 +171,21 @@ views/NotFoundView.vue      any other path
   the API does not return (B15): `/v` stores it in `sessionStorage` under
   `stampy.request.<requestId>`; without it the page asks to tap the tag again.
 - **Polling**: customer every 2 s, staff every 3 s on the queue. Network and `5xx` errors keep
-  polling.
+  polling. `usePolling` refreshes at once when the tab becomes visible; the customer page
+  skips polls while the tab is hidden, the staff queue does not (new requests) and shows the
+  pending count in the tab title.
+- **Staff queue feedback** (2026-11-03 review): the error of the last action (`error`) is kept
+  apart from the background refresh state (`pollError`), so a `404`/`409` is no longer wiped by
+  the next poll; messages are sticky at the top; a network error on confirm/reject says the
+  outcome is unknown ("Esito non confermato…"). Each card shows "scade tra …" (device clock,
+  display only), a typeable quantity (1–50, the backend still validates), "Rifiuta" in
+  `btn-outline-danger`, and button names that include the request code.
+- **Request feedback** (2026-11-03): the generic top `success` alert is gone. Staff: after confirm/reject the card is replaced **in place** by an outcome card (`alert-success` "✔ Richiesta approvata" with `+N timbri` and the balance, or `alert-warning` "⚠ Richiesta rifiutata"; a rejection is a technical success) kept ≈20 s or until "Ok", plus a screen-reader announcement. A confirm with `rewards > 0` adds one toast per request (≈10 s, dismissible) naming the real reward. Customer: the approved card shows "Richiesta approvata!" with `+N timbri aggiunti` (or "Nessun nuovo timbro: questo prodotto era il premio."); if `rewardsRedeemed > 0` `RewardDialog` opens until closed; closing stores `stampy.reward-seen.<requestId>` in `localStorage`, so a reload before closing shows it again and after closing never. Reaching N/N alone shows no modal (it keeps the "Premio disponibile" banner). All numbers and the reward name come from the backend.
+- **Typed quantity** (fixes the reset bug): the input shows a per-request `drafts` string (`@input`), so polling/clock re-renders cannot overwrite it (the old `:value` + `@change` was reset to the committed value at every poll). A valid draft also updates `products`; an invalid one (empty, not an integer, outside 1–50) shows "Quantità non valida…" and disables Confirm instead of being clamped silently. `+`/`−` keep the 1–50 limits. Drafts of requests that left the queue are dropped.
+- **Accessibility**: pages have a `<main>`; after each navigation (not the first) `router.afterEach`
+  moves focus to it. Login: the error is linked to the field (`aria-describedby`), focus goes to
+  the code field after sending, the countdown is announced at most once a minute.
+- `/staff` with 0 venues redirects to `/scan` (so `/` does the same for a customer).
 - **Stamps are never computed here**: the stepper sends products consumed, and the balance
   and `rewards` shown come from the backend's answer.
 - **Styling**: Bootstrap 5.3 via Sass only. `styles/stampy.scss` overrides variables
@@ -188,10 +205,10 @@ views/NotFoundView.vue      any other path
 | `POST /api/auth/logout` | yes | `204`, cookie removed, `logout` event |
 | `POST /api/venues/:venueId/visit[?requestStamp=1]` | yes | new card → `201 {state:"card_created", saveUrl, publicCode}`; live pending request → `200 {state:"request_pending", requestId, expiresAt}`; card `not_added` and no `requestStamp=1` → `200 {state:"card_not_added", saveUrl, publicCode}` (no request); new request → `201`; more than 10 new/hour per card → `429` + `Retry-After`; `requestStamp` other than `1` → `400` |
 | `POST /api/venues/:venueId/card/wallet-added` | yes | `204`; `not_added` → `active` (conditional UPDATE, idempotent); no card for this user and venue → `404` |
-| `GET /api/requests/:requestId` | yes | `200 {status, expiresAt, stampsCount, stampsRequired}`; someone else's or missing request → identical `404` |
+| `GET /api/requests/:requestId` | yes | `200 {status, expiresAt, stampsCount, stampsRequired}`; when `approved` also `stampsAdded` (sum of the `stamp` events of that request), `rewardsRedeemed` (count of its `redeem` events) and `reward` (promotion's reward name); someone else's or missing request → identical `404` |
 | `GET /api/venues/mine` | yes | `200 {venues:[{venueId,name,slug,role}]}` |
 | `GET /api/venues/:venueId/requests` | yes + owner/staff | `200 {requests:[{requestId,publicCode,stampsCount,stampsRequired,createdAt,expiresAt}]}`, max 50, never the email |
-| `POST /api/venues/:venueId/requests/:requestId/confirm` | yes + owner/staff | body `{stamps}` = **products consumed, reward included** (integer 1–50) → `200 {status:"approved", stampsCount, stampsRequired, rewards}`; `404`/`409`; after the commit the Google pass is updated best effort (a Wallet failure never changes the response) |
+| `POST /api/venues/:venueId/requests/:requestId/confirm` | yes + owner/staff | body `{stamps}` = **products consumed, reward included** (integer 1–50) → `200 {status:"approved", stampsCount, stampsRequired, rewards, stampsAdded, reward}` (`stampsAdded` = stamps recorded, `rewards` = rewards consumed); `404`/`409`; after the commit the Google pass is updated best effort (a Wallet failure never changes the response) |
 | `POST /api/venues/:venueId/requests/:requestId/reject` | yes + owner/staff | `200 {status:"rejected"}`, does not touch the card; `404`/`409` |
 
 There is no `/cards` route: the card is only created by `visit`.
@@ -394,7 +411,7 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 Last recorded run: **November 3, 2026, after the wallet change: 125 checks green** (20+24+17+21+16+16 = 114 counted by `verify.sh`, + 11 of `wallet-update.ts`) and 25 SQL checks green (19+6), `npm run typecheck:all` clean. Run on a freshly reset DB with two 10-stamp venues (`create-venue.ts`); `poll-request.ts` assumes the first venue has a 10-stamp promotion and `staff-requests.ts` needs 2 venues.
 
 Frontend: `npm run build` in `stampy-frontend/` runs `vue-tsc` and the production build.
-There is no committed frontend test suite (`BACKLOG.md` B17). Last manual browser run:
+Browser tests (Playwright, `playwright` devDependency, closes B17): `npm run e2e` runs both: `node e2e/staff-input.mjs` (7 checks: typed quantity survives polling, invalid text blocks Confirm, Confirm sends exactly the typed value) and `node e2e/feedback.mjs` (31 checks: staff approval/rejection/reward toast, customer approval text, reward modal persistence/focus/keyboard/reload, 390 px overflow). They need `npm run dev`, the `stampy-db` container and a venue with branding in the DB; they create `e2e-*@test.it` users plus one `e2e-*` venue and delete them. If `playwright install` was not run, point `E2E_CHROMIUM` at a Chromium binary. Last run: 2026-11-03, 38 checks green. The 2026-11-01 run was a throwaway script. Last manual browser run:
 November 1, 2026 (after the login/redirect and bootstrap change), 47 checks green (headless
 Chromium at 360 px against the dev servers, throwaway script outside the repo).
 Manual test pass of the frontend (`BACKLOG.md` T6), November 2–3, 2026: **A (login), B (redirects and guards) and C (customer flow) done**;

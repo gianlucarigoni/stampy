@@ -1,6 +1,6 @@
 import { and, asc, eq, exists, lte, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { cards, promotions, stampRequests } from "../../db/schema";
+import { cards, promotions, stampEvents, stampRequests } from "../../db/schema";
 import { RequestStatus, StampRequest } from "../../db/types";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
 
@@ -26,6 +26,8 @@ export type CardStateOfRequest = {
   expiresAt: Date;
   stampsCount: number;
   stampsRequired: number;
+  // solo per `approved`: cosa ha registrato la conferma (null negli altri stati)
+  outcome: { stampsAdded: number; rewardsRedeemed: number; reward: string } | null;
 };
 
 export class RequestsService {
@@ -90,11 +92,32 @@ export class RequestsService {
 
     if (!row) return null;
 
+    const config = promotionConfigSchema.parse(row.config);
+
+    // Esito della conferma, letto dagli eventi scritti da `splitStamps` (nessun ricalcolo):
+    // timbri aggiunti = somma dei tratti `stamp`, premi consumati = eventi `redeem`.
+    let outcome: CardStateOfRequest["outcome"] = null;
+    if (row.request.status === RequestStatus.approved) {
+      const [events] = await db
+        .select({
+          stampsAdded: sql<number>`coalesce(sum(${stampEvents.quantity}) filter (where ${eq(stampEvents.type, "stamp")}), 0)::int`,
+          rewardsRedeemed: sql<number>`count(*) filter (where ${eq(stampEvents.type, "redeem")})::int`,
+        })
+        .from(stampEvents)
+        .where(and(eq(stampEvents.requestId, id), eq(stampEvents.venueId, row.request.venueId)));
+      outcome = {
+        stampsAdded: events?.stampsAdded ?? 0,
+        rewardsRedeemed: events?.rewardsRedeemed ?? 0,
+        reward: config.reward,
+      };
+    }
+
     return {
       status: row.request.status,
       expiresAt: row.request.expiresAt,
       stampsCount: row.stampsCount,
-      stampsRequired: promotionConfigSchema.parse(row.config).stampsRequired,
+      stampsRequired: config.stampsRequired,
+      outcome,
     };
   }
 

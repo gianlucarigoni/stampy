@@ -28,7 +28,9 @@ async function signOut() {
       <button type="button" class="btn btn-link" @click="signOut">Esci</button>
     </AppHeader>
 
-    <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
-    <RouterView :key="route.path" />
+    <main id="main" tabindex="-1">
+      <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
+      <RouterView :key="route.path" />
+    </main>
   </div>
 </template>

@@ -77,6 +77,11 @@ $input-btn-focus-width: 0.2rem;
   letter-spacing: -0.02em;
 }
 
+// The route change moves focus to <main> (A11Y-01): it is not a control, so no ring.
+main:focus {
+  outline: none;
+}
+
 :focus-visible {
   outline: 3px solid var(--stampy-brand);
   outline-offset: 2px;

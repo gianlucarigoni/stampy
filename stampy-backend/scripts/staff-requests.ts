@@ -347,6 +347,7 @@ async function main() {
   await test("conferma quantità 15 -> 200, card 4/10, 3 eventi, resolved_by = operatore", async () => {
     const r = await confirm(venueA, requestAId, staffAToken, { stamps: 15 });
     show(r);
+    const polled = await poll(requestAId, customerAToken);
     const state = await requestState(requestAId);
     const events = await eventsOf(requestAId);
     const card = await cardOf(customerAId, venueA);
@@ -357,6 +358,17 @@ async function main() {
       check("saldo 4", r.body?.stampsCount === 4, `${r.body?.stampsCount}`),
       check("soglia 10", r.body?.stampsRequired === 10, `${r.body?.stampsRequired}`),
       check("1 premio consumato", r.body?.rewards === 1, `${r.body?.rewards}`),
+      check("risposta: stampsAdded 14 (15 prodotti - 1 premio)", r.body?.stampsAdded === 14, `${r.body?.stampsAdded}`),
+      check("risposta: nome del premio", typeof r.body?.reward === "string" && r.body.reward.length > 0),
+      check("risposta senza cardId", r.body?.cardId === undefined),
+      check(
+        "polling cliente approved: stampsAdded 14, rewardsRedeemed 1, reward = quello della conferma",
+        polled.body?.status === "approved" &&
+          polled.body?.stampsAdded === 14 &&
+          polled.body?.rewardsRedeemed === 1 &&
+          polled.body?.reward === r.body?.reward,
+        JSON.stringify(polled.body),
+      ),
       check("DB: richiesta approved", state?.status === "approved", String(state?.status)),
       check("DB: resolved_by = staff", state?.resolved_by === staffAId, String(state?.resolved_by)),
       check("DB: resolved_at valorizzato", state?.resolved_at !== null),
@@ -416,6 +428,7 @@ async function main() {
     rejectedRequestId = v.body?.requestId ?? "";
     const r = await reject(venueA, rejectedRequestId, staffAToken);
     show(r);
+    const polled = await poll(rejectedRequestId, customerAToken);
     const state = await requestState(rejectedRequestId);
     const events = await eventsOf(rejectedRequestId);
     return [
@@ -424,6 +437,14 @@ async function main() {
       check("DB: rejected", state?.status === "rejected", String(state?.status)),
       check("DB: resolved_by = staff", state?.resolved_by === staffAId),
       check("nessun evento", events.length === 0, `${events.length}`),
+      check(
+        "polling cliente rejected: nessun campo esito",
+        polled.body?.status === "rejected" &&
+          polled.body?.stampsAdded === undefined &&
+          polled.body?.rewardsRedeemed === undefined &&
+          polled.body?.reward === undefined,
+        JSON.stringify(polled.body),
+      ),
     ];
   });
 
@@ -529,12 +550,19 @@ async function main() {
     const requestId = v.body?.requestId ?? "";
     const r = await confirm(venueA, requestId, staffAToken, { stamps: 10 });
     show(r);
+    const polled = await poll(requestId, customerDToken);
     const events = await eventsOf(requestId);
     const card = await cardOf(customerDId, venueA);
     return [
       check("status 200", r.status === 200, `status=${r.status}`),
       check("saldo 10 (card piena)", r.body?.stampsCount === 10, `${r.body?.stampsCount}`),
       check("0 premi consumati", r.body?.rewards === 0, `${r.body?.rewards}`),
+      check("risposta: stampsAdded 10", r.body?.stampsAdded === 10, `${r.body?.stampsAdded}`),
+      check(
+        "polling cliente: stampsAdded 10, rewardsRedeemed 0",
+        polled.body?.stampsAdded === 10 && polled.body?.rewardsRedeemed === 0,
+        JSON.stringify(polled.body),
+      ),
       check("DB: card a 10", card?.stamps_count === 10, `${card?.stamps_count}`),
       check("DB: 1 solo evento stamp 10", events.length === 1 && events[0].type === "stamp" && events[0].quantity === 10),
     ];
@@ -545,12 +573,19 @@ async function main() {
     const requestId = v.body?.requestId ?? "";
     const r = await confirm(venueA, requestId, staffAToken, { stamps: 1 });
     show(r);
+    const polled = await poll(requestId, customerDToken);
     const events = await eventsOf(requestId);
     const card = await cardOf(customerDId, venueA);
     return [
       check("status 200", r.status === 200, `status=${r.status}`),
       check("saldo 0", r.body?.stampsCount === 0, `${r.body?.stampsCount}`),
       check("1 premio consumato", r.body?.rewards === 1, `${r.body?.rewards}`),
+      check("risposta: stampsAdded 0", r.body?.stampsAdded === 0, `${r.body?.stampsAdded}`),
+      check(
+        "polling cliente: stampsAdded 0, rewardsRedeemed 1",
+        polled.body?.stampsAdded === 0 && polled.body?.rewardsRedeemed === 1,
+        JSON.stringify(polled.body),
+      ),
       check("DB: card a 0", card?.stamps_count === 0, `${card?.stamps_count}`),
       check("DB: 1 solo evento redeem 1", events.length === 1 && events[0].type === "redeem" && events[0].quantity === 1),
     ];

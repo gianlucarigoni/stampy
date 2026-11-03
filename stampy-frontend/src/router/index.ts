@@ -1,3 +1,4 @@
+import { nextTick } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { setUnauthorizedHandler } from '@/api/client'
 import { useAuth } from '@/composables/useAuth'
@@ -80,6 +81,13 @@ router.beforeEach(async (to) => {
   // Already logged in on the login page: continue as if they had just logged in.
   if (to.name === 'login' && user.value) return destinationAfterLogin(to.query.next)
   return true
+})
+
+// Screen readers get no page load in a SPA: after each navigation focus moves to <main>.
+router.afterEach(async (to, from) => {
+  if (from.matched.length === 0 || to.path === from.path) return
+  await nextTick()
+  document.querySelector<HTMLElement>('main')?.focus({ preventScroll: true })
 })
 
 // A 401 on any call mid-session means the session is gone. Without a user there is nothing

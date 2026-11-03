@@ -15,7 +15,10 @@ const showDots = computed(() => props.required <= 20)
       <li v-for="n in required" :key="n" class="dot" :class="{ filled: n <= count }" />
     </ol>
     <p class="fw-semibold mb-3">{{ count }} / {{ required }} timbri</p>
-    <p v-if="full" class="alert alert-success mb-0">Premio disponibile</p>
+    <div v-if="full" class="alert alert-success mb-0">
+      <p class="fw-semibold mb-1">Premio disponibile</p>
+      <p class="mb-0">Il prossimo prodotto è gratis: mostra questa schermata al personale.</p>
+    </div>
   </div>
 </template>
 

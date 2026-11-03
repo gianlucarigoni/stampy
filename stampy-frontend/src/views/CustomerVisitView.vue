@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, shallowRef } from 'vue'
+import { onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { markWalletAdded, visitVenue } from '@/api/endpoints'
@@ -20,6 +20,9 @@ type Screen =
 
 const router = useRouter()
 const screen = shallowRef<Screen>({ kind: 'loading' })
+// After the Wallet link was tapped the next step is the stamp request (UX-09). The tap is an
+// intent, not proof that the pass was saved (`CONTEXT.md` §4.6), so no text claims it.
+const walletTapped = ref(false)
 
 function showFailure(err: unknown) {
   if (!(err instanceof ApiError)) {
@@ -61,7 +64,8 @@ async function runVisit(requestStamp = false) {
 
 // The link opens in a new tab on its own; this only records the tap (not_added -> active).
 // A failure here is harmless: the card stays not_added and the next tap shows this screen.
-function walletTapped() {
+function onWalletTap() {
+  walletTapped.value = true
   void markWalletAdded(props.venueId).catch(() => {})
 }
 
@@ -75,15 +79,21 @@ onMounted(() => void runVisit())
     <h1 class="h4 mb-0">La tua card è pronta</h1>
     <p class="mb-0">Salvala in Google Wallet: è qui che vedrai i tuoi timbri.</p>
     <a
-      class="btn btn-primary"
+      class="btn"
+      :class="walletTapped ? 'btn-outline-primary' : 'btn-primary'"
       :href="screen.saveUrl"
       target="_blank"
       rel="noopener noreferrer"
-      @click="walletTapped"
+      @click="onWalletTap"
     >
       Aggiungi a Google Wallet
     </a>
-    <button type="button" class="btn btn-outline-primary" @click="runVisit(true)">
+    <button
+      type="button"
+      class="btn"
+      :class="walletTapped ? 'btn-primary' : 'btn-outline-primary'"
+      @click="runVisit(true)"
+    >
       Richiedi il timbro
     </button>
     <p class="text-body-secondary mb-0">Codice card: {{ screen.publicCode }}</p>
