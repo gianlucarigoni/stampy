@@ -391,10 +391,7 @@ docker exec -i stampy-db psql -U stampy -d stampy_dev < scripts/verify-migration
 | `verify-migration-2.sql` | 19 | migration 2 constraints |
 | `verify-migration-3.sql` | 6 | migration 3 constraints |
 
-After the wallet change (2026-11-03) `poll-request.ts` has 17 checks (total 125): its 5 new checks pass, but the full suite was **not** re-run green on a seeded DB (the dev DB holds the T6 venue: 1 venue, 5 stamps, so `staff-requests.ts` cannot run and `poll-request.ts` fails only on `stampsRequired 10`). `verify.sh` EXPECTED is now 109 (it counts tests, not single checks).
-
-Last recorded run before that: **November 2, 2026, 120 checks green** (20+24+12+21+16+16 + 11 of `wallet-update.ts`; `poll-request.ts` assumes the first venue has a 10-stamp promotion, so run it on a DB without other venues) and 25 SQL
-checks green (19+6), `npm run typecheck:all` clean.
+Last recorded run: **November 3, 2026, after the wallet change: 125 checks green** (20+24+17+21+16+16 = 114 counted by `verify.sh`, + 11 of `wallet-update.ts`) and 25 SQL checks green (19+6), `npm run typecheck:all` clean. Run on a freshly reset DB with two 10-stamp venues (`create-venue.ts`); `poll-request.ts` assumes the first venue has a 10-stamp promotion and `staff-requests.ts` needs 2 venues.
 
 Frontend: `npm run build` in `stampy-frontend/` runs `vue-tsc` and the production build.
 There is no committed frontend test suite (`BACKLOG.md` B17). Last manual browser run:
