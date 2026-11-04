@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Runs the full verification of stampy-backend (typecheck + all end-to-end scripts, expected 114 ✔ checks) and reports what failed. Use it after EVERY change to backend code, refactor, migration or new endpoint, before saying a job is finished, and whenever the user asks "run the tests", "verify", "check it works", "is everything green?", even if they do not name the scripts.
+description: Runs the full verification of stampy-backend (typecheck + all end-to-end scripts, expected 125 ✔ checks) and reports what failed. Use it after EVERY change to backend code, refactor, migration or new endpoint, before saying a job is finished, and whenever the user asks "run the tests", "verify", "check it works", "is everything green?", even if they do not name the scripts.
 ---
 
 # Verify stampy-backend

@@ -83,6 +83,7 @@ onMounted(load)
     <p>Stiamo aspettando la conferma dello staff.</p>
     <p class="text-body-secondary">La richiesta resta valida solo per pochi minuti: se scade potrai rifarla.</p>
     <StampProgress :count="screen.balance.stampsCount" :required="screen.balance.stampsRequired" />
+    <p class="text-body-secondary mt-3 mb-0">Codice card: <strong>{{ screen.balance.publicCode }}</strong></p>
   </section>
 
   <section v-else-if="screen.kind === 'closed'" class="card card-body" aria-live="polite">
@@ -97,6 +98,7 @@ onMounted(load)
         </p>
       </div>
       <StampProgress :count="screen.result.stampsCount" :required="screen.result.stampsRequired" />
+      <p class="text-body-secondary mt-3 mb-0">Codice card: <strong>{{ screen.result.publicCode }}</strong></p>
       <RewardDialog
         v-if="rewardOpen"
         :reward="screen.result.reward ?? ''"
@@ -109,6 +111,7 @@ onMounted(load)
         {{ screen.result.status === 'expired' ? 'Richiesta scaduta' : 'Richiesta non confermata' }}
       </h1>
       <p>Nessun timbro aggiunto.</p>
+      <p class="text-body-secondary">Codice card: <strong>{{ screen.result.publicCode }}</strong></p>
       <button v-if="venueId" type="button" class="btn btn-primary" @click="askAgain">
         Richiedi di nuovo
       </button>

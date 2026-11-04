@@ -1,9 +1,10 @@
 import { NextFunction, Response } from "express";
 import { requireAuth } from "../../../utils/auth-context";
 import { TypedAuthRequest } from "../../../utils/typed-request";
+import { historyRow } from "../../requests/history.mapper";
 import requestsSrv from "../../requests/requests.service";
 import resolveSrv from "../../requests/resolve/resolve.service";
-import { confirmDTO, staffRequestParamsDTO } from "./staff.dto";
+import { confirmDTO, historyQueryDTO, staffRequestParamsDTO } from "./staff.dto";
 import { venueIdDTO } from "../venues.dto";
 import walletSrv from "../../wallet/wallet.service";
 import venuesSrv from "../venues.service";
@@ -43,6 +44,20 @@ export const queue = async (
   try {
     const requests = await requestsSrv.getPendingQueue(req.params.venueId);
     res.status(200).json({ requests });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** Storico delle richieste del locale con filtri opzionali (solo lettura, mai l'email). */
+export const history = async (
+  req: TypedAuthRequest<unknown, historyQueryDTO, venueIdDTO>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const items = await requestsSrv.getHistory({ venueId: req.params.venueId }, req.query);
+    res.status(200).json({ requests: items.map((r) => historyRow(r)) });
   } catch (err) {
     next(err);
   }

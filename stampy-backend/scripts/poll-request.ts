@@ -234,10 +234,11 @@ async function main() {
       check("expiresAt presente", typeof r.body?.expiresAt === "string"),
       // contratto esteso il 27/10/2026: il cliente vede il saldo senza aprire il Wallet
       check(
-        "body solo {status, expiresAt, stampsCount, stampsRequired}",
-        Object.keys(r.body ?? {}).sort().join() === "expiresAt,stampsCount,stampsRequired,status",
+        "body solo {status, publicCode, expiresAt, stampsCount, stampsRequired}",
+        Object.keys(r.body ?? {}).sort().join() === "expiresAt,publicCode,stampsCount,stampsRequired,status",
         Object.keys(r.body ?? {}).sort().join(),
       ),
+      check("publicCode = codice della card", typeof r.body?.publicCode === "string" && r.body.publicCode.length > 0, `${r.body?.publicCode}`),
       check("stampsCount numerico", typeof r.body?.stampsCount === "number", `${r.body?.stampsCount}`),
       check("stampsRequired 10", r.body?.stampsRequired === 10, `${r.body?.stampsRequired}`),
     ];

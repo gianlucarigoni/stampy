@@ -40,8 +40,9 @@ type Resolved = {
 const resolved = ref<Resolved[]>([])
 const toasts = ref<Toast[]>([])
 const announcement = ref('') // screen-reader text for the outcome (cards appear without a live region)
-const RESOLVED_MS = 20000
-const TOAST_MS = 10000
+// Short on purpose: the feedback must not sit on top of the next request (toast and card).
+const RESOLVED_MS = 8000
+const TOAST_MS = 5000
 const timers = new Set<ReturnType<typeof setTimeout>>()
 // Display-only clock for "scade tra …" (the server decides what is expired, not this).
 const now = ref(Date.now())
@@ -210,7 +211,7 @@ function onApproved(item: QueueItem, index: number, result: ConfirmResult) {
     const many = result.rewards > 1 ? ` (${result.rewards} premi)` : ''
     addToast({
       id: item.requestId,
-      text: `${item.publicCode}: ${result.reward}${many}. Non far pagare il prodotto in premio.`,
+      text: `${item.publicCode}: ${result.reward}${many}.`,
     })
   }
 }
@@ -267,7 +268,9 @@ onMounted(async () => {
   <template v-else>
     <div class="d-flex align-items-baseline justify-content-between gap-3 mb-3">
       <h1 class="h4 mb-0">{{ venue?.name ?? 'Richieste' }}</h1>
-      <RouterLink v-if="venueCount > 1" :to="{ name: 'staff-venues' }">Cambia locale</RouterLink>
+      <span class="d-flex gap-3">
+        <RouterLink v-if="venueCount > 1" :to="{ name: 'staff-venues' }">Cambia locale</RouterLink>
+      </span>
     </div>
 
     <!-- Sticky: with several cards the outcome of the last one must stay in view (UX-02). -->
@@ -396,11 +399,17 @@ onMounted(async () => {
     </article>
     </template>
     </template>
+    <!-- room under the last card: the fixed toast never covers its buttons -->
+    <div v-if="toasts.length > 0" class="toast-room" aria-hidden="true"></div>
     <ToastStack :toasts="toasts" @dismiss="dismissToast" />
   </template>
 </template>
 
 <style scoped>
+.toast-room {
+  height: 6rem;
+}
+
 .stepper {
   display: grid;
   grid-template-columns: 3.5rem 1fr 3.5rem;

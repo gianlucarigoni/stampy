@@ -12,7 +12,7 @@ const emit = defineEmits<{ dismiss: [id: string] }>()
   <!-- Non-blocking: fixed at the bottom, never takes focus; the live region announces it. -->
   <div class="toast-stack" role="status" aria-live="polite">
     <div v-for="toast in toasts" :key="toast.id" class="alert alert-success toast-item" >
-      <span class="toast-text"><strong>✔ Premio ritirato.</strong> {{ toast.text }}</span>
+      <span class="toast-text"><strong>✔ Premio ritirato</strong> · {{ toast.text }}</span>
       <button type="button" class="btn-close" aria-label="Chiudi notifica" @click="emit('dismiss', toast.id)" />
     </div>
   </div>

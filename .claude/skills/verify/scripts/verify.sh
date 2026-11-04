@@ -3,7 +3,7 @@
 set -u
 cd "$(dirname "$0")/../../../../stampy-backend" || exit 2
 BASE_URL="${TEST_BASE_URL:-http://localhost:3000}"
-EXPECTED=114
+EXPECTED=125
 fail=0
 
 if [ "${1:-}" != "--skip-typecheck" ]; then
@@ -37,6 +37,7 @@ run --env-file=.env scripts/poll-request.ts
 run --env-file=.env scripts/otp-request.ts
 run --env-file=.env scripts/otp-verify.ts
 run --env-file=.env scripts/session.ts
+run --env-file=.env scripts/history.ts
 
 echo "TOTALE: ✔ $ok  ✘ $ko  (atteso ✔ $EXPECTED)"
 [ "$ok" -ne "$EXPECTED" ] && echo "⚠ numero di controlli diverso dall'atteso: se hai aggiunto/tolto controlli aggiorna EXPECTED qui e AGENTS.md"

@@ -3,7 +3,7 @@
 // Brand: the logo orange is for the wordmark and stamp dots only. $primary is darker so white
 // text on buttons has about 5:1 contrast. success/danger stay at Bootstrap defaults.
 $brand: #f16417;
-$primary: #c2410c;
+$primary: #f16417;
 $body-bg-dark: #171310;
 $body-secondary-bg-dark: #221c18;
 $link-color-dark: #f4813f; // $primary is too dark for links on the dark background
@@ -17,37 +17,99 @@ $btn-padding-y: 0.625rem;
 $btn-font-weight: 600;
 $input-btn-focus-width: 0.2rem;
 
-@import 'bootstrap/scss/functions';
-@import 'bootstrap/scss/variables';
-@import 'bootstrap/scss/variables-dark';
-@import 'bootstrap/scss/maps';
-@import 'bootstrap/scss/mixins';
-@import 'bootstrap/scss/utilities';
-@import 'bootstrap/scss/root';
-@import 'bootstrap/scss/reboot';
-@import 'bootstrap/scss/type';
-@import 'bootstrap/scss/containers';
-@import 'bootstrap/scss/grid';
-@import 'bootstrap/scss/forms';
-@import 'bootstrap/scss/buttons';
-@import 'bootstrap/scss/card';
-@import 'bootstrap/scss/alert';
-@import 'bootstrap/scss/helpers';
-@import 'bootstrap/scss/utilities/api';
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/reboot";
+@import "bootstrap/scss/type";
+@import "bootstrap/scss/containers";
+@import "bootstrap/scss/grid";
+@import "bootstrap/scss/forms";
+@import "bootstrap/scss/buttons";
+@import "bootstrap/scss/dropdown";
+@import "bootstrap/scss/card";
+@import "bootstrap/scss/alert";
+@import "bootstrap/scss/helpers";
+@import "bootstrap/scss/utilities/api";
 
 // Brand color as a CSS variable: the same orange reads well on both themes.
 :root {
   --stampy-brand: #{$brand};
 }
 
+// Bootstrap picks the hover text color with color-contrast($primary), which can resolve to dark.
+// Force white (burger menu and back buttons use this class), in both themes.
+.btn-outline-primary {
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-color: #fff;
+}
+
 // Dark theme: the darker $primary on dark cards is too heavy for outline buttons.
-[data-bs-theme='dark'] {
+[data-bs-theme="dark"] {
   .btn-outline-primary {
     --bs-btn-color: #f4813f;
     --bs-btn-border-color: #f4813f;
     --bs-btn-hover-bg: #c2410c;
     --bs-btn-hover-border-color: #c2410c;
     --bs-btn-hover-color: #fff;
+  }
+}
+
+// History "Filtri" toggle and its panel (same as the header buttons, both themes):
+// normal = outline primary; hover = outline with the primary fill at 75%; open/clicked = primary fill.
+// The fill is --bs-btn-hover-bg, which Bootstrap/our dark rule already set to the right primary per theme.
+.filter-toggle {
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--bs-btn-hover-bg);
+  --bs-btn-active-border-color: var(--bs-btn-hover-border-color);
+
+  &:hover:not(.active) {
+    background-color: color-mix(in srgb, var(--bs-btn-hover-bg) 75%, transparent);
+  }
+}
+.filter-panel {
+  border-color: var(--stampy-brand);
+}
+// "Azzera": orange only while it can be used (there are filters to clear); disabled keeps the gray outline.
+.filter-reset:not(:disabled) {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--stampy-brand);
+  --bs-btn-border-color: var(--stampy-brand);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--stampy-brand);
+  --bs-btn-hover-border-color: var(--stampy-brand);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: #c2410c; // pressed: the darker $primary, white text has ~5:1 on it
+  --bs-btn-active-border-color: #c2410c;
+}
+
+// Burger menu: items are flush (no gaps), the selected one is orange, hover is a faded orange.
+#app-menu {
+  overflow: hidden; // flush items follow the rounded corners
+  --bs-dropdown-link-hover-bg: rgba(var(--bs-primary-rgb), 0.15);
+  --bs-dropdown-link-active-bg: var(--bs-primary);
+  --bs-dropdown-link-active-color: #fff;
+
+  .dropdown-divider {
+    margin: 0; // Bootstrap adds 0.5rem above and below
+  }
+
+  .dropdown-item {
+    border-radius: 0;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+
+    &.active,
+    &.active:hover,
+    &.active:focus {
+      background-color: var(--stampy-brand);
+      color: #fff;
+      cursor: default;
+    }
   }
 }
 

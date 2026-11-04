@@ -1,6 +1,6 @@
-import { and, asc, eq, exists, lte, sql } from "drizzle-orm";
+import { SQL, and, asc, desc, eq, exists, lte, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { cards, promotions, stampEvents, stampRequests } from "../../db/schema";
+import { cards, promotions, stampEvents, stampRequests, venues } from "../../db/schema";
 import { RequestStatus, StampRequest } from "../../db/types";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
 
@@ -21,8 +21,33 @@ export type QueueItem = {
   expiresAt: Date;
 };
 
+/** Chi chiede lo storico: tutte le richieste di un locale (staff) o tutte quelle di un cliente. */
+export type HistoryScope = { venueId: string } | { userId: string };
+
+export type HistoryFilters = {
+  status?: RequestStatus;
+  minStamps?: number;
+  maxStamps?: number;
+  from?: string;
+  to?: string;
+};
+
+export type HistoryItem = {
+  requestId: string;
+  publicCode: string;
+  venueName: string;
+  status: RequestStatus;
+  createdAt: Date;
+  resolvedAt: Date | null;
+  // timbri confermati (premio compreso); null se la richiesta non è `approved`
+  stamps: number | null;
+  stampsAdded: number | null;
+  rewardsRedeemed: number | null;
+};
+
 export type CardStateOfRequest = {
   status: StampRequest["status"];
+  publicCode: string;
   expiresAt: Date;
   stampsCount: number;
   stampsRequired: number;
@@ -82,6 +107,7 @@ export class RequestsService {
       .select({
         request: stampRequests,
         stampsCount: cards.stampsCount,
+        publicCode: cards.publicCode,
         config: promotions.config,
       })
       .from(stampRequests)
@@ -114,6 +140,7 @@ export class RequestsService {
 
     return {
       status: row.request.status,
+      publicCode: row.publicCode,
       expiresAt: row.request.expiresAt,
       stampsCount: row.stampsCount,
       stampsRequired: config.stampsRequired,
@@ -187,22 +214,87 @@ export class RequestsService {
     return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil(3600 - age)) };
   }
 
+  /** Scadenza lazy delle pendenti scadute di un ambito: un locale (staff) o un cliente (solo da `pending`). */
+  private async expirePending(scope: HistoryScope) {
+    const inScope =
+      "venueId" in scope
+        ? eq(stampRequests.venueId, scope.venueId)
+        : sql`${stampRequests.cardId} in (select c.id from ${cards} c where c.user_id = ${scope.userId})`;
+    await db
+      .update(stampRequests)
+      .set({ status: RequestStatus.expired, resolvedAt: sql`now()` })
+      .where(and(inScope, eq(stampRequests.status, RequestStatus.pending), lte(stampRequests.expiresAt, sql`now()`)));
+  }
+
+  /**
+   * Storico delle richieste del locale (staff), dalla più recente. Tutti i filtri sono
+   * opzionali e in AND. I timbri confermati (premio compreso) sono la somma delle quantità degli eventi della
+   * richiesta (letti da `stamp_events`, nessun ricalcolo della regola timbri).
+   * Date: `from` incluso; `to` incluso (una data senza ora vale fino a fine giornata UTC).
+   * Mai l'email: solo il codice pubblico. Nessuna paginazione: restituisce tutte le righe che combaciano.
+   */
+  async getHistory(scope: HistoryScope, f: HistoryFilters): Promise<HistoryItem[]> {
+    await this.expirePending(scope); // una pendente scaduta va mostrata come `expired`
+
+    const stamps = sql<number | null>`(select sum(e.quantity)::int from ${stampEvents} e
+      where e.request_id = ${stampRequests.id} and e.venue_id = ${stampRequests.venueId})`;
+    // L'ambito è sempre filtrato in SQL: il cliente vede solo richieste di card sue.
+    const conds: (SQL | undefined)[] = [
+      "venueId" in scope ? eq(stampRequests.venueId, scope.venueId) : eq(cards.userId, scope.userId),
+    ];
+    if (f.status) conds.push(eq(stampRequests.status, f.status));
+    if (f.minStamps !== undefined) conds.push(sql`${stamps} >= ${f.minStamps}`);
+    if (f.maxStamps !== undefined) conds.push(sql`${stamps} <= ${f.maxStamps}`);
+    if (f.from) conds.push(sql`${stampRequests.createdAt} >= ${f.from}::timestamptz`);
+    if (f.to) {
+      conds.push(
+        /^\d{4}-\d{2}-\d{2}$/.test(f.to)
+          ? sql`${stampRequests.createdAt} < (${f.to}::date + 1)::timestamp at time zone 'UTC'`
+          : sql`${stampRequests.createdAt} <= ${f.to}::timestamptz`,
+      );
+    }
+
+    const rows = await db
+      .select({
+        requestId: stampRequests.id,
+        publicCode: cards.publicCode,
+        venueName: venues.name,
+        status: stampRequests.status,
+        createdAt: stampRequests.createdAt,
+        resolvedAt: stampRequests.resolvedAt,
+        stamps,
+        stampsAdded: sql<number | null>`(select sum(e.quantity)::int from ${stampEvents} e
+          where e.request_id = ${stampRequests.id} and e.venue_id = ${stampRequests.venueId} and e.type = 'stamp')`,
+        rewardsRedeemed: sql<number | null>`(select count(*)::int from ${stampEvents} e
+          where e.request_id = ${stampRequests.id} and e.venue_id = ${stampRequests.venueId} and e.type = 'redeem')`,
+      })
+      .from(stampRequests)
+      .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
+      .innerJoin(venues, eq(venues.id, stampRequests.venueId))
+      .where(and(...conds))
+      .orderBy(desc(stampRequests.createdAt), desc(stampRequests.id));
+
+    const approved = (r: (typeof rows)[number]) => r.status === RequestStatus.approved;
+    return rows.map((r) => ({
+      requestId: r.requestId,
+      publicCode: r.publicCode,
+      venueName: r.venueName,
+      status: r.status,
+      createdAt: r.createdAt,
+      resolvedAt: r.resolvedAt,
+      stamps: approved(r) ? r.stamps : null,
+      stampsAdded: approved(r) ? (r.stampsAdded ?? 0) : null,
+      rewardsRedeemed: approved(r) ? (r.rewardsRedeemed ?? 0) : null,
+    }));
+  }
+
   /**
    * Coda staff: scadenza lazy del locale, poi le pendenti in ordine di arrivo.
    * La scadenza si fa qui perché una richiesta senza polling resterebbe `pending`
    * per sempre (occupando coda e indice parziale `one_pending_uq`).
    */
   async getPendingQueue(venueId: string, limit = 50): Promise<QueueItem[]> {
-    await db
-      .update(stampRequests)
-      .set({ status: RequestStatus.expired, resolvedAt: sql`now()` })
-      .where(
-        and(
-          eq(stampRequests.venueId, venueId),
-          eq(stampRequests.status, RequestStatus.pending),
-          lte(stampRequests.expiresAt, sql`now()`),
-        ),
-      );
+    await this.expirePending({ venueId });
 
     const rows = await db
       .select({

@@ -1,6 +1,8 @@
 import { NextFunction, Response } from "express";
 import { requireAuth } from "../../utils/auth-context";
 import { TypedAuthRequest } from "../../utils/typed-request";
+import { historyQueryDTO } from "../venues/staff/staff.dto";
+import { historyRow } from "./history.mapper";
 import { requestIdDTO } from "./requests.dto";
 import requestsSrv from "./requests.service";
 import { RequestNotFoundError } from "../../errors/request-not-found.error";
@@ -22,12 +24,23 @@ export const find = async (
 
     res.status(200).json({
       status: request.status,
+      publicCode: request.publicCode, // il cliente può dirlo allo staff durante la verifica
       expiresAt: request.expiresAt,
       stampsCount: request.stampsCount,
       stampsRequired: request.stampsRequired,
       // solo `approved`; negli altri stati i tre campi sono assenti
       ...(request.outcome ?? {}),
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** Storico del cliente loggato: le sue richieste in tutti i locali (stessi filtri dello staff). */
+export const mine = async (req: TypedAuthRequest<unknown, historyQueryDTO>, res: Response, next: NextFunction) => {
+  try {
+    const items = await requestsSrv.getHistory({ userId: requireAuth(req).user.id }, req.query);
+    res.status(200).json({ requests: items.map((r) => historyRow(r, { withVenueName: true })) });
   } catch (err) {
     next(err);
   }

@@ -16,6 +16,7 @@ export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'expired'
 
 export interface StampRequest {
   status: RequestStatus
+  publicCode: string // card code: the customer can read it out to staff
   expiresAt: string
   stampsCount: number
   stampsRequired: number
@@ -94,3 +95,38 @@ export const rejectRequest = (venueId: string, requestId: string) =>
     `/venues/${encodeURIComponent(venueId)}/requests/${encodeURIComponent(requestId)}/reject`,
     { method: 'POST' },
   )
+
+export interface HistoryItem {
+  requestId: string
+  publicCode: string
+  venueName?: string // only in the customer's history (several venues)
+  status: RequestStatus
+  createdAt: string
+  resolvedAt: string | null
+  stamps: number | null // confirmed quantity (reward included); only `approved`
+  stampsAdded: number | null
+  rewardsRedeemed: number | null
+}
+
+/** Every filter is optional; absent means "not filtered" (see `GET /venues/:venueId/requests/history`). */
+export interface HistoryFilters {
+  status?: RequestStatus
+  minStamps?: number
+  maxStamps?: number
+  from?: string // ISO instant or YYYY-MM-DD
+  to?: string // ISO instant or YYYY-MM-DD, inclusive
+}
+
+const queryString = (filters: HistoryFilters) => {
+  const qs = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) if (value !== undefined && value !== '') qs.set(key, String(value))
+  return qs.size > 0 ? `?${qs}` : ''
+}
+
+/** Staff: every request of the venue. */
+export const getHistory = (venueId: string, filters: HistoryFilters) =>
+  api<{ requests: HistoryItem[] }>(`/venues/${encodeURIComponent(venueId)}/requests/history${queryString(filters)}`)
+
+/** Customer: the logged-in user's own requests, all venues (`GET /requests/mine`). */
+export const getMyHistory = (filters: HistoryFilters) =>
+  api<{ requests: HistoryItem[] }>(`/requests/mine${queryString(filters)}`)

@@ -14,9 +14,10 @@
     "script:session": "tsx ./scripts/session",
     "script:create-owner": "tsx ./scripts/create-owner",
     "script:staff-requests": "tsx ./scripts/staff-requests",
-    "script:stamps-split": "tsx ./scripts/stamps-split",
+    "script:stamps-split": "tsx ./scripts/stamps-split && tsx ./scripts/history",
+    "script:history": "tsx ./scripts/history",
     "script:create-venue": "tsx ./scripts/create-venue",
-    "script:all": "tsx ./scripts/poll-request && tsx ./scripts/otp-request && tsx ./scripts/otp-verify && tsx ./scripts/session  && tsx ./scripts/staff-requests && tsx ./scripts/stamps-split",
+    "script:all": "tsx ./scripts/poll-request && tsx ./scripts/otp-request && tsx ./scripts/otp-verify && tsx ./scripts/session  && tsx ./scripts/staff-requests && tsx ./scripts/stamps-split && tsx ./scripts/history",
     "typecheck:all": "tsc --noEmit -p tsconfig.check.json"
   },
   "keywords": [],

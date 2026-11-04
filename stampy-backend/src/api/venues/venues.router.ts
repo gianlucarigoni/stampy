@@ -2,8 +2,8 @@ import { Router } from "express";
 import { isAuthenticated } from "../../utils/middlewares/session.middleware";
 import { validate } from "../../utils/middlewares/validation.middleware";
 import { requireRole } from "../../utils/middlewares/membership.middleware";
-import { confirmDTO, staffRequestParamsDTO } from "./staff/staff.dto";
-import { confirm, queue, reject } from "./staff/staff.controller";
+import { confirmDTO, historyQueryDTO, staffRequestParamsDTO } from "./staff/staff.dto";
+import { confirm, history, queue, reject } from "./staff/staff.controller";
 import { mine, visit, walletAdded } from "./venues.controller";
 import { venueIdDTO, visitQueryDTO } from "./venues.dto";
 
@@ -18,6 +18,16 @@ router.post("/:venueId/card/wallet-added", isAuthenticated, validate(venueIdDTO,
 
 // --- staff: solo owner/staff del locale, mai ruoli presi da body o sessione ---
 router.get("/:venueId/requests", isAuthenticated, requireRole("owner", "staff"), validate(venueIdDTO, "params"), queue);
+
+// storico: stessa regola della coda; la rotta fissa va prima di `/requests/:requestId/...`
+router.get(
+  "/:venueId/requests/history",
+  isAuthenticated,
+  requireRole("owner", "staff"),
+  validate(venueIdDTO, "params"),
+  validate(historyQueryDTO, "query"),
+  history,
+);
 
 router.post(
   "/:venueId/requests/:requestId/confirm",

@@ -39,6 +39,11 @@ const router = createRouter({
           props: true,
         },
         {
+          path: 'history',
+          name: 'history',
+          component: () => import('@/views/CustomerHistoryView.vue'),
+        },
+        {
           path: 'scan',
           name: 'no-venue',
           component: () => import('@/views/NoVenueView.vue'),
@@ -52,6 +57,12 @@ const router = createRouter({
           path: 'staff/:venueId',
           name: 'staff-queue',
           component: () => import('@/views/StaffQueueView.vue'),
+          props: true,
+        },
+        {
+          path: 'staff/:venueId/history',
+          name: 'staff-history',
+          component: () => import('@/views/StaffHistoryView.vue'),
           props: true,
         },
       ],

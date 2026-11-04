@@ -65,8 +65,9 @@ try {
   await staff.locator('.toast-stack .alert').first().waitFor()
   const toast = await staff.locator('.toast-stack').innerText()
   check('reward toast names the real reward', /Caffè E2E/.test(toast) && /Premio ritirato/.test(toast), toast)
+  check('toast text is generic (no instruction about the product)', !/Non far pagare/.test(toast), toast)
   check('toast does not block the page (Rifiuta/Conferma on other cards stay clickable)', (await staff.locator('.toast-stack').evaluate((el) => getComputedStyle(el).pointerEvents)) === 'none')
-  await staff.waitForTimeout(7000) // > two polls
+  await staff.waitForTimeout(3500) // > one poll (3 s); the toast lasts 5 s, outcome cards 8 s
   check('exactly one toast after several polls', (await staff.locator('.toast-stack .alert').count()) === 1)
   check('approved/rejected cards survive the polls', (await staff.locator('article .alert-success').count()) === 2 && (await staff.locator('article .alert-warning').count()) === 1, `${await staff.locator('article .alert-success').count()}/${await staff.locator('article .alert-warning').count()}`)
   check('DB: reward consumed, card at 0', cardCount(staffReward.id, fx.venueId) === 0 && (await eventsOf(reqStaffReward)) === 'redeem:1')
