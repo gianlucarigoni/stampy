@@ -1,7 +1,9 @@
 // Bootstrap 5.3, Sass only (no Bootstrap JS). Variables first, then only the parts we use.
 
-// Brand: the logo orange is for the wordmark and stamp dots only. $primary is darker so white
-// text on buttons has about 5:1 contrast. success/danger stay at Bootstrap defaults.
+// Brand orange is also $primary. White on it is ~3.2:1, so lower Bootstrap's contrast threshold (default 4.5):
+// otherwise color-contrast() picks black text on every orange background (btn-primary, text-bg-primary, ...).
+// Light backgrounds such as warning yellow stay below 3 and keep dark text. success/danger stay at defaults.
+$min-contrast-ratio: 3;
 $brand: #f16417;
 $primary: #f16417;
 $body-bg-dark: #171310;
@@ -48,20 +50,9 @@ $input-btn-focus-width: 0.2rem;
   --bs-btn-active-color: #fff;
 }
 
-// Dark theme: the darker $primary on dark cards is too heavy for outline buttons.
-[data-bs-theme="dark"] {
-  .btn-outline-primary {
-    --bs-btn-color: #f4813f;
-    --bs-btn-border-color: #f4813f;
-    --bs-btn-hover-bg: #c2410c;
-    --bs-btn-hover-border-color: #c2410c;
-    --bs-btn-hover-color: #fff;
-  }
-}
-
 // History "Filtri" toggle and its panel (same as the header buttons, both themes):
 // normal = outline primary; hover = outline with the primary fill at 75%; open/clicked = primary fill.
-// The fill is --bs-btn-hover-bg, which Bootstrap/our dark rule already set to the right primary per theme.
+// The fill is --bs-btn-hover-bg (= $primary); light and dark share the same values.
 .filter-toggle {
   --bs-btn-active-color: #fff;
   --bs-btn-active-bg: var(--bs-btn-hover-bg);

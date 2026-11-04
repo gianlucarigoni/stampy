@@ -1,2 +1,4 @@
 bundle*.txt
 node_modules/
+.playwright-mcp/
+dati_test.xlsx
