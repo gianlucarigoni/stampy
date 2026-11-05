@@ -53,5 +53,6 @@
 
   // Estensioni specifiche attive in questo Workspace
   "angular.suggest.includeComponentExtension": true,
-  "console-ninja.featureSet": "Community"
+  "console-ninja.featureSet": "Community",
+  "python.terminal.useEnvFile": true
 }
