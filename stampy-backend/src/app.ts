@@ -10,13 +10,13 @@ import { RouteNotFoundError } from "./errors/route-not-found.error";
 
 const app = express();
 
-app.disable("x-powered-by")
+app.disable("x-powered-by");
 
 // Dietro un proxy (Cloudflare, hosting) serve per avere req.ip reale: il limiter IP
 // usa req.ip come chiave. Numero di hop, non `true` (falsificabile).
 if (env.TRUST_PROXY > 0) app.set("trust proxy", env.TRUST_PROXY);
 app.use(cors());
-app.use(morgan("tiny"));
+if (env.NODE_ENV !== "test") app.use(morgan("tiny")); // nei test (Vitest: NODE_ENV=test) niente rumore
 
 // Senza segreto (decisione approvata): cookie non firmati, req.signedCookies non usato.
 app.use(cookieParser());

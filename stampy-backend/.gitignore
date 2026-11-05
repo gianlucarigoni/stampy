@@ -5,3 +5,4 @@ secrets/
 *.pem
 *-credentials.jsonbundle*.txt
 bundle*.txt
+.vitest/

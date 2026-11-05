@@ -36,8 +36,7 @@ npm run dev
 ```bash
 cd stampy-backend
 npm run typecheck:all
-npx tsx scripts/stamps-split.ts
-npx tsx --env-file=.env scripts/staff-requests.ts   # and the other scripts: ../docs/CODEBASE.md §7
+npm test                                            # Vitest (unit + api, uses the dev DB)
 ```
 
-Expected: 104 checks green with the dev server and DB running.
+Expected: 189 Vitest tests green with the dev DB running (details: ../docs/CODEBASE.md §7).

@@ -8,17 +8,13 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "script:poll-request": "tsx ./scripts/poll-request",
-    "script:otp-request": "tsx ./scripts/otp-request",
-    "script:otp-verify": "tsx ./scripts/otp-verify",
-    "script:session": "tsx ./scripts/session",
     "script:create-owner": "tsx ./scripts/create-owner",
-    "script:staff-requests": "tsx ./scripts/staff-requests",
-    "script:stamps-split": "tsx ./scripts/stamps-split && tsx ./scripts/history",
-    "script:history": "tsx ./scripts/history",
     "script:create-venue": "tsx ./scripts/create-venue",
-    "script:all": "tsx ./scripts/poll-request && tsx ./scripts/otp-request && tsx ./scripts/otp-verify && tsx ./scripts/session  && tsx ./scripts/staff-requests && tsx ./scripts/stamps-split && tsx ./scripts/history",
-    "typecheck:all": "tsc --noEmit -p tsconfig.check.json"
+    "typecheck:all": "tsc --noEmit -p tsconfig.check.json",
+    "test": "vitest run",
+    "test:unit": "vitest run test/unit",
+    "test:api": "vitest run test/api",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "dependencies": {
@@ -51,7 +47,8 @@
     "drizzle-kit": "^0.31.11",
     "nodemon": "^3.1.11",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
   },
   "nodemonConfig": {
     "ignore": [

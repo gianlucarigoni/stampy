@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Typecheck + script end-to-end di stampy-backend. Uso: verify.sh [--skip-typecheck]
+# Typecheck + Vitest di stampy-backend. Uso: verify.sh [--skip-typecheck]
+# Vitest avvia l'app da solo (non serve `npm run dev`) e usa il DB di sviluppo (container stampy-db).
 set -u
 cd "$(dirname "$0")/../../../../stampy-backend" || exit 2
-BASE_URL="${TEST_BASE_URL:-http://localhost:3000}"
-EXPECTED=125
+EXPECTED=189
 fail=0
 
 if [ "${1:-}" != "--skip-typecheck" ]; then
@@ -11,34 +11,13 @@ if [ "${1:-}" != "--skip-typecheck" ]; then
   npm run -s typecheck && npm run -s typecheck:all || { echo "✘ typecheck FALLITO"; fail=1; }
 fi
 
-if ! curl -sf --max-time 3 -o /dev/null "$BASE_URL/api/health"; then
-  echo "✘ server non raggiungibile su $BASE_URL: avvia 'npm run dev' in stampy-backend"
-  exit 2
-fi
+echo "▶ vitest"
+out=$(npx vitest run 2>&1); rc=$?
+passed=$(grep -oP 'Tests +.*?\K[0-9]+(?= passed)' <<<"$out" | tail -1); passed=${passed:-0}
+failed=$(grep -oP 'Tests +\K[0-9]+(?= failed)' <<<"$out" | tail -1); failed=${failed:-0}
+grep -E '^ *(FAIL|×|❯)|Error' <<<"$out" | head -30
+printf 'vitest ✔ %d  ✘ %d  exit %d  (atteso ✔ %d)\n' "$passed" "$failed" "$rc" "$EXPECTED"
 
-ok=0; ko=0
-run() {
-  local out
-  out=$(npx tsx "$@" 2>&1); local rc=$?
-  local p k
-  # conta i test dal riepilogo "Passati: N   Falliti: M" di ogni script (stessa unità dei doc)
-  p=$(grep -oP 'Passati: *\K[0-9]+' <<<"$out" | tail -1); k=$(grep -oP 'Falliti: *\K[0-9]+' <<<"$out" | tail -1)
-  p=${p:-0}; k=${k:-1}
-  ok=$((ok + p)); ko=$((ko + k))
-  printf '%-28s ✔ %3d  ✘ %d  exit %d\n' "${@: -1}" "$p" "$k" "$rc"
-  if [ "$k" -gt 0 ] || [ "$rc" -ne 0 ]; then
-    fail=1; grep -E '✘|ECCEZIONE|Error' <<<"$out" | head -20 | sed 's/^/    /'
-  fi
-}
-
-run scripts/stamps-split.ts
-run --env-file=.env scripts/staff-requests.ts
-run --env-file=.env scripts/poll-request.ts
-run --env-file=.env scripts/otp-request.ts
-run --env-file=.env scripts/otp-verify.ts
-run --env-file=.env scripts/session.ts
-run --env-file=.env scripts/history.ts
-
-echo "TOTALE: ✔ $ok  ✘ $ko  (atteso ✔ $EXPECTED)"
-[ "$ok" -ne "$EXPECTED" ] && echo "⚠ numero di controlli diverso dall'atteso: se hai aggiunto/tolto controlli aggiorna EXPECTED qui e AGENTS.md"
+[ "$rc" -ne 0 ] || [ "$failed" -gt 0 ] && fail=1
+[ "$passed" -ne "$EXPECTED" ] && echo "⚠ numero di test diverso dall'atteso: se hai aggiunto/tolto test aggiorna EXPECTED qui, in SKILL.md e in docs/CODEBASE.md §7"
 exit $fail
