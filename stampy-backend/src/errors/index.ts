@@ -3,6 +3,7 @@ import { codeExpiredHandler } from "./code-expired.error";
 import { forbiddenHandler } from "./forbidden.error";
 import { genericErrorHandler } from "./generic";
 import { invalidCodeHandler } from "./invalid-code.error";
+import { originNotAllowedHandler } from "./origin-not-allowed.error";
 import { promotionNotFoundHandler } from "./promotion-not-found.error";
 import { RequestNotFoundError, requestNotFoundHandler } from "./request-not-found.error";
 import { routeNotFoundHandler } from "./route-not-found.error";
@@ -22,6 +23,7 @@ export const errorHandlers = [
   invalidCodeHandler,
   codeExpiredHandler,
   forbiddenHandler,
+  originNotAllowedHandler,
   // prima del generico, altrimenti non verrebbe mai raggiunto
   unauthorizedHandler,
   genericErrorHandler,

@@ -49,8 +49,9 @@ Variabili d'ambiente (`src/config/env.ts`, zod, il processo termina se non valid
 
 ```text
 src/
-  app.ts                    express: trust proxy (solo se > 0), cors() aperto, morgan,
-                            cookieParser(), bodyParser.json(), /api, errorHandlers
+  app.ts                    express: trust proxy (solo se > 0), cors() ristretto ad APP_ORIGIN con credentials,
+                            morgan, cookieParser(), bodyParser.json(), /api con requireSameOrigin,
+                            errorHandlers
   index.ts                  createServer + SELECT 1 prima di mettersi in ascolto
   config/
     env.ts                  zod su process.env (vedi §1)
@@ -114,6 +115,7 @@ src/
       membership.middleware.ts  requireRole("owner","staff")
       ip-rate-limit.middleware.ts  express-rate-limit per IP, pass-through in sviluppo
       validation.middleware.ts  validate(dto, "body" | "query" | "params")
+      origin.middleware.ts  requireSameOrigin: su POST/PUT/PATCH/DELETE, se c'è `Origin` deve essere APP_ORIGIN, altrimenti 403 `OriginNotAllowed`; senza `Origin` passa
     stamps.ts               splitStamps(stampsRequired, currentCount, quantity), pura
     email/email-sender.ts   EmailSender + ConsoleEmailSender (vietato in produzione)
     schemas/                branding.schema.ts, promotion-config.schema.ts
@@ -337,7 +339,7 @@ promuove uno `staff` senza `--force`.
 **Nuovo locale**: `scripts/create-venue.ts --name … --slug … --logo … --color … --stamps …
 --reward … [--banner …]` — valida con gli stessi schemi zod del backend, crea
 locale + promozione attiva in una transazione, idempotente sullo slug, stampa l'URL del tag
-(`APP_ORIGIN/v/<venueId>`). `APP_ORIGIN` è l'origin del **frontend** (sviluppo: `http://localhost:5173`): il tag deve aprire nel browser la pagina del cliente, ed è anche il campo `origins` del JWT di salvataggio nel Wallet. Riavviare il backend dopo aver cambiato `.env`.
+(`APP_ORIGIN/v/<venueId>`). `APP_ORIGIN` è l'origin del **frontend** (sviluppo: `http://localhost:5173`): il tag deve aprire nel browser la pagina del cliente, ed è anche il campo `origins` del JWT di salvataggio nel Wallet. Riavviare il backend dopo aver cambiato `.env`. CORS e il controllo di `Origin` (B3) accettano **solo** questa origin: per provare dal telefono sulla stessa rete Wi-Fi in sviluppo, impostare `APP_ORIGIN` all'indirizzo usato dal telefono (es. `http://192.168.1.20:5173`).
 
 ## 6. Dati
 
@@ -427,7 +429,7 @@ npm test                         # tutto Vitest
 npm run test:unit                # solo test/unit
 npm run test:api                 # solo test/api
 npx vitest run -t "5 codici"     # un solo test per nome
-.claude/skills/verify/scripts/verify.sh   # typecheck + suite, atteso 221
+.claude/skills/verify/scripts/verify.sh   # typecheck + suite, atteso 234
 ```
 
 | File | Test | Copertura |
@@ -441,11 +443,12 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `api/promotion-rollover.test.ts` | 33 | rollover alla conferma (saldo ripartito da 0, card piena, soglia nuova, eventi sulla promozione nuova, rifiuto/scadenza/senza promozione/altro locale invariati, doppia conferma concorrente), `promotionChanged` in `visit`, polling e coda (mai il numero dei timbri persi), sync del pass dopo il rollover (promozione della card, errore Google ignorato, race) e `saveUrl` a 0 timbri per card vecchia `not_added` |
 | `api/staff-requests.test.ts` | 28 | `/venues/mine`, coda (401/403, senza email, isolamento tra locali), confirm 15 → 4/10 con 3 eventi, pass Google best effort, doppia conferma 409, validazione, reject, scadenza, 404 tra locali, owner, soglia esatta, card piena, rate limit di `visit` |
 | `api/history.test.ts` | 47 | storico staff e cliente (`GET /api/requests/mine`): auth/403, campi e nessuna email, filtri per stato / timbri / date (ISO, `from > to` → `400`), filtri combinati, nessuna paginazione, isolamento tra tenant, scadenza lazy, attraversa i locali, `publicCode` nel polling |
+| `api/cors-origin.test.ts` | 13 | CORS ristretto ad APP_ORIGIN (preflight, mai `*`, nessun header per origin estranee), controllo di `Origin` sui metodi che cambiano stato (403 con estranea e con `null`, passa senza `Origin`, sessione non toccata, 403 prima del 404) |
 | `api/db-constraints.test.ts` | 14 | vincoli delle migrazioni 2 e 3 (email minuscole, unicità, una sfida OTP attiva, FK RESTRICT, `request_id` non univoco, `promotions_no_overlap`), ognuno in una transazione con ROLLBACK |
 
-Totale atteso: **221**.
+Totale atteso: **234**.
 
-Ultima esecuzione registrata: **9 novembre 2026: `npm test` 221 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
+Ultima esecuzione registrata: **9 novembre 2026: `npm test` 234 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
 
 Frontend: `npm run build` in `stampy-frontend/` esegue `vue-tsc` e la build di produzione.
 Test nel browser (Playwright, devDependency `playwright`, chiude B17): `npm run e2e` esegue entrambi: `node e2e/staff-input.mjs` (7 check: la quantità digitata sopravvive al polling, il testo non valido blocca Conferma, Conferma invia esattamente il valore digitato) e `node e2e/feedback.mjs` (32 check: approvazione/rifiuto/toast del premio dello staff, testo di approvazione del cliente, persistenza/focus/tastiera/reload del modale del premio, overflow a 390 px). Richiedono `npm run dev`, il container `stampy-db` e un locale con branding nel DB; creano utenti `e2e-*@test.it` più un locale `e2e-*` e li eliminano. Se non è stato eseguito `playwright install`, puntare `E2E_CHROMIUM` a un binario di Chromium. `node e2e/t6d.mjs` (43 check, la checklist staff T6-D) e `node e2e/history.mjs` (48 check, uno ancora fallito: si aspetta l'etichetta "Filtri · N" che il toggle non mostra più: storico dello staff aperto dal menu dell'header, stato nell'URL, filtri dal vivo, avanti/indietro, regole sulle date, nessuna paginazione, pannello mobile, codice card del cliente, storico del cliente: solo richieste proprie, nome del locale, stessi filtri, header con pulsante indietro e logo centrato); nessuno dei due fa parte di `npm run e2e`. Ultima esecuzione: 2026-11-04, t6d 43 ✔, history 38 ✔, feedback 32 ✔, staff-input 7 ✔; 2026-11-03, 38 check verdi. L'esecuzione del 2026-11-01 era uno script usa-e-getta. Ultima esecuzione manuale nel browser:
