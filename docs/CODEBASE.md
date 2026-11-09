@@ -318,8 +318,8 @@ resterebbe `pending` per sempre) → richieste pending in ordine di arrivo, max 
 FOR UPDATE` sulla card → promozione attiva (409 se non c'è) → se `card.promotion_id` è diverso il
 **rollover lazy** (saldo di partenza 0, card piena compresa) → `splitStamps` con la soglia attiva → uno `stamp_event` per segmento con `idempotency_key = {requestId}:{n}` →
 `cards.stamps_count = finalCount` e `cards.promotion_id` = promozione attiva. `confirm` restituisce anche il `cardId` (interno, il controller lo toglie dal body).
-Dopo il commit il controller esegue `syncWalletPass`: carica locale, promozione attiva
-e card (`stamps_count` aggiornato) e chiama `GoogleWalletService.updateCard`, un PATCH
+Dopo il commit il controller esegue `syncWalletPass`: carica locale e card (`stamps_count` e `promotion_id` aggiornati) e la promozione
+scritta sulla card (`getPromotionById`, non la «attiva» riletta dopo il commit) e chiama `GoogleWalletService.updateCard`, un PATCH
 su `loyaltyObject/{walletObjectId}` con `loyaltyPoints` e i 3 moduli di testo (valori
 assoluti, quindi ripetibile; timeout 5 s, 2 retry sugli errori transitori; silenzioso, nessuna
 notifica). Qualsiasi errore (pass non ancora salvato, Google giù) viene solo loggato come
@@ -427,7 +427,7 @@ npm test                         # tutto Vitest
 npm run test:unit                # solo test/unit
 npm run test:api                 # solo test/api
 npx vitest run -t "5 codici"     # un solo test per nome
-.claude/skills/verify/scripts/verify.sh   # typecheck + suite, atteso 215
+.claude/skills/verify/scripts/verify.sh   # typecheck + suite, atteso 221
 ```
 
 | File | Test | Copertura |
@@ -438,14 +438,14 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `api/otp-verify.test.ts` | 16 | validazione, utente nuovo (cookie, sessione, eventi), nessuna email in chiaro, riuso, tentativi, scaduta/sostituita/inesistente, utente esistente con e senza identità, race |
 | `api/session.test.ts` | 18 | 401 unico, sessione scorrevole, tetto assoluto, cookie del login vero, logout (cookie, evento, race), whitelist dei metadata di `auth_events` |
 | `api/visit-polling.test.ts` | 16 | `visit`/polling con sessione, ownership, scadenza lazy; schermata wallet per `not_added`, `requestStamp=1`, `wallet-added` (204, idempotente, 401/404/400, card di un altro utente intatta) |
-| `api/promotion-rollover.test.ts` | 27 | rollover alla conferma (saldo ripartito da 0, card piena, soglia nuova, eventi sulla promozione nuova, rifiuto/scadenza/senza promozione/altro locale invariati, doppia conferma concorrente), `promotionChanged` in `visit`, polling e coda (mai il numero dei timbri persi) |
+| `api/promotion-rollover.test.ts` | 33 | rollover alla conferma (saldo ripartito da 0, card piena, soglia nuova, eventi sulla promozione nuova, rifiuto/scadenza/senza promozione/altro locale invariati, doppia conferma concorrente), `promotionChanged` in `visit`, polling e coda (mai il numero dei timbri persi), sync del pass dopo il rollover (promozione della card, errore Google ignorato, race) e `saveUrl` a 0 timbri per card vecchia `not_added` |
 | `api/staff-requests.test.ts` | 28 | `/venues/mine`, coda (401/403, senza email, isolamento tra locali), confirm 15 → 4/10 con 3 eventi, pass Google best effort, doppia conferma 409, validazione, reject, scadenza, 404 tra locali, owner, soglia esatta, card piena, rate limit di `visit` |
 | `api/history.test.ts` | 47 | storico staff e cliente (`GET /api/requests/mine`): auth/403, campi e nessuna email, filtri per stato / timbri / date (ISO, `from > to` → `400`), filtri combinati, nessuna paginazione, isolamento tra tenant, scadenza lazy, attraversa i locali, `publicCode` nel polling |
 | `api/db-constraints.test.ts` | 14 | vincoli delle migrazioni 2 e 3 (email minuscole, unicità, una sfida OTP attiva, FK RESTRICT, `request_id` non univoco, `promotions_no_overlap`), ognuno in una transazione con ROLLBACK |
 
-Totale atteso: **215**.
+Totale atteso: **221**.
 
-Ultima esecuzione registrata: **9 novembre 2026: `npm test` 215 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
+Ultima esecuzione registrata: **9 novembre 2026: `npm test` 221 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
 
 Frontend: `npm run build` in `stampy-frontend/` esegue `vue-tsc` e la build di produzione.
 Test nel browser (Playwright, devDependency `playwright`, chiude B17): `npm run e2e` esegue entrambi: `node e2e/staff-input.mjs` (7 check: la quantità digitata sopravvive al polling, il testo non valido blocca Conferma, Conferma invia esattamente il valore digitato) e `node e2e/feedback.mjs` (32 check: approvazione/rifiuto/toast del premio dello staff, testo di approvazione del cliente, persistenza/focus/tastiera/reload del modale del premio, overflow a 390 px). Richiedono `npm run dev`, il container `stampy-db` e un locale con branding nel DB; creano utenti `e2e-*@test.it` più un locale `e2e-*` e li eliminano. Se non è stato eseguito `playwright install`, puntare `E2E_CHROMIUM` a un binario di Chromium. `node e2e/t6d.mjs` (43 check, la checklist staff T6-D) e `node e2e/history.mjs` (48 check, uno ancora fallito: si aspetta l'etichetta "Filtri · N" che il toggle non mostra più: storico dello staff aperto dal menu dell'header, stato nell'URL, filtri dal vivo, avanti/indietro, regole sulle date, nessuna paginazione, pannello mobile, codice card del cliente, storico del cliente: solo richieste proprie, nome del locale, stessi filtri, header con pulsante indietro e logo centrato); nessuno dei due fa parte di `npm run e2e`. Ultima esecuzione: 2026-11-04, t6d 43 ✔, history 38 ✔, feedback 32 ✔, staff-input 7 ✔; 2026-11-03, 38 check verdi. L'esecuzione del 2026-11-01 era uno script usa-e-getta. Ultima esecuzione manuale nel browser:

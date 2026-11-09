@@ -33,7 +33,9 @@ export const visit = async (req: TypedAuthRequest<unknown, visitQueryDTO, venueI
     const promotionChanged = card.promotionId !== promotion.id;
 
     const loyaltyClass = googleWalletSrv.buildLoyaltyClass(venue);
-    const loyaltyObject = googleWalletSrv.buildLoyaltyObject(card, promotion, loyaltyClass.id);
+    // card su promozione vecchia: il pass salvato mostra già 0 timbri (come polling e coda)
+    const shownCard = promotionChanged ? { ...card, stampsCount: 0 } : card;
+    const loyaltyObject = googleWalletSrv.buildLoyaltyObject(shownCard, promotion, loyaltyClass.id);
 
     if (created) {
       const saveUrl = googleWalletSrv.createSaveUrl(loyaltyClass, loyaltyObject);

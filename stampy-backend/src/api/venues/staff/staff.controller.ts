@@ -18,11 +18,10 @@ import cardsSrv from "../../cards/cards.service";
  */
 async function syncWalletPass(venueId: string, cardId: string) {
   try {
-    const [venue, promotion, card] = await Promise.all([
-      venuesSrv.getVenueById(venueId),
-      venuesSrv.getActivePromotion(venueId),
-      cardsSrv.getCardById(cardId),
-    ]);
+    // la promozione è quella scritta sulla card dal commit (non la "attiva" riletta adesso):
+    // così il pass non può divergere dal DB se la promozione cambia tra commit e sync
+    const [venue, card] = await Promise.all([venuesSrv.getVenueById(venueId), cardsSrv.getCardById(cardId)]);
+    const promotion = card ? await venuesSrv.getPromotionById(venueId, card.promotionId) : null;
     if (!venue || !promotion || !card) {
       console.warn(`[wallet] sync saltata: dati mancanti (card ${cardId})`);
       return;

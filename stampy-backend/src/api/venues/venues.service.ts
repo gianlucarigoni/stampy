@@ -27,6 +27,16 @@ export class VenueService {
 
     return promotion ?? null;
   }
+
+  async getPromotionById(venueId: string, promotionId: string): Promise<Promotion | null> {
+    const [promotion] = await db
+      .select()
+      .from(promotions)
+      .where(and(eq(promotions.id, promotionId), eq(promotions.venueId, venueId)))
+      .limit(1);
+
+    return promotion ?? null;
+  }
 }
 
 export default new VenueService();

@@ -11,6 +11,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { pool } from "../../src/db";
 import walletSrv from "../../src/api/wallet/wallet.service";
+import venueSrv from "../../src/api/venues/venues.service";
+import * as jwt from "jsonwebtoken";
 import { request, startServer } from "../helpers/server";
 import { makeFixtures } from "../helpers/fixtures";
 
@@ -358,5 +360,93 @@ describe("avviso nella coda dello staff", () => {
     const inB = (await queue(venueB, multi.token)).body.requests.some((x: any) => x.requestId === c.requestId);
 
     expect(inB).toBe(false);
+  });
+});
+
+describe("sync del pass Google dopo il rollover", () => {
+  const lastCall = () => {
+    const [card, promotion] = updateCard.mock.calls.at(-1)!;
+    return { card, promotion: promotion as any };
+  };
+
+  it("card a 3 sulla vecchia, conferma 2 → updateCard riceve card sulla promozione nuova (2 timbri) e la promozione nuova (premio e soglia nuovi)", async () => {
+    const c = await staleCustomer("w1", venueC, 3);
+    updateCard.mockClear();
+    const r = await confirm(venueC, c.requestId, staff.token, { stamps: 2 });
+
+    expect(r.status).toBe(200);
+    expect(updateCard).toHaveBeenCalledTimes(1);
+    const { card: sent, promotion } = lastCall();
+    expect(sent).toMatchObject({ id: c.cardId, stampsCount: 2, promotionId: await activePromoOf(venueC) });
+    expect(promotion.id).toBe(await activePromoOf(venueC));
+    expect(promotion.config).toMatchObject({ stampsRequired: 6, reward: "Caffè gratis" });
+  });
+
+  it("card piena sulla vecchia (10/10), conferma 2 → updateCard riceve stampsCount 2 (non piena)", async () => {
+    const c = await staleCustomer("w2", venueC, 10);
+    updateCard.mockClear();
+    await confirm(venueC, c.requestId, staff.token, { stamps: 2 });
+
+    expect(lastCall().card).toMatchObject({ stampsCount: 2, promotionId: await activePromoOf(venueC) });
+  });
+
+  it("senza cambio di promozione → updateCard riceve la promozione già attiva della card", async () => {
+    const c = await freshCustomer("w3", venueC);
+    updateCard.mockClear();
+    await confirm(venueC, c.requestId, staff.token, { stamps: 1 });
+
+    const { card: sent, promotion } = lastCall();
+    expect(sent).toMatchObject({ stampsCount: 1, promotionId: await activePromoOf(venueC) });
+    expect(promotion.id).toBe(await activePromoOf(venueC));
+  });
+
+  it("updateCard fallisce dopo un rollover → 200 invariato e la card nel DB è comunque sulla promozione nuova", async () => {
+    const c = await staleCustomer("w4", venueC, 3);
+    updateCard.mockRejectedValueOnce(new Error("Google down"));
+    const r = await confirm(venueC, c.requestId, staff.token, { stamps: 2 });
+
+    expect(r.status).toBe(200);
+    expect(await card(c.cardId)).toEqual({ stamps_count: 2, promotion_id: await activePromoOf(venueC) });
+  });
+
+  it("la promozione passata a updateCard è quella scritta sulla card, anche se la lettura della 'attiva' dopo il commit ne dà un'altra (race)", async () => {
+    const c = await staleCustomer("w5", venueC, 3);
+    const stale = await pool.query(`SELECT * FROM promotions WHERE id = $1`, [c.oldPromo]);
+    const getActive = vi.spyOn(venueSrv, "getActivePromotion");
+    updateCard.mockClear();
+    // dopo il commit, una lettura della "promozione attiva" restituirebbe un'altra promozione
+    getActive.mockResolvedValue({
+      ...stale.rows[0],
+      id: stale.rows[0].id,
+      venueId: stale.rows[0].venue_id,
+      config: stale.rows[0].config,
+    });
+    try {
+      await confirm(venueC, c.requestId, staff.token, { stamps: 2 });
+    } finally {
+      getActive.mockRestore();
+    }
+
+    expect(updateCard).toHaveBeenCalledTimes(1);
+    const { card: sent, promotion } = lastCall();
+    expect(promotion.id).toBe(sent.promotionId);
+    expect(promotion.id).toBe(await activePromoOf(venueC));
+  });
+});
+
+describe("saveUrl di una card not_added su promozione vecchia", () => {
+  it("tocco semplice con card not_added a 4 timbri sulla vecchia → il pass nel JWT ha 0 timbri e la soglia nuova", async () => {
+    const c = await staleCustomer("s1", venueC, 4, { pending: false });
+    await pool.query(`UPDATE cards SET wallet_status = 'not_added' WHERE id = $1`, [c.cardId]);
+
+    const r = await request(baseUrl, `/api/venues/${venueC}/visit`, { method: "POST", cookie: c.token });
+
+    expect(r.status).toBe(200);
+    expect(r.body.state).toBe("card_not_added");
+    const token = (r.body.saveUrl as string).split("/save/")[1];
+    const obj = (jwt.decode(token) as any).payload.loyaltyObjects[0];
+    expect(obj.loyaltyPoints.balance.int).toBe(0);
+    const progress = obj.textModulesData.find((m: any) => m.id === "user_progress");
+    expect(progress.body).toBe("0/6 timbri raccolti");
   });
 });

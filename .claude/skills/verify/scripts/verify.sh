@@ -3,7 +3,7 @@
 # Vitest avvia l'app da solo (non serve `npm run dev`) e usa il DB di sviluppo (container stampy-db).
 set -u
 cd "$(dirname "$0")/../../../../stampy-backend" || exit 2
-EXPECTED=215
+EXPECTED=221
 fail=0
 
 if [ "${1:-}" != "--skip-typecheck" ]; then
