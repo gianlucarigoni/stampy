@@ -57,7 +57,7 @@ src/
     env.ts                  zod su process.env (vedi §1)
     serviceAccount.ts       carica la chiave JSON del service account del Wallet
   db/
-    index.ts                pg Pool + drizzle (logger: true), esporta db e pool
+    index.ts                pg Pool + drizzle (logger solo con NODE_ENV=development), esporta db e pool
     tx.ts                   Tx e DbOrTx (servizi che girano da soli o dentro una transazione)
     schema.ts               schema Drizzle completo: 11 tabelle, 9 enum (fonte di verità)
     types.ts                tipi derivati ($inferSelect) + enum riesportati
@@ -418,7 +418,7 @@ stampy-backend/test/
   richiede nessun locale preesistente nel DB.
 - Struttura `describe` (endpoint o funzione) → `describe` (scenario) → `it` (comportamento in italiano).
 - `vitest.config.mts`: `fileParallelism: false` (un file alla volta sul DB condiviso). Con
-  `NODE_ENV=test` (impostato da Vitest) `morgan` e il logger di Drizzle sono spenti.
+  `NODE_ENV=test` (impostato da Vitest) `morgan` e il logger di Drizzle sono spenti; il logger di Drizzle (query e parametri) è acceso **solo** con `NODE_ENV=development` (che è anche il default di `env.ts`: in staging/produzione impostare `NODE_ENV=production`).
 - L'aggiornamento del pass Google dopo `confirm` è sostituito da un finto (`vi.spyOn(walletSrv, "updateCard")`):
   i test non chiamano mai Google.
 - L'output di default stampa solo il riepilogo e i test falliti; `npx vitest run --reporter=verbose`
