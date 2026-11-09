@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { cards, promotions, stampEvents, stampRequests, venues } from "../../db/schema";
 import { RequestStatus, StampRequest } from "../../db/types";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
+import venueSrv from "../venues/venues.service";
 
 /**
  * Tetto di richieste di timbro NUOVE per card in un'ora (decisione 27/10/2026).
@@ -17,6 +18,8 @@ export type QueueItem = {
   publicCode: string;
   stampsCount: number;
   stampsRequired: number;
+  // la card è ferma su una promozione che non è più quella attiva: alla conferma riparte da 0
+  promotionChanged: boolean;
   createdAt: Date;
   expiresAt: Date;
 };
@@ -51,6 +54,8 @@ export type CardStateOfRequest = {
   expiresAt: Date;
   stampsCount: number;
   stampsRequired: number;
+  // la card è ferma su una promozione non più attiva (mai per `approved`): stampsCount/stampsRequired sono già quelli della nuova
+  promotionChanged: boolean;
   // solo per `approved`: cosa ha registrato la conferma (null negli altri stati)
   outcome: { stampsAdded: number; rewardsRedeemed: number; reward: string } | null;
 };
@@ -108,6 +113,7 @@ export class RequestsService {
         request: stampRequests,
         stampsCount: cards.stampsCount,
         publicCode: cards.publicCode,
+        cardPromotionId: cards.promotionId,
         config: promotions.config,
       })
       .from(stampRequests)
@@ -118,7 +124,11 @@ export class RequestsService {
 
     if (!row) return null;
 
-    const config = promotionConfigSchema.parse(row.config);
+    // Promozione cambiata (rollover lazy alla conferma): finché la card non viene aggiornata si
+    // mostra lo stato che avrà, cioè 0 timbri sulla promozione attiva. Mai per `approved`.
+    const active = row.request.status === RequestStatus.approved ? null : await venueSrv.getActivePromotion(row.request.venueId);
+    const promotionChanged = active !== null && active.id !== row.cardPromotionId;
+    const config = promotionConfigSchema.parse(promotionChanged ? active.config : row.config);
 
     // Esito della conferma, letto dagli eventi scritti da `splitStamps` (nessun ricalcolo):
     // timbri aggiunti = somma dei tratti `stamp`, premi consumati = eventi `redeem`.
@@ -142,8 +152,9 @@ export class RequestsService {
       status: row.request.status,
       publicCode: row.publicCode,
       expiresAt: row.request.expiresAt,
-      stampsCount: row.stampsCount,
+      stampsCount: promotionChanged ? 0 : row.stampsCount,
       stampsRequired: config.stampsRequired,
+      promotionChanged,
       outcome,
     };
   }
@@ -295,12 +306,14 @@ export class RequestsService {
    */
   async getPendingQueue(venueId: string, limit = 50): Promise<QueueItem[]> {
     await this.expirePending({ venueId });
+    const active = await venueSrv.getActivePromotion(venueId);
 
     const rows = await db
       .select({
         requestId: stampRequests.id,
         publicCode: cards.publicCode,
         stampsCount: cards.stampsCount,
+        cardPromotionId: cards.promotionId,
         config: promotions.config,
         createdAt: stampRequests.createdAt,
         expiresAt: stampRequests.expiresAt,
@@ -312,14 +325,18 @@ export class RequestsService {
       .orderBy(asc(stampRequests.createdAt))
       .limit(limit);
 
-    return rows.map((row) => ({
-      requestId: row.requestId,
-      publicCode: row.publicCode,
-      stampsCount: row.stampsCount,
-      stampsRequired: promotionConfigSchema.parse(row.config).stampsRequired,
-      createdAt: row.createdAt,
-      expiresAt: row.expiresAt,
-    }));
+    return rows.map((row) => {
+      const changed = active !== null && active.id !== row.cardPromotionId;
+      return {
+        requestId: row.requestId,
+        publicCode: row.publicCode,
+        stampsCount: changed ? 0 : row.stampsCount,
+        stampsRequired: promotionConfigSchema.parse(changed ? active.config : row.config).stampsRequired,
+        promotionChanged: changed,
+          createdAt: row.createdAt,
+        expiresAt: row.expiresAt,
+      };
+    });
   }
 }
 

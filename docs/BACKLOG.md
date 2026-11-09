@@ -6,12 +6,13 @@
 > `archive/` e in Git).
 > Le decisioni già prese stanno in `CONTEXT.md` e **non vengono riaperte**: qui si dice solo
 > se sono state implementate.
-> Ultimo aggiornamento: 5 novembre 2026.
+> Ultimo aggiornamento: 9 novembre 2026.
 
 **Stati**
 
 | Stato | Significato |
 |---|---|
+| 2026-11-09 | **Avviso di cambio promozione nel frontend** (B21 chiusa): nuovo `PromotionNotice.vue`. Pagina del cliente `/r/:requestId`: mentre la richiesta è `pending` e `promotionChanged` è `true`, una riga discreta con icona «Nuova promozione! La tua card riparte da zero.». Coda dello staff: pillola «Nuova promozione · card da 0» sulla richiesta. Nessun modale e nessun numero di timbri persi. Verificato a mano con Playwright (API simulate, 390 px, tema chiaro e scuro); `vue-tsc` pulito, nessun test automatico (frontend fuori dal TDD). |
 | `DECIDED` | decisione presa, implementazione non iniziata |
 | `TODO` | da fare, niente lo blocca |
 | `TO-DECIDE` | serve una scelta (di solito di prodotto): nessun codice prima |
@@ -36,7 +37,6 @@ proprietario prima di scrivere codice (vedi `AGENTS.md`).
 
 | ID | Stato | Cosa manca | Origine |
 |---|---|---|---|
-| B2 | `TO-DECIDE` | **Rollover lazy della promozione.** Il progetto prevedeva: se `cards.promotion_id` non è la promozione attiva, al primo timbro azzerare `stamps_count`, aggiornare `promotion_id` e aggiornare il pass (niente cron). Oggi `confirm` risponde **409** e il codice non ha rollover. "Cosa fare dei timbri accumulati" è una decisione di prodotto (P2), quindi la meccanica è pronta ma non va scritta in anticipo. | `archive/stampy_db_schema.md` §6 |
 | B3 | `DECIDED` | **CORS ristretto a una sola origin con `credentials`** + controllo di `Origin` sulle route che cambiano stato. Oggi `app.ts` usa un `cors()` aperto. Decisione del 2026-10-26: **nessun token CSRF per ora** (ci si affida a `SameSite=Lax`). | `archive/Stampy_Handoff_Fase_4c.md` §6.3 |
 | B4 | `DECIDED` | **Anonimizzazione GDPR + retention.** Procedura: cancellare `auth_identities`, `users.email = NULL`, svuotare `display_name`, impostare `anonymized_at`, revocare le sessioni; card e log restano. Retention di `otp_challenges`, `auth_events` e `sessions` (righe scadute/revocate/orfane) da definire. Da decidere anche se `auth_events.subject_hash` è ancora un dato personale (azzerarlo o ruotare il segreto). **Prerequisito: primo utente reale.** | `archive/stampy_db_schema.md` §6, `archive/Stampy_Handoff_Fase_4c.md` §6.10 |
 | B5 | `DECIDED` | **Login con Google** (`POST /api/auth/google`, body `{idToken}`). Verificare firma/`aud`/`iss`/`exp` con `google-auth-library` (già installata); cercare `(google, sub)`; collegare all'utente con la stessa email **solo** se `@gmail.com` oppure `email_verified` + `hd`; email di terzi → rifiuto + evento `google_untrusted_email_rejected`; poi sessione e `login_success`. Richiede configurazione esterna (V4). Rimandato a "dopo lo staff", che è chiuso. | `archive/Stampy_Handoff_Fase_4c.md` §5D, §6.8 |
@@ -48,8 +48,10 @@ proprietario prima di scrivere codice (vedi `AGENTS.md`).
 | B12 | `DECIDED` | **Apple Wallet**, solo dopo aver validato il flusso su Google: 99 $/anno, pass `.pkpass` firmati, estrazione del codice Wallet da `wallet/wallet.service.ts`. Con Apple si valuterà anche il login con Apple. | `archive/stampy_contesto_progetto.md` §4.6, §5 |
 | B14 | `TO-VERIFY` | **Notifica push quando si raggiunge il premio** (`stamps_count = stampsRequired`) via `notifyPreference` sul PATCH, al massimo una volta per ciclo di card (tetto ≈3 push/24 h). Il literal accettato non è noto (`notifyOnUpdate` / `NOTIFY` / `NOTIFY_ON_UPDATE`): provare su un issuer demo prima di scrivere codice (V1). Oggi ogni aggiornamento del pass è silenzioso. | `google/wallet-pass-update.md` |
 | B15 | `TODO` | **La pagina del cliente non sa identificare il locale** (2026-11-04: `publicCode` è ora nella risposta del polling e viene mostrato su `/r/:requestId`; mancano ancora nome e id del locale). La coda identifica una richiesta con `publicCode`, ma `visit` lo restituisce solo con `card_created`, e né `visit` né `GET /requests/:id` restituiscono il nome del locale. Con due richieste pending, lo staff non riesce a distinguerle dallo schermo del cliente. Soluzione: aggiungere `publicCode` e nome del locale a quelle risposte. | Frontend, 2026-11-01 |
-| B18 | `TODO` | **Animazione del timbro a inchiostro sulla pagina del cliente** (fuori MVP): quando lo staff conferma mentre `/r/:requestId` è aperta, mostrare un timbro per ogni timbro confermato. La risposta del polling ha ora `stampsAdded` (2026-11-03); l'animazione resta da fare. | Test frontend, 2026-11-02 |
+| B18 | `TODO` | **Animazione del timbro a inchiostro sulla pagina del cliente** (**nell'MVP** dal 2026-11-06, decisione del proprietario): quando lo staff conferma mentre `/r/:requestId` è aperta, mostrare un timbro per ogni timbro confermato. La risposta del polling ha ora `stampsAdded` (2026-11-03); l'animazione resta da fare. | Test frontend, 2026-11-02 |
 | B19 | `TODO` | **Storico: limite di visualizzazione e paginazione nel frontend.** Dal 2026-11-04 `GET /venues/:venueId/requests/history` non ha `limit`/`offset` e restituisce ogni riga che soddisfa i filtri, e `RequestHistory.vue` (storico staff e cliente) le renderizza tutte. Limiti di visualizzazione e paginazione vanno gestiti nel frontend (es. render a blocchi). Rischio di prestazioni: la risposta è illimitata, quindi quando un locale avrà migliaia di richieste payload e render cresceranno senza limite; da rivedere (tetto lato server o cursore) prima che un locale ci arrivi. | `RequestHistory.vue`, `requests.service.ts` (`getHistory`) |
+| B20 | `TODO` | **Pagina di landing `/stampy`** (**nell'MVP**, decisione del proprietario del 2026-11-06): descrizione del servizio e informazioni per i locali e per i clienti. **Ultima cosa da fare dell'MVP**: contenuti e struttura da definire più avanti, nessun lavoro prima. Frontend, quindi fuori dal TDD. | Proprietario, 2026-11-06 |
+| B22 | `TO-VERIFY` | **Messaggio sul pass Google Wallet al cambio di promozione** (es. modulo di testo «Nuova promozione dal GG/MM»). Il contatore a 0/N si aggiorna già dopo la prima conferma. Un messaggio con notifica richiede di verificare l'API sulla documentazione ufficiale (come B14/V1) prima di scrivere codice. | Proprietario, 2026-11-09 |
 | B13 | `TO-DECIDE` | **Accesso con telefono + SMS**: solo con un cliente reale (costo per messaggio, il NIST lo classifica come "restricted"). Schema già predisposto. | `archive/progress.md` §5.27 |
 
 ---
@@ -156,7 +158,7 @@ Tutte le righe qui sotto sono state eseguite in Chromium headless (390 px e 360 
 | Doppio clic su conferma | una sola richiesta |
 | La richiesta scade mentre lo staff la tiene aperta | errore alla conferma, poi esce dalla coda |
 | `/staff/<id di un altro locale>` o un account solo cliente su `/staff/<id>` | "Non sei autorizzato…" |
-| 2 locali, `/staff` | selettore, e "Cambia locale" sulla coda |
+| 2 locali, `/staff` | selettore, e "Cambia locale" nel menu burger |
 
 Controllare anche a 360 px (nessuno scroll orizzontale), tema chiaro e scuro, favicon, nessun 404 nella tab Network. Non-bug attesi: la prima conferma può loggare `[wallet] …` (pass non ancora salvato, la risposta resta 200); uno staff che apre `/v/...` ottiene anche lui una card; il testo della UI è in italiano per scelta.
 
@@ -186,7 +188,6 @@ ufficiale o provando sul campo, e la risposta viene scritta qui.
 | ID | Stato | Cosa |
 |---|---|---|
 | P1 | `TODO` | **Parlare con 2-3 gestori di locali veri** (bar, gelaterie, pizzerie): prerequisito per il modello di business e per le decisioni su scadenza/rollover. Non è un compito tecnico che si possa rimandare. |
-| P2 | `TO-DECIDE` | Cosa succede ai timbri accumulati alla **scadenza o al cambio di promozione** (azzerare, tenere, avvisare sulla card). Blocca B2. |
 | P3 | `TO-DECIDE` | **Modello di business** e prezzo. |
 | P4 | `TODO` | **Supporto fisico per il locale**, per fasi: prototipo (adesivo NTAG213 su un portamenu acrilico a L + QR stampato), pilota (stampa col marchio), scala (plexiglass su misura con chip incorporato). Mai bloccare i tag in sola lettura prima dell'URL definitivo. |
 | P5 | `TODO` | **Dominio** (~10 €/anno) e **hosting di staging** (es. Railway, Fly.io) con URL fisso; il dominio serve anche per SPF/DKIM delle email. |
@@ -224,6 +225,7 @@ Non si riapre: se serve il dettaglio, è in `archive/` e nei commit.
 
 | Data | Cosa |
 |---|---|
+| 2026-11-09 | **Rollover lazy della promozione + avviso** (B2 e P2 chiuse, lato backend): `confirm` non risponde più 409 se la promozione della card non è quella attiva; azzera la card (anche piena), la porta sulla promozione attiva e applica `splitStamps` con la soglia nuova, tutto nella transazione già bloccata dal `FOR UPDATE`. Senza promozione attiva resta `409`. Nuovo campo `promotionChanged` in `visit` (risposte con richiesta), nel polling `GET /requests/:id` e nella coda dello staff; per una card vecchia polling e coda mostrano già `stampsCount: 0` e la soglia della nuova promozione. Nessuna migrazione e nessun numero di timbri persi nelle risposte. Il test «card su una promozione vecchia → 409» è sostituito da `api/promotion-rollover.test.ts` (27 test); in `visit-polling.test.ts` l'elenco dei campi del polling include `promotionChanged`. Suite: **215 test**. Resta B22. |
 | 2026-11-05 | **Metodo TDD + Vitest (pilota)**: deciso che il backend si sviluppa in TDD con test concordati col proprietario prima del codice (`AGENTS.md`). Aggiunto Vitest (`test/unit/`, `test/api/`, `test/helpers/`), che avvia l'app in-process e non richiede `npm run dev`. Migrati `stamps-split.ts` → `test/unit/stamps.test.ts` (24 test) e `otp-verify.ts` → `test/api/otp-verify.test.ts` (16 test); gli script vecchi sono eliminati. `morgan` e il logger di Drizzle sono spenti con `NODE_ENV=test`. Documentazione portata in italiano, `docs/it/` eliminata. Nello stesso giorno gli altri script sono stati portati in Vitest e cancellati: `otp-request`, `session`, `poll-request` (→ `visit-polling`), `staff-requests`, `history`, `wallet-update`, `verify-migration-2/3` (→ `db-constraints`); restano in `scripts/` solo `create-owner`, `create-venue` e `reset-data.sql`. Suite: **189 test** (prima 129 tra Vitest e script). I test creano i propri locali, quindi non serve più un DB preparato. T7 chiusa, C16 risolta. |
 | 2026-11-03 | **Feedback sulle richieste e correzione della quantità digitata** (B17 chiusa): card di esito dello staff al posto dell'alert generico (approvazione verde con `+N timbri`, rifiuto giallo), un toast del premio per ogni conferma; "Richiesta approvata!" del cliente con `+N timbri aggiunti` e un modale del premio (`<dialog>` nativo, chiusura ricordata per richiesta in `localStorage`). `GET /requests/:id` (approved) ora restituisce `stampsAdded`, `rewardsRedeemed`, `reward`; `confirm` restituisce `stampsAdded`, `reward`; nessun cambio di schema né della regola dei timbri. Bug: una quantità digitata veniva azzerata al polling successivo (valore confermato solo su `@change`); l'input ora tiene una bozza e i valori non validi bloccano Conferma. Suite backend 114 ✔ su un DB usa-e-getta (check aggiunti dentro `staff-requests.ts`/`poll-request.ts`), `e2e/staff-input.mjs` 7 ✔ (fallisce con il vecchio binding), `e2e/feedback.mjs` 31 ✔. T6-D ancora da eseguire a mano. |
 | 2026-11-02 | **Errori OTP separati** (test di login, flusso A): verify risponde `InvalidCode` (+ `attemptsRemaining`) oppure `CodeExpired`; la schermata di login mostra i tentativi rimasti, disabilita il campo quando il codice è morto e evidenzia "nuovo codice"; il cooldown di 45 s è saltato quando l'ultimo codice è scaduto o senza tentativi (tetto orario invariato). `CONTEXT.md` §5.2 aggiornato. `otp-request.ts` da 16 a 21 check. |

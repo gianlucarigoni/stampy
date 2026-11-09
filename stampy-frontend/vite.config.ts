@@ -25,6 +25,8 @@ export default defineConfig({
     },
   },
   server: {
+    // Ascolta su tutte le interfacce: permette di provare dal telefono sulla stessa rete Wi-Fi.
+    host: true,
     // Same origin as the app in dev too: the `sid` cookie is first-party and CORS stays out.
     proxy: {
       '/api': 'http://localhost:3000',

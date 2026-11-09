@@ -230,30 +230,7 @@ describe("conferma", () => {
     expect(await eventsOf(c.requestId)).toHaveLength(0);
   });
 
-  it("card su una promozione vecchia → 409, richiesta ancora pending, nessun evento, card invariata", async () => {
-    const oldPromo = await fx.newOldPromotion(venueA);
-    const u = await fx.newUser("old-promo");
-    const card = (
-      await pool.query(
-        `INSERT INTO cards (user_id, venue_id, promotion_id, stamps_count, public_code, wallet_provider, wallet_object_id, wallet_status)
-         VALUES ($1, $2, $3, 3, 'OLDPROMO', 'google', $4, 'not_added') RETURNING id`,
-        [u.id, venueA, oldPromo, `test.${u.id}`],
-      )
-    ).rows[0].id;
-    const req = (
-      await pool.query(
-        `INSERT INTO stamp_requests (card_id, venue_id, status, expires_at) VALUES ($1, $2, 'pending', now() + interval '3 minutes') RETURNING id`,
-        [card, venueA],
-      )
-    ).rows[0].id;
-
-    const r = await confirm(venueA, req, staffA.token, { stamps: 5 });
-
-    expect(r.status).toBe(409);
-    expect((await requestState(req)).status).toBe("pending");
-    expect(await eventsOf(req)).toHaveLength(0);
-    expect((await pool.query(`SELECT stamps_count FROM cards WHERE id = $1`, [card])).rows[0].stamps_count).toBe(3);
-  });
+  // Card su una promozione vecchia: dal 2026-11-09 non è più 409 ma rollover lazy → test in promotion-rollover.test.ts
 
   it("un owner ha lo stesso potere dello staff: 11 prodotti da 0 → card 0, 1 premio", async () => {
     const c = await customerWithRequest("owner-confirm");

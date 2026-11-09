@@ -3,6 +3,7 @@ import { onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { getRequest, type StampRequest } from '@/api/endpoints'
+import PromotionNotice from '@/components/PromotionNotice.vue'
 import RewardDialog from '@/components/RewardDialog.vue'
 import StampProgress from '@/components/StampProgress.vue'
 import { usePolling } from '@/composables/usePolling'
@@ -82,6 +83,7 @@ onMounted(load)
     <h1 class="h4">Richiesta inviata</h1>
     <p>Stiamo aspettando la conferma dello staff.</p>
     <p class="text-body-secondary">La richiesta resta valida solo per pochi minuti: se scade potrai rifarla.</p>
+    <PromotionNotice v-if="screen.balance.promotionChanged" variant="customer" />
     <StampProgress :count="screen.balance.stampsCount" :required="screen.balance.stampsRequired" />
     <p class="text-body-secondary mt-3 mb-0">Codice card: <strong>{{ screen.balance.publicCode }}</strong></p>
   </section>

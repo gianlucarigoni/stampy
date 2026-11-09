@@ -10,7 +10,7 @@ export interface AuthUser {
 export type VisitResult =
   | { state: 'card_created'; saveUrl: string; publicCode: string }
   | { state: 'card_not_added'; saveUrl: string; publicCode: string }
-  | { state: 'request_pending'; requestId: string; expiresAt: string }
+  | { state: 'request_pending'; requestId: string; expiresAt: string; promotionChanged: boolean }
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'expired'
 
@@ -20,6 +20,8 @@ export interface StampRequest {
   expiresAt: string
   stampsCount: number
   stampsRequired: number
+  // The venue changed promotion: the card restarts from 0 on confirmation (count/required are already the new ones).
+  promotionChanged: boolean
   // Only on `approved`: what that confirmation recorded (backend-computed, never inferred here).
   stampsAdded?: number
   rewardsRedeemed?: number
@@ -38,6 +40,7 @@ export interface QueueItem {
   publicCode: string
   stampsCount: number
   stampsRequired: number
+  promotionChanged: boolean // card still on the old promotion: it restarts from 0 on confirmation
   createdAt: string
   expiresAt: string
 }

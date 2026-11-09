@@ -29,7 +29,8 @@ export type RejectResult = { status: "rejected" };
  *    in premio che consuma una unità, poi i timbri rimanenti);
  *  - un solo vincitore per richiesta: la UPDATE condizionata su `status='pending'`
  *    è il mutex, chi perde prende 409 (niente doppio conteggio);
- *  - la promozione della card deve essere quella attiva, altrimenti 409;
+ *  - se la promozione della card non è più quella attiva scatta il rollover lazy: la card riparte da 0
+ *    sulla promozione attiva (se non ce n'è nessuna, 409);
  *  - gli eventi si scrivono con `idempotency_key = {requestId}:{n}`;
  *  - `cards.stamps_count` si aggiorna nella stessa transazione, con la riga lockata.
  */
@@ -114,12 +115,14 @@ export class ResolveService {
         .limit(1);
 
       if (!active) throw new GenericError("Nessuna promozione attiva per questo locale", 409);
-      if (card.promotionId !== active.id) {
-        throw new GenericError("La promozione della card non è quella attiva", 409);
-      }
+
+      // rollover lazy (decisione 2026-11-09): se il locale ha cambiato promozione la card riparte
+      // da 0 sulla nuova, anche se era piena; i timbri vecchi si perdono
+      const rolledOver = card.promotionId !== active.id;
+      const startCount = rolledOver ? 0 : card.stampsCount;
 
       const { stampsRequired } = promotionConfigSchema.parse(active.config);
-      const { segments, finalCount, rewards } = splitStamps(stampsRequired, card.stampsCount, stamps);
+      const { segments, finalCount, rewards } = splitStamps(stampsRequired, startCount, stamps);
 
       // 4) un evento per tratto, chiave idempotente {requestId}:{n}
       await tx.insert(stampEvents).values(
@@ -136,7 +139,10 @@ export class ResolveService {
       );
 
       // 5) saldo sulla card: la riga è lockata, nessun read-modify-write concorrente
-      await tx.update(cards).set({ stampsCount: finalCount }).where(eq(cards.id, card.id));
+      await tx
+        .update(cards)
+        .set({ stampsCount: finalCount, promotionId: active.id })
+        .where(and(eq(cards.id, card.id), eq(cards.venueId, venueId)));
 
       const stampsAdded = segments.reduce((sum, s) => (s.type === "stamp" ? sum + s.quantity : sum), 0);
       const { reward } = promotionConfigSchema.parse(active.config);

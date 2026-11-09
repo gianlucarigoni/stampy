@@ -142,11 +142,12 @@ utils/redirect.ts           safeNext (guardia open-redirect), destinationAfterLo
 utils/format.ts             formattazione di attese e orari
 styles/stampy.scss          Bootstrap 5.3 (solo Sass, niente JS): variabili, poi le parti usate
 components/AppHeader.vue    header: wordmark a sinistra; con `centered`, tre colonne uguali (slot `start` | wordmark | slot di default) così il wordmark sta al centro
-components/AppLayout.vue    route di layout per le pagine autenticate: UN header per clienti e staff (`<AppHeader centered>`), `<RouterView>`. Menu = burger (44 px, `aria-expanded`, si chiude con Escape / clic fuori / navigazione) costruito da `menuItems`: schermate staff di un locale di cui l'utente è membro (`getMyVenues()`, chiesto una volta, solo sulle schermate staff) → "Coda richieste", "Storico richieste"; ogni altra schermata → "Storico richieste" del cliente (`/history`); sempre "Esci" per ultimo. Pulsante indietro (44 px, a sinistra, `aria-label="Indietro"`) solo sulle due pagine di storico: staff → la coda del locale, cliente → la pagina da cui si è aperto lo storico (lo ricorda `router.afterEach`; non `router.back()`, perché ogni cambio di filtro è una voce di cronologia; deep link → `/scan`). I link sono solo una comodità: il backend controlla il ruolo a ogni richiesta
+components/AppLayout.vue    route di layout per le pagine autenticate: UN header per clienti e staff (`<AppHeader centered>`), `<RouterView>`. Menu = burger (44 px, `aria-expanded`, si chiude con Escape / clic fuori / navigazione) costruito da `menuItems`: schermate staff di un locale di cui l'utente è membro (`getMyVenues()`, chiesto una volta, solo sulle schermate staff) → "Storico richieste" e, solo se l'utente è membro di più di un locale, "Cambia locale" (`/staff`; la coda si raggiunge con il pulsante indietro, il vecchio link "Cambia locale" nella pagina della coda è stato tolto); elenco dei locali dello staff (`/staff`) o locale non ancora confermato → nessuna voce di pagina (e nessun divisore), solo "Esci"; ogni altra schermata → "Storico richieste" del cliente (`/history`); sempre "Esci" per ultimo. Pulsante indietro (44 px, a sinistra, `aria-label="Indietro"`) solo sulle due pagine di storico: staff → la coda del locale, cliente → la pagina da cui si è aperto lo storico (lo ricorda `router.afterEach`; non `router.back()`, perché ogni cambio di filtro è una voce di cronologia; deep link → `/scan`). I link sono solo una comodità: il backend controlla il ruolo a ogni richiesta
 components/RequestHistory.vue la schermata di storico (filtri, stato nell'URL, elenco), condivisa da staff e cliente: props `title`, `fetchHistory(filters)`; emette `forbidden` su un 403; il titolo della riga è `venueName ?? publicCode`
 views/StaffHistoryView.vue  /staff/:venueId/history: `RequestHistory` + `getHistory(venueId)` + la card "Non sei autorizzato"
 views/CustomerHistoryView.vue /history: `RequestHistory` + `getMyHistory`, titolo "Le tue richieste"
 components/EmailLogin.vue   pagina /login (layout proprio): email -> codice; sfida mantenuta tra i reload della tab
+components/PromotionNotice.vue avviso "nuova promozione, card da zero" (`variant` customer | staff), mostrato se `promotionChanged`
 components/StampProgress.vue saldo; card piena mostrata come "Premio disponibile"
 components/RewardDialog.vue <dialog> nativo (showModal) per un premio ritirato, si chiude solo con "Chiudi"/Esc
 components/ToastStack.vue  toast non bloccanti (avviso di premio per lo staff), aria-live, chiudibili
@@ -217,14 +218,14 @@ views/NotFoundView.vue      qualsiasi altro percorso
 | `POST /api/auth/email/verify` | no (limiter IP) | `200 {user:{id,email,displayName}}` + cookie `sid`; codice sbagliato su una sfida viva → `400 {error:"InvalidCode", message:"Codice non valido", attemptsRemaining}`; qualsiasi sfida non utilizzabile (scaduta, tentativi esauriti, già usata, sostituita, sconosciuta) → `400 {error:"CodeExpired", message:"Codice scaduto"}` |
 | `GET /api/auth/me` | sì | `200 {user:{id,email,displayName}}` (sonda in sola lettura) |
 | `POST /api/auth/logout` | sì | `204`, cookie rimosso, evento `logout` |
-| `POST /api/venues/:venueId/visit[?requestStamp=1]` | sì | nuova card → `201 {state:"card_created", saveUrl, publicCode}`; richiesta pending viva → `200 {state:"request_pending", requestId, expiresAt}`; card `not_added` e senza `requestStamp=1` → `200 {state:"card_not_added", saveUrl, publicCode}` (nessuna richiesta); nuova richiesta → `201`; più di 10 nuove/ora per card → `429` + `Retry-After`; `requestStamp` diverso da `1` → `400` |
+| `POST /api/venues/:venueId/visit[?requestStamp=1]` | sì | nuova card → `201 {state:"card_created", saveUrl, publicCode}`; richiesta pending viva → `200 {state:"request_pending", requestId, expiresAt, promotionChanged}`; card `not_added` e senza `requestStamp=1` → `200 {state:"card_not_added", saveUrl, publicCode}` (nessuna richiesta); nuova richiesta → `201` (stessi campi; `promotionChanged` = la card è ferma su una promozione non più attiva); più di 10 nuove/ora per card → `429` + `Retry-After`; `requestStamp` diverso da `1` → `400` |
 | `POST /api/venues/:venueId/card/wallet-added` | sì | `204`; `not_added` → `active` (UPDATE condizionato, idempotente); nessuna card per questo utente e locale → `404` |
-| `GET /api/requests/:requestId` | sì | `200 {status, publicCode, expiresAt, stampsCount, stampsRequired}` (`publicCode` = il codice della card, così il cliente può leggerlo allo staff a qualsiasi passo); se `approved` anche `stampsAdded` (somma degli eventi `stamp` di quella richiesta), `rewardsRedeemed` (conteggio dei suoi eventi `redeem`) e `reward` (nome del premio della promozione); richiesta di un altro o inesistente → `404` identico |
+| `GET /api/requests/:requestId` | sì | `200 {status, publicCode, expiresAt, stampsCount, stampsRequired, promotionChanged}` (se `promotionChanged` è `true`, mai per `approved`, `stampsCount` è `0` e `stampsRequired` quello della promozione attiva; `publicCode` = il codice della card, così il cliente può leggerlo allo staff a qualsiasi passo); se `approved` anche `stampsAdded` (somma degli eventi `stamp` di quella richiesta), `rewardsRedeemed` (conteggio dei suoi eventi `redeem`) e `reward` (nome del premio della promozione); richiesta di un altro o inesistente → `404` identico |
 | `GET /api/venues/mine` | sì | `200 {venues:[{venueId,name,slug,role}]}` |
-| `GET /api/venues/:venueId/requests` | sì + owner/staff | `200 {requests:[{requestId,publicCode,stampsCount,stampsRequired,createdAt,expiresAt}]}`, max 50, mai l'email |
+| `GET /api/venues/:venueId/requests` | sì + owner/staff | `200 {requests:[{requestId,publicCode,stampsCount,stampsRequired,promotionChanged,createdAt,expiresAt}]}`, max 50, mai l'email (con `promotionChanged` `true`: `stampsCount` `0` e soglia della promozione attiva) |
 | `GET /api/venues/:venueId/requests/history` | sì + owner/staff | tutte le richieste del locale, dalla più recente, **mai l'email**, **senza paginazione** (nessun tetto sulle righe; `limit`/`offset` → `400`). Query facoltativa (tutti in AND, campi sconosciuti → `400`): `status` (`pending\|approved\|rejected\|expired`), `minStamps` / `maxStamps` (1–50, quantità confermata, premio incluso = somma di `stamp_events.quantity` della richiesta, quindi corrispondono solo richieste `approved`), `from` / `to` (su `created_at`; `YYYY-MM-DD` letto come UTC, `to` inclusivo fino alla fine di quel giorno, oppure un istante ISO 8601 completo; `from` successivo a `to` → `400`; le date future sono accettate, il blocco è una regola della UI). Nessuna data → tutte le date; solo `from` → da quel momento; solo `to` → fino a quel momento. Le righe scadute ma ancora `pending` vengono prima fatte scadere (scadenza lazy). `200 {requests:[{requestId,publicCode,status,createdAt,resolvedAt,stamps,stampsAdded,rewardsRedeemed}]}` (`stamps`, `stampsAdded`, `rewardsRedeemed` sono `null` se non `approved`) |
 | `GET /api/requests/mine` | sì | le richieste **proprie** del cliente connesso in **tutti** i locali, dalla più recente; stessi filtri, stessa scadenza lazy e stessa riga dello storico staff, più `venueName` (scope `cards.user_id` in SQL, così nessuno vede la richiesta di un altro). `200 {requests:[{requestId,publicCode,venueName,status,createdAt,resolvedAt,stamps,stampsAdded,rewardsRedeemed}]}`. Entrambi gli storici chiamano `requestsSrv.getHistory(scope, filters)` con scope `{venueId}` (staff) o `{userId}` (cliente). Route fissa registrata prima di `/:requestId` |
-| `POST /api/venues/:venueId/requests/:requestId/confirm` | sì + owner/staff | body `{stamps}` = **prodotti consumati, premio incluso** (intero 1–50) → `200 {status:"approved", stampsCount, stampsRequired, rewards, stampsAdded, reward}` (`stampsAdded` = timbri registrati, `rewards` = premi consumati); `404`/`409`; dopo il commit il pass Google viene aggiornato best effort (un fallimento del Wallet non cambia mai la risposta) |
+| `POST /api/venues/:venueId/requests/:requestId/confirm` | sì + owner/staff | body `{stamps}` = **prodotti consumati, premio incluso** (intero 1–50) → `200 {status:"approved", stampsCount, stampsRequired, rewards, stampsAdded, reward}` (`stampsAdded` = timbri registrati, `rewards` = premi consumati); `404`/`409` (`409` anche senza promozione attiva); **promozione della card cambiata → rollover**: la card riparte da 0 sulla promozione attiva; dopo il commit il pass Google viene aggiornato best effort (un fallimento del Wallet non cambia mai la risposta) |
 | `POST /api/venues/:venueId/requests/:requestId/reject` | sì + owner/staff | `200 {status:"rejected"}`, non tocca la card; `404`/`409` |
 
 Non esiste una route `/cards`: la card viene creata solo da `visit`.
@@ -232,8 +233,8 @@ Non esiste una route `/cards`: la card viene creata solo da `visit`.
 Errori: `400` validazione (`details` con `property` e `constraints`, mai un'eco di
 `value`), `400 MalformedBody` per JSON malformato, `413 BodyTooLarge`, `404 NotFound` JSON
 per ogni route `/api` inesistente, `400` codice OTP, `401` unico, `403` non membro,
-`404` risorsa inesistente o di un altro, `409` richiesta non più valida / promozione
-cambiata, `429` limiti (sempre `{error:"TryLaterError", message:"Riprova più tardi",
+`404` risorsa inesistente o di un altro, `409` richiesta non più valida / nessuna promozione
+attiva, `429` limiti (sempre `{error:"TryLaterError", message:"Riprova più tardi",
 retryAfterSeconds}` + header `Retry-After` con lo stesso valore, anche dal limiter per IP),
 `500` JSON generico. (Le stringhe di `message` sono letterali italiani nel codice.)
 
@@ -301,7 +302,8 @@ attiva → `addOrGetCard`. Card nuova → 201 `card_created` + `saveUrl`. Card e
 scadenza lazy → richiesta pending viva? 200 **senza consumare quota** → card `not_added`
 e senza `?requestStamp=1` → 200 `card_not_added` + `saveUrl` (firmato di nuovo in locale) +
 `publicCode`, **nessuna richiesta creata** → altrimenti `checkCardRateLimit` (10/ora per card) → `newRequest` con `ON CONFLICT` sul vincolo parziale;
-se la race è persa, restituisce la richiesta pending appena creata.
+se la race è persa, restituisce la richiesta pending appena creata. Le risposte con richiesta portano `promotionChanged` (`card.promotionId !== promozione attiva`); `visit` non modifica la card.
+Polling e coda calcolano `promotionChanged` confrontando `cards.promotion_id` con la promozione attiva (`venueSrv.getActivePromotion`, `now()` del DB), senza salvare nulla.
 
 **Polling del cliente**: `refreshStatus` (scadenza lazy, solo da `pending`, ownership in
 SQL) → `getRequestByUserId` con join su card e promozione → `status`, `publicCode`,
@@ -313,9 +315,9 @@ resterebbe `pending` per sempre) → richieste pending in ordine di arrivo, max 
 
 **Confirm**: `expireIfDue` fuori dalla transazione → transazione: UPDATE condizionato
 `status='pending' AND expires_at > now()` (mutex, doppia conferma → 409) → `SELECT …
-FOR UPDATE` sulla card → 409 se la promozione della card non è quella attiva →
-`splitStamps` → uno `stamp_event` per segmento con `idempotency_key = {requestId}:{n}` →
-`cards.stamps_count = finalCount`. `confirm` restituisce anche il `cardId` (interno, il controller lo toglie dal body).
+FOR UPDATE` sulla card → promozione attiva (409 se non c'è) → se `card.promotion_id` è diverso il
+**rollover lazy** (saldo di partenza 0, card piena compresa) → `splitStamps` con la soglia attiva → uno `stamp_event` per segmento con `idempotency_key = {requestId}:{n}` →
+`cards.stamps_count = finalCount` e `cards.promotion_id` = promozione attiva. `confirm` restituisce anche il `cardId` (interno, il controller lo toglie dal body).
 Dopo il commit il controller esegue `syncWalletPass`: carica locale, promozione attiva
 e card (`stamps_count` aggiornato) e chiama `GoogleWalletService.updateCard`, un PATCH
 su `loyaltyObject/{walletObjectId}` con `loyaltyPoints` e i 3 moduli di testo (valori
@@ -425,7 +427,7 @@ npm test                         # tutto Vitest
 npm run test:unit                # solo test/unit
 npm run test:api                 # solo test/api
 npx vitest run -t "5 codici"     # un solo test per nome
-.claude/skills/verify/scripts/verify.sh   # typecheck + suite, atteso 189
+.claude/skills/verify/scripts/verify.sh   # typecheck + suite, atteso 215
 ```
 
 | File | Test | Copertura |
@@ -436,13 +438,14 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `api/otp-verify.test.ts` | 16 | validazione, utente nuovo (cookie, sessione, eventi), nessuna email in chiaro, riuso, tentativi, scaduta/sostituita/inesistente, utente esistente con e senza identità, race |
 | `api/session.test.ts` | 18 | 401 unico, sessione scorrevole, tetto assoluto, cookie del login vero, logout (cookie, evento, race), whitelist dei metadata di `auth_events` |
 | `api/visit-polling.test.ts` | 16 | `visit`/polling con sessione, ownership, scadenza lazy; schermata wallet per `not_added`, `requestStamp=1`, `wallet-added` (204, idempotente, 401/404/400, card di un altro utente intatta) |
-| `api/staff-requests.test.ts` | 29 | `/venues/mine`, coda (401/403, senza email, isolamento tra locali), confirm 15 → 4/10 con 3 eventi, pass Google best effort, doppia conferma 409, validazione, reject, scadenza, 404 tra locali, promozione cambiata 409, owner, soglia esatta, card piena, rate limit di `visit` |
+| `api/promotion-rollover.test.ts` | 27 | rollover alla conferma (saldo ripartito da 0, card piena, soglia nuova, eventi sulla promozione nuova, rifiuto/scadenza/senza promozione/altro locale invariati, doppia conferma concorrente), `promotionChanged` in `visit`, polling e coda (mai il numero dei timbri persi) |
+| `api/staff-requests.test.ts` | 28 | `/venues/mine`, coda (401/403, senza email, isolamento tra locali), confirm 15 → 4/10 con 3 eventi, pass Google best effort, doppia conferma 409, validazione, reject, scadenza, 404 tra locali, owner, soglia esatta, card piena, rate limit di `visit` |
 | `api/history.test.ts` | 47 | storico staff e cliente (`GET /api/requests/mine`): auth/403, campi e nessuna email, filtri per stato / timbri / date (ISO, `from > to` → `400`), filtri combinati, nessuna paginazione, isolamento tra tenant, scadenza lazy, attraversa i locali, `publicCode` nel polling |
 | `api/db-constraints.test.ts` | 14 | vincoli delle migrazioni 2 e 3 (email minuscole, unicità, una sfida OTP attiva, FK RESTRICT, `request_id` non univoco, `promotions_no_overlap`), ognuno in una transazione con ROLLBACK |
 
-Totale atteso: **189**.
+Totale atteso: **215**.
 
-Ultima esecuzione registrata: **5 novembre 2026: `npm test` 189 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
+Ultima esecuzione registrata: **9 novembre 2026: `npm test` 215 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
 
 Frontend: `npm run build` in `stampy-frontend/` esegue `vue-tsc` e la build di produzione.
 Test nel browser (Playwright, devDependency `playwright`, chiude B17): `npm run e2e` esegue entrambi: `node e2e/staff-input.mjs` (7 check: la quantità digitata sopravvive al polling, il testo non valido blocca Conferma, Conferma invia esattamente il valore digitato) e `node e2e/feedback.mjs` (32 check: approvazione/rifiuto/toast del premio dello staff, testo di approvazione del cliente, persistenza/focus/tastiera/reload del modale del premio, overflow a 390 px). Richiedono `npm run dev`, il container `stampy-db` e un locale con branding nel DB; creano utenti `e2e-*@test.it` più un locale `e2e-*` e li eliminano. Se non è stato eseguito `playwright install`, puntare `E2E_CHROMIUM` a un binario di Chromium. `node e2e/t6d.mjs` (43 check, la checklist staff T6-D) e `node e2e/history.mjs` (48 check, uno ancora fallito: si aspetta l'etichetta "Filtri · N" che il toggle non mostra più: storico dello staff aperto dal menu dell'header, stato nell'URL, filtri dal vivo, avanti/indietro, regole sulle date, nessuna paginazione, pannello mobile, codice card del cliente, storico del cliente: solo richieste proprie, nome del locale, stessi filtri, header con pulsante indietro e logo centrato); nessuno dei due fa parte di `npm run e2e`. Ultima esecuzione: 2026-11-04, t6d 43 ✔, history 38 ✔, feedback 32 ✔, staff-input 7 ✔; 2026-11-03, 38 check verdi. L'esecuzione del 2026-11-01 era uno script usa-e-getta. Ultima esecuzione manuale nel browser:

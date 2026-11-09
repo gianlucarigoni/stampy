@@ -59,6 +59,13 @@ Mercato iniziale: piccole/medie attività locali in Italia, spesso ancora con le
 - Lo schema deve rendere gli altri modelli un'estensione: `type` + configurazione JSONB.
 - Le promozioni le configura il team Stampy, non il gestore del locale (self-service rimandato).
 - **Una sola promozione attiva per locale**, imposta dal DB (vincolo sugli intervalli).
+- **Cambio di promozione** (deciso il 2026-11-09): il cliente **perde i timbri della vecchia
+  promozione** e riparte da zero con la nuova. Vale anche per una card piena con premio non
+  riscosso. L'azzeramento è *lazy*: avviene alla conferma dello staff, non al cambio (niente cron,
+  niente aggiornamento in blocco delle card), quindi un rifiuto o una scadenza non toccano la card.
+  Il cliente e lo staff vengono **avvisati prima della conferma** ("nuova promozione, la card
+  riparte da zero"), senza mai mostrare quanti timbri si perdono. Il messaggio sul pass Wallet è
+  rimandato (BACKLOG B22).
 
 ### 4.3 Interazione nel locale
 
@@ -277,8 +284,7 @@ Il dettaglio tecnico è in `CODEBASE.md` §6; qui ci sono le regole che non si p
 
 Non sono decisioni: sono scelte ancora da fare (tracciate in `BACKLOG.md` §6).
 
-- Cosa succede ai timbri accumulati alla scadenza o al cambio di promozione (azzerare, tenere,
-  avvisare). Oggi confirm risponde 409 se la promozione della card non è quella attiva.
+- Cosa succede ai timbri accumulati alla **scadenza** della promozione senza che ne parta un'altra (il cambio è deciso, vedi §4.2).
 - Modello di business e prezzo.
 - Aspetto e contenuto del supporto fisico (tag/QR) e del pass.
 - Dashboard: quali numeri servono davvero al gestore del locale.

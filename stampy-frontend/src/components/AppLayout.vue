@@ -37,21 +37,25 @@ const staffVenueId = computed(() => {
   return memberships.value?.some((v) => v.venueId === id) ? id : null
 })
 
-// One header for everyone; only the items differ. Staff screens of a venue the user belongs to
-// get the venue's two pages, every other screen gets the customer's own history.
+// One header for everyone; only the items differ, depending on the page:
+// - staff screen of a venue the user belongs to: the venue's history, plus "Cambia locale"
+//   only when the user belongs to more than one venue (the queue is reached with the back button)
+// - staff venue list (or a venue not yet confirmed): no page items, only "Esci"
+// - every other screen: the customer's own history
 interface MenuItem {
   label: string
   to: RouteLocationRaw
   name: string
 }
+const isStaffArea = computed(() => isStaffScreen.value || route.name === 'staff-venues')
 const menuItems = computed<MenuItem[]>(() => {
   const venueId = staffVenueId.value
-  return venueId
-    ? [
-        { label: 'Coda richieste', to: { name: 'staff-queue', params: { venueId } }, name: 'staff-queue' },
-        { label: 'Storico richieste', to: { name: 'staff-history', params: { venueId } }, name: 'staff-history' },
-      ]
-    : [{ label: 'Storico richieste', to: { name: 'history' }, name: 'history' }]
+  if (!venueId) return isStaffArea.value ? [] : [{ label: 'Storico richieste', to: { name: 'history' }, name: 'history' }]
+  const items: MenuItem[] = [
+    { label: 'Storico richieste', to: { name: 'staff-history', params: { venueId } }, name: 'staff-history' },
+  ]
+  if ((memberships.value?.length ?? 0) > 1) items.push({ label: 'Cambia locale', to: { name: 'staff-venues' }, name: 'staff-venues' })
+  return items
 })
 
 // Back control: only on the history pages, always at the same spot. Staff go to the queue of the
@@ -136,8 +140,8 @@ watch(() => route.fullPath, () => close())
             <RouterLink class="dropdown-item d-flex align-items-center" style="min-height: 44px" :to="item.to" active-class="active">
               {{ item.label }}
             </RouterLink>
+            <hr class="dropdown-divider" />
           </li>
-          <li><hr class="dropdown-divider" /></li>
           <li>
             <button type="button" class="dropdown-item d-flex align-items-center" style="min-height: 44px" @click="signOut">Esci</button>
           </li>

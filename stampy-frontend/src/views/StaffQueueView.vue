@@ -10,6 +10,7 @@ import {
   type MemberVenue,
   type QueueItem,
 } from '@/api/endpoints'
+import PromotionNotice from '@/components/PromotionNotice.vue'
 import ToastStack, { type Toast } from '@/components/ToastStack.vue'
 import { usePolling } from '@/composables/usePolling'
 import { formatTime } from '@/utils/format'
@@ -22,7 +23,6 @@ const MAX_PRODUCTS = 50 // same limit as the confirm DTO
 
 const requests = shallowRef<QueueItem[] | null>(null)
 const venue = shallowRef<MemberVenue | null>(null)
-const venueCount = ref(0)
 const forbidden = ref(false)
 // Two separate messages: `error` belongs to the last staff action and stays until the next
 // one; `pollError` is the connection state of the background refresh (BUG-01).
@@ -251,7 +251,6 @@ onMounted(async () => {
   if (await refresh()) polling.start()
   try {
     const { venues } = await getMyVenues()
-    venueCount.value = venues.length
     venue.value = venues.find((v) => v.venueId === props.venueId) ?? null
   } catch {
     /* only the title depends on this */
@@ -268,9 +267,6 @@ onMounted(async () => {
   <template v-else>
     <div class="d-flex align-items-baseline justify-content-between gap-3 mb-3">
       <h1 class="h4 mb-0">{{ venue?.name ?? 'Richieste' }}</h1>
-      <span class="d-flex gap-3">
-        <RouterLink v-if="venueCount > 1" :to="{ name: 'staff-venues' }">Cambia locale</RouterLink>
-      </span>
     </div>
 
     <!-- Sticky: with several cards the outcome of the last one must stay in view (UX-02). -->
@@ -323,6 +319,8 @@ onMounted(async () => {
           <small class="d-block">{{ ageText(item) }}</small>
         </span>
       </div>
+
+      <p v-if="item.promotionChanged" class="mt-2 mb-0"><PromotionNotice variant="staff" /></p>
 
       <p class="my-2">
         {{ item.stampsCount }} / {{ item.stampsRequired }} timbri

@@ -116,7 +116,7 @@ describe("polling", () => {
 
     expect(r.status).toBe(200);
     expect(r.body.status).toBe("pending");
-    expect(Object.keys(r.body).sort()).toEqual(["expiresAt", "publicCode", "stampsCount", "stampsRequired", "status"]);
+    expect(Object.keys(r.body).sort()).toEqual(["expiresAt", "promotionChanged", "publicCode", "stampsCount", "stampsRequired", "status"]);
     expect(r.body.stampsCount).toBe(0);
     expect(r.body.stampsRequired).toBe(10);
   });
