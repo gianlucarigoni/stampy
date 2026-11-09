@@ -56,6 +56,36 @@ Regole:
 - Eccezioni dove il TDD non si applica (dillo e prosegui): configurazione, documentazione, migrazioni
   senza logica nuova, integrazioni con API esterne ancora da verificare (BACKLOG §5).
 
+## Ciclo di ogni task (Git + GitHub Project)
+
+Ogni task è una issue del GitHub Project "Stampy" (progetto 1 di `gianlucarigoni`, colonne Status:
+`Todo` → `In Progress` → `Done`). Questo ciclo è **un'autorizzazione stabile del proprietario**:
+branch, commit, push e merge in `main` non richiedono di chiedere ogni volta, ma solo alle condizioni sotto.
+
+1. **Inizio.** Parti da `main` aggiornato (`git checkout main && git pull`), crea un branch nuovo
+   `feat|fix|docs|chore/<id-minuscolo>-<slug>` (es. `feat/b3-cors-origin`) e sposta la issue in
+   `In Progress`: `.claude/scripts/project-status.sh <numero-issue> "In Progress"`.
+   Mai lavorare direttamente su `main`. Se la task non ha una issue, crea solo il branch e dillo.
+2. **Durante.** Segui il TDD qui sotto: la proposta dei test si fa **sul branch**, con la issue già
+   `In Progress`; finché il proprietario non approva, non c'è commit di codice di produzione.
+3. **Fine, solo se tutto è verde.** Esegui `/verify` (typecheck + suite, totale atteso aggiornato in
+   `verify.sh`, `SKILL.md` e `CODEBASE.md` §7), aggiorna `CODEBASE.md` e `BACKLOG.md`, poi:
+   commit sul branch (messaggio in italiano, con l'attribuzione richiesta) → `git push -u origin <branch>`
+   → `git checkout main && git merge --no-ff <branch> && git push origin main`.
+4. **Chiusura.** Dopo il merge sposta la issue in `Done`:
+   `.claude/scripts/project-status.sh <numero-issue> Done`. Chiudere la issue su GitHub resta una
+   scelta del proprietario: chiedila, non farla da solo.
+
+Regole:
+- **Rosso = nessun merge.** Se un test fallisce (anche un flaky noto come T2), non fare commit-merge:
+  rilancia per capire, riporta l'output e lascia la issue in `In Progress`. Mai ridurre o modificare
+  un test approvato per ottenere il verde.
+- Mai `push --force`, mai `--no-verify`, mai riscrivere la storia di `main`.
+- Se il merge ha conflitti o `git pull` non è un fast-forward, fermati e chiedi.
+- Se il diff contiene segreti, `.env`, chiavi o `saveUrl` del Wallet, fermati prima del commit.
+- Il branch di lavoro non si cancella da solo: lo decide il proprietario.
+- Task di sola esplorazione/risposta (nessuna modifica ai file) non hanno né branch né cambio di stato.
+
 ## Comandi
 
 ```bash
@@ -126,4 +156,5 @@ Errori
 - Distingui fatti, assunzioni e cose da validare. Chiedi solo se sei davvero bloccato; altrimenti
   dichiara l'assunzione e procedi (ma i test del TDD vanno sempre concordati prima).
 - Per finire: `npm run typecheck:all` pulito, test rilevanti eseguiti, `CODEBASE.md` aggiornato,
-  `BACKLOG.md` aggiornato se una voce è stata completata o è emersa una nuova lacuna.
+  `BACKLOG.md` aggiornato se una voce è stata completata o è emersa una nuova lacuna; poi commit,
+  push, merge in `main` e issue in `Done` come descritto in "Ciclo di ogni task".
