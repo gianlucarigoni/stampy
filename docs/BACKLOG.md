@@ -61,7 +61,6 @@ Nessuna di queste voci blocca lo sviluppo; quasi tutte bloccano il deploy.
 
 | ID | Stato | Cosa | Dove |
 |---|---|---|---|
-| C5 | `TODO` | `start` usa `tsx` mentre `build`/`dist` sono scollegati; `dist/` è vecchio e ignorato da Git. Decidere il deploy (tsx o build) e allineare gli script. | `package.json`, `dist/` |
 | C6 | `TODO` | `visit` non è in una transazione (i passi sono idempotenti, ma una card può restare senza richiesta se fallisce a metà). | `src/api/venues/venues.controller.ts` |
 | C7 | `TODO` | Il **409** di `visit` ha lo status nel codice ma non si può esercitare senza forzare una race: nessun test lo copre. | `venues.controller.ts` |
 | C11 | `TODO` | `npm run script:all` si ferma: `create-owner` e `create-venue` richiedono argomenti e escono con 1; inoltre la catena non passa `--env-file=.env`. O si tolgono dalla catena o si accettano argomenti. | `package.json` |
@@ -224,6 +223,7 @@ Non si riapre: se serve il dettaglio, è in `archive/` e nei commit.
 
 | Data | Cosa |
 |---|---|
+| 2026-11-09 | **C5 chiusa**: `npm run build` fa `rm -rf dist && tsc`; `npm start` esegue `node dist/index.js` (produzione, serve prima la build; `.env` letto da `dotenv/config`); `npm run start:dev` esegue `tsx src/index.ts` ed è ciò che usa nodemon. Nessun test: configurazione. |
 | 2026-11-09 | **C1 chiusa**: il logger di Drizzle (query e parametri, quindi email e hash dei codici) è acceso solo con `NODE_ENV=development` (`src/db/index.ts`). Attenzione: `NODE_ENV` ha default `development`, quindi in staging/produzione va impostato `production` (da ricordare in P5). Nessun test: configurazione. |
 | 2026-11-09 | **B3 chiusa**: `cors()` ristretto ad `APP_ORIGIN` con `credentials` (mai `*`, nessun header per origin estranee) e nuovo `requireSameOrigin` su `/api`: sui metodi che cambiano stato un `Origin` diverso (anche `null`) → `403 OriginNotAllowed` prima del controller e del 404; senza `Origin` passa. Nessun token CSRF (decisione del 2026-10-26). `cors-origin.test.ts` 13 ✔, suite 234 ✔, `typecheck:all` pulito. Resta da fissare `APP_ORIGIN` di staging (P5). |
 | 2026-11-09 | **Sync del pass alla conferma con rollover** (parte di B22): `syncWalletPass` legge la promozione dalla card appena scritta (`getPromotionById`) e non più la «attiva» riletta dopo il commit, così il pass non diverge dal DB; il `saveUrl` di una card su promozione vecchia (`not_added`) porta 0 timbri e la soglia nuova, come polling e coda. Nessuna notifica push. 6 test in `promotion-rollover.test.ts` (ora 33). Suite: **221 test**. |

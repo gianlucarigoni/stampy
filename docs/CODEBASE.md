@@ -30,10 +30,11 @@ npm run dev            # backend + frontend (http://localhost:5173)
 
 # da stampy-backend/
 npm run dev            # nodemon su src (si riavvia da solo; .env è letto solo all'avvio)
-npm start              # tsx src/index.ts
+npm start              # node dist/index.js (produzione: serve prima `npm run build`)
+npm run start:dev      # tsx src/index.ts (usato da nodemon)
 npm run typecheck      # tsc --noEmit (solo src)
 npm run typecheck:all  # tsc --noEmit -p tsconfig.check.json (src + scripts + test)
-npm run build          # tsc -> dist/ (dist NON è usato da start: build e start sono scollegati)
+npm run build          # rm -rf dist && tsc -> dist/ (è ciò che esegue `npm start`)
 npm test               # Vitest: unit + api (avvia l'app da solo, usa il DB di sviluppo)
 npm run test:unit      # solo test/unit (niente DB)
 npm run test:api       # solo test/api
