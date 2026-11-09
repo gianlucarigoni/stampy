@@ -21,11 +21,11 @@ export async function startServer(): Promise<{ baseUrl: string; close: () => Pro
 
 export const COOKIE_NAME = "sid";
 
-export type ReqOpts = { method?: string; cookie?: string; body?: unknown };
+export type ReqOpts = { method?: string; cookie?: string; body?: unknown; headers?: Record<string, string> };
 
 /** Chiamata HTTP all'app di test. `cookie` è il valore del cookie di sessione (non l'intera riga). */
 export async function request(baseUrl: string, path: string, opts: ReqOpts = {}): Promise<Res> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...opts.headers };
   if (opts.cookie !== undefined) headers.Cookie = `${COOKIE_NAME}=${opts.cookie}`;
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
   const r = await fetch(baseUrl + path, {
