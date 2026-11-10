@@ -25,17 +25,21 @@ def git(*args, cwd):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True).stdout.strip()
 
 cwd = data.get("cwd") or os.getcwd()
-top = git("rev-parse", "--show-toplevel", cwd=cwd)
+abs_path = os.path.realpath(path if os.path.isabs(path) else os.path.join(cwd, path))
+# Il worktree si deduce dalla posizione del FILE, non dalla cartella della sessione: un agente
+# avviato dalla cartella principale che scrive nel suo worktree con percorso assoluto è coperto.
+probe = os.path.dirname(abs_path)
+while probe and not os.path.isdir(probe) and probe != os.path.dirname(probe):
+    probe = os.path.dirname(probe)
+top = git("rev-parse", "--show-toplevel", cwd=probe)
 if not top:
     sys.exit(0)
 # Solo nei worktree collegati: lì .git è un file, nel checkout principale è una cartella.
 if os.path.isdir(os.path.join(top, ".git")):
     sys.exit(0)
-
-abs_path = os.path.realpath(path if os.path.isabs(path) else os.path.join(cwd, path))
 top = os.path.realpath(top)
 if not abs_path.startswith(top + os.sep):
-    sys.exit(0)  # fuori dal worktree: non è affare di questo hook
+    sys.exit(0)
 rel = os.path.relpath(abs_path, top).replace(os.sep, "/")
 
 allow = {p.strip() for p in os.environ.get("STAMPY_TASK_ALLOW", "").split(",") if p.strip()}
