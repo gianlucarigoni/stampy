@@ -32,3 +32,11 @@
 ## Lacune emerse e task suggerite
 
 <Cose notate fuori dallo scopo della task, non fatte.>
+
+## Problemi di ambiente
+
+<Ogni errore o stranezza di worktree, Docker, database, porte, npm, hook, script: che cosa è successo, comando e messaggio (senza segreti), come si è risolto o se è rimasto aperto. "Nessuno" se non ce ne sono stati.>
+
+## Cosa ho capito e cosa no
+
+<Dove le istruzioni di AGENTS.md, della task o degli script erano chiare, ambigue o sbagliate; assunzioni fatte; domande rimaste senza risposta.>

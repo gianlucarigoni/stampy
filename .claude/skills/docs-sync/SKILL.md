@@ -38,3 +38,5 @@ commit messages are in **Italian**, with the terminology of the existing docs (s
 
 In Italian: which reports were integrated and deleted, which were left (and why), the new test
 baseline, decisions that need the owner (CONTEXT.md proposals), and what `worktree-clean.sh` found.
+Also collect each report's "Problemi di ambiente" and "Cosa ho capito e cosa no" sections and show them to
+the owner as a list: they are feedback on the workflow itself (AGENTS.md, scripts, hook), not project documentation.
