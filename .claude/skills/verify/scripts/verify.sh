@@ -5,7 +5,7 @@ set -u
 cd "$(dirname "$0")/../../../../stampy-backend" || exit 2
 # Base di partenza della suite (non un totale esatto): con più agenti in parallelo ognuno aggiunge
 # test, quindi si controlla che non ce ne siano meno e nessuno fallito. Lo riallinea /docs-sync.
-BASELINE=234
+BASELINE=237
 fail=0
 
 if [ "${1:-}" != "--skip-typecheck" ]; then

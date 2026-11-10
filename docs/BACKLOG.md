@@ -62,8 +62,6 @@ Nessuna di queste voci blocca lo sviluppo; quasi tutte bloccano il deploy.
 | ID | Stato | Cosa | Dove |
 |---|---|---|---|
 | C6 | `TODO` | `visit` non è in una transazione (i passi sono idempotenti, ma una card può restare senza richiesta se fallisce a metà). | `src/api/venues/venues.controller.ts` |
-| C7 | `TODO` | Il **409** di `visit` ha lo status nel codice ma non si può esercitare senza forzare una race: nessun test lo copre. | `venues.controller.ts` |
-| C11 | `TODO` | `npm run script:all` si ferma: `create-owner` e `create-venue` richiedono argomenti e escono con 1; inoltre la catena non passa `--env-file=.env`. O si tolgono dalla catena o si accettano argomenti. | `package.json` |
 | C13 | `TODO` | `addOrGetCard` fa `INSERT` prima di `SELECT` (scelta accettata: evita la race). Se il codice cresce, valutare un `CardsService` più esplicito. | `cards.service.ts` |
 | C14 | `TODO` | `.vscode/settings.json` è tracciato: decidere se tenerlo. | `.vscode/` |
 | C15 | `TODO` | Il tag `fase-4d-chiusa` non è mai stato creato (il repo ha solo `refactor-struttura-chiuso`). I tag non sono essenziali, ma la chiusura delle fasi è tracciata solo dai commit. | Git |
@@ -75,7 +73,7 @@ Nessuna di queste voci blocca lo sviluppo; quasi tutte bloccano il deploy.
 | ID | Stato | Cosa |
 |---|---|---|
 | T2 | `TODO` | Un fallimento isolato e non riprodotto in `otp-request` ("5 richieste simultanee" dopo un riavvio di nodemon). Se si ripresenta, salvare l'output prima di indagare. |
-| T3 | `TODO` | Test da aggiungere quando la funzionalità esiste: aggiornamento end-to-end del pass (B1), login Google con token valido/manomesso/`aud` sbagliato/email di terzi (B5), anonimizzazione (B4), `visit` 409 (C7). |
+| T3 | `TODO` | Test da aggiungere quando la funzionalità esiste: aggiornamento end-to-end del pass (B1), login Google con token valido/manomesso/`aud` sbagliato/email di terzi (B5), anonimizzazione (B4). |
 | T4 | `TODO` | **Collezione Bruno** per test manuali strutturati: solo proposta, non è stato creato nulla. Il piano prevedeva cartelle `00–09` e fixture generate da script (Bruno non ha accesso al DB né ai codici OTP). |
 | T5 | `TODO` | Test reale su browser/iPhone/HTTPS: cookie `Secure`, `SameSite=Lax` quando si apre da un tag, sliding della sessione. Oggi tutto è testato solo su HTTP locale. |
 | T6 | `TODO` | **Giro di test manuale del frontend**, nel browser, server di sviluppo, DB vuoto (`stampy-backend/scripts/reset-data.sql`). **A fatto (2026-11-02)**, **B fatto (2026-11-03)**, **C fatto (2026-11-03)**, da rifare per le schermate del wallet cambiate lo stesso giorno (passi 1–4, 6); **D automatizzato il 2026-11-04 (43 ✔), il giro umano è ancora aperto.** Checklist qui sotto. |
@@ -223,6 +221,9 @@ Non si riapre: se serve il dettaglio, è in `archive/` e nei commit.
 
 | Data | Cosa |
 |---|---|
+| 2026-11-10 | **Flusso per più agenti in parallelo**: ogni task in un worktree con porte e database propri (`worktree-start.sh`, `worktree-finish.sh`, `worktree-clean.sh`), report in `docs/reports/` al posto della modifica dei docs (li integra `/docs-sync`), hook che protegge `docs/`, `AGENTS.md`, `.claude/` e `.github/` negli worktree, `Done` impostato solo da `worktree-finish.sh` con audit di chi e quando (`audit.sh`; il workflow GitHub "Auto-close issue" chiude la issue). Provato su Postgres reale con due task insieme (C7 e C11). |
+| 2026-11-10 | **C11 superata**: `npm run script:all` non esiste più (rimosso in `3db0cc6` quando gli script di prova sono diventati test Vitest); `script:create-owner` e `script:create-venue` restano utility con argomenti. Nessuna modifica al codice. |
+| 2026-11-10 | **C7 chiusa**: 3 test in `visit-polling.test.ts` coprono il 409 di `visit` (race su `newRequest` con `vi.spyOn`, nessuna richiesta lasciata, nuovo tocco dopo il 409 → 201) e il ramo gemello (race persa ma pendente del vincitore presente → 200 `request_pending`). Nessuna modifica al codice di produzione; verificato per mutazione (409 → 500 fa fallire 2 test su 3). |
 | 2026-11-09 | **C5 chiusa**: `npm run build` fa `rm -rf dist && tsc`; `npm start` esegue `node dist/index.js` (produzione, serve prima la build; `.env` letto da `dotenv/config`); `npm run start:dev` esegue `tsx src/index.ts` ed è ciò che usa nodemon. Nessun test: configurazione. |
 | 2026-11-09 | **C1 chiusa**: il logger di Drizzle (query e parametri, quindi email e hash dei codici) è acceso solo con `NODE_ENV=development` (`src/db/index.ts`). Attenzione: `NODE_ENV` ha default `development`, quindi in staging/produzione va impostato `production` (da ricordare in P5). Nessun test: configurazione. |
 | 2026-11-09 | **B3 chiusa**: `cors()` ristretto ad `APP_ORIGIN` con `credentials` (mai `*`, nessun header per origin estranee) e nuovo `requireSameOrigin` su `/api`: sui metodi che cambiano stato un `Origin` diverso (anche `null`) → `403 OriginNotAllowed` prima del controller e del 404; senza `Origin` passa. Nessun token CSRF (decisione del 2026-10-26). `cors-origin.test.ts` 13 ✔, suite 234 ✔, `typecheck:all` pulito. Resta da fissare `APP_ORIGIN` di staging (P5). |
