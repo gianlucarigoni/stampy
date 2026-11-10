@@ -39,11 +39,12 @@ if [ -z "$AGENT" ]; then
 fi
 
 # Se è Done, l'automazione chiude la issue: aspetto un attimo e registro lo stato reale.
-CLOSED="-"
+CLOSED=""
 if [ "$STATUS" = "Done" ]; then
-  REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+  REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "$OWNER/stampy")"
   for _ in 1 2 3 4 5; do
-    CLOSED="$(gh issue view "$ISSUE" --repo "$REPO" --json state,closedAt -q 'if .state=="CLOSED" then "chiusa "+.closedAt else "aperta" end')"
+    # Il cambio di stato è già avvenuto: un errore qui non deve impedire di scrivere l'audit.
+    CLOSED="$(gh issue view "$ISSUE" --repo "$REPO" --json state,closedAt -q 'if .state=="CLOSED" then "chiusa "+.closedAt else "aperta" end' 2>/dev/null || echo "verifica-non-riuscita")"
     [ "${CLOSED#aperta}" != "$CLOSED" ] || break
     sleep 2
   done
@@ -51,6 +52,6 @@ fi
 
 mkdir -p "$WT_ROOT"
 printf '%s\t#%s\t%s\tchi=%s\tgh=%s\t%s\n' \
-  "$(date -u +%FT%TZ)" "$ISSUE" "$STATUS" "$AGENT" "$(gh api user -q .login)" "$CLOSED" >> "$WT_ROOT/audit.log"
+  "$(date -u +%FT%TZ)" "$ISSUE" "$STATUS" "$AGENT" "$(gh api user -q .login)" "${CLOSED:--}" >> "$WT_ROOT/audit.log"
 
 echo "#$ISSUE → $STATUS${CLOSED:+ ($CLOSED)} [chi: $AGENT]"

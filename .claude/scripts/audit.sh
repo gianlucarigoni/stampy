@@ -15,7 +15,7 @@ else
 fi
 
 if [ -n "${1:-}" ]; then
-  REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+  REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo gianlucarigoni/stampy)"
   echo; echo "== Timeline GitHub di #$1"
   gh api "repos/$REPO/issues/$1/timeline" --paginate \
     --jq '.[] | select(.event=="project_v2_item_status_changed" or .event=="closed" or .event=="reopened") | [.created_at, .event, (.actor.login // "-")] | @tsv'

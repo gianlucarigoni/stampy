@@ -98,7 +98,8 @@ REPORT="${REPORT//<id>/$ID}"
 REPORT="${REPORT//<titolo della task>/$TITLE}"
 REPORT="${REPORT//<branch>/$BRANCH}"
 REPORT="${REPORT//<AAAA-MM-GG>/$(date +%F)}"
-REPORT="${REPORT//'#<numero> (o "nessuna")'/${ISSUE:+#$ISSUE}${ISSUE:-nessuna}}"
+if [ -n "$ISSUE" ]; then ISSUE_TXT="#$ISSUE"; else ISSUE_TXT="nessuna"; fi
+REPORT="${REPORT//'#<numero> (o "nessuna")'/$ISSUE_TXT}"
 mkdir -p "$WT_DIR/docs/reports"
 printf '%s\n' "$REPORT" > "$WT_DIR/docs/reports/$ID-$SLUG.md"
 
