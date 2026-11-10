@@ -430,7 +430,7 @@ npm test                         # tutto Vitest
 npm run test:unit                # solo test/unit
 npm run test:api                 # solo test/api
 npx vitest run -t "5 codici"     # un solo test per nome
-.claude/skills/verify/scripts/verify.sh   # typecheck + suite, atteso 234
+.claude/skills/verify/scripts/verify.sh   # typecheck + suite, base 234 (fallisce se meno)
 ```
 
 | File | Test | Copertura |
@@ -447,7 +447,9 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `api/cors-origin.test.ts` | 13 | CORS ristretto ad APP_ORIGIN (preflight, mai `*`, nessun header per origin estranee), controllo di `Origin` sui metodi che cambiano stato (403 con estranea e con `null`, passa senza `Origin`, sessione non toccata, 403 prima del 404) |
 | `api/db-constraints.test.ts` | 14 | vincoli delle migrazioni 2 e 3 (email minuscole, unicità, una sfida OTP attiva, FK RESTRICT, `request_id` non univoco, `promotions_no_overlap`), ognuno in una transazione con ROLLBACK |
 
-Totale atteso: **234**.
+Base della suite: **234** (`BASELINE` in `verify.sh`). `verify.sh` fallisce se i test passati sono meno della base o se ce n'è uno rosso; con più test della base segnala la differenza. Con più agenti in parallelo la base la riallinea `/docs-sync`, non la singola task.
+
+**Lavoro in parallelo (agenti).** Ogni task gira in un worktree in `../stampy-wt/<id>` con porte (`3000+N` backend, `5173+N` frontend) e database (`stampy_wt_<id>` nel container `stampy-db`) propri. Script in `.claude/scripts/`: `worktree-start.sh` (crea tutto, comprese le porte in `stampy-backend/.env` e `stampy-frontend/.env.local`, letti da `vite.config.ts`), `worktree-finish.sh` (commit, verifica su `main` aggiornato, merge solo senza conflitti, pulizia; i registri degli slot stanno in `../stampy-wt/.slots/`), `worktree-clean.sh` (orfani, solo per il proprietario), `lib-worktree.sh` (funzioni comuni), `report-template.md`. L'hook `.claude/hooks/guard-protected.sh` (registrato in `.claude/settings.json`) impedisce agli agenti di scrivere `docs/` (tranne `docs/reports/*.md`), `AGENTS.md`, `.claude/` e `.github/`; la skill `/docs-sync` integra i report nei documenti e li elimina. Le prove degli script sono state fatte con Docker e npm simulati: la parte su Postgres reale (`CREATE`/`DROP DATABASE`, migrazioni su DB vuoto) è da verificare alla prima esecuzione vera.
 
 Ultima esecuzione registrata: **9 novembre 2026: `npm test` 234 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
 
