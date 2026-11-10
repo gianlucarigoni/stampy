@@ -13,7 +13,7 @@ while getopts "m:" o; do case $o in m) MSG="$OPTARG";; *) exit 2;; esac; done
 [ -f "$(slot_file "$ID")" ] || die "nessuno slot per '$ID': la task è stata avviata con worktree-start.sh?"
 WT_DIR="$WT_ROOT/$ID"
 [ -d "$WT_DIR" ] || die "manca $WT_DIR"
-DB="$(slot_field "$ID" 2)"; BRANCH="$(slot_field "$ID" 3)"
+DB="$(slot_field "$ID" 2)"; BRANCH="$(slot_field "$ID" 3)"; ISSUE="$(slot_field "$ID" 4)"
 [ "$(git -C "$WT_DIR" rev-parse --abbrev-ref HEAD)" = "$BRANCH" ] || die "il worktree non è sul branch $BRANCH"
 require_docker
 
@@ -70,4 +70,12 @@ git -C "$MAIN_ROOT" worktree remove --force "$WT_DIR"
 db_psql -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)"
 rm -f "$(slot_file "$ID")"
 echo "✔ $BRANCH unito in main e pubblicato. Worktree e database $DB eliminati; il branch resta."
-echo "  Ora: .claude/scripts/project-status.sh <numero-issue> Done"
+
+# Done si imposta SOLO qui, a merge riuscito. Il workflow "Auto-close issue" del progetto chiude poi
+# la issue; chi e quando finisce in audit.log (vedi .claude/scripts/audit.sh).
+if [ -n "$ISSUE" ] && [ "$ISSUE" != "-" ]; then
+  STAMPY_AGENT="$ID" "$(dirname "$0")/project-status.sh" "$ISSUE" Done \
+    || echo "⚠ merge fatto ma la issue #$ISSUE non è passata a Done: dillo al proprietario"
+else
+  echo "  Nessuna issue associata: nessun cambio di stato."
+fi

@@ -98,6 +98,11 @@ Regole:
 - **Non modificare un test approvato per farlo passare.** Se il test è sbagliato o il requisito è
   cambiato, dillo esplicitamente e chiedi conferma prima di cambiarlo.
 - Un bug si riproduce prima con un test rosso, poi si corregge.
+- **Test su comportamento che esiste già** (la task è solo coprirlo): il rosso non c'è. Al suo posto
+  fai una **verifica per mutazione**: rompi per un momento il codice di produzione (es. cambia lo
+  status), mostra che i test falliscono per il motivo giusto, ripristina e mostra che `git diff` contiene solo i test.
+  Dichiaralo nella proposta dei test. I test di rami non raggiungibili senza una race possono simulare
+  la race con `vi.spyOn` su una funzione di servizio (mai sul DB); la scelta va nella proposta.
 - Niente mock del DB: i test `api/` usano il DB **del proprio worktree** con dati propri, ripuliti in `afterAll`.
 - I test che meritano la proposta anche per cambi piccoli: invarianti di sicurezza (404 identico tra
   locali, ruoli, idempotenza, filtri di stato nelle `UPDATE`), regola dei timbri, auth.
@@ -152,9 +157,14 @@ branch, commit, push e merge in `main` non richiedono di chiedere ogni volta, ma
      worktree, database e issue restano come sono. Lo dici al proprietario e ti fermi.
    Codici di uscita: 0 ok · 3 conflitti · 4 verifica rossa · 5 diff sospetto.
 4. **Chiusura.** Dopo un merge riuscito lo script elimina worktree e database; **il branch resta**.
-   Sposta la issue in `Done`: `.claude/scripts/project-status.sh <numero-issue> Done`.
-   Chiudere la issue su GitHub resta una scelta del proprietario: chiedila, non farla da solo.
-   Nel messaggio finale riporta: branch, numeri dei test, esito del merge, percorso del report.
+   **`Done` lo imposta `worktree-finish.sh` e nessun altro**, a merge riuscito, per la issue data a
+   `worktree-start.sh`. Non lanciare `project-status.sh … Done` a mano e non usare `gh issue close`.
+   Il progetto GitHub ha il workflow "Auto-close issue": con `Done` la issue **si chiude da sola**, ed è voluto.
+   Ogni cambio di stato finisce in `../stampy-wt/audit.log` (quando, quale issue, **chi**: agente o
+   proprietario, e se la issue risulta chiusa); il proprietario lo legge con `.claude/scripts/audit.sh [issue]`.
+   Nel messaggio finale riporta: branch, numeri dei test, esito del merge, percorso del report e la riga di audit.
+   **Task senza modifiche al codice** (la voce è superata, solo analisi, solo report): si chiude comunque con
+   `worktree-finish.sh`; il report è il contenuto da unire, e la verifica gira lo stesso. Non unire a mano.
 
 Regole:
 - **Rosso = nessun merge.** Se un test fallisce, rilancia per capire, riporta l'output e lascia la
