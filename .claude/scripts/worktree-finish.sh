@@ -75,6 +75,7 @@ echo "✔ $BRANCH unito in main e pubblicato. Worktree e database $DB eliminati;
 # Done si imposta SOLO qui, a merge riuscito. Il workflow "Auto-close issue" del progetto chiude poi
 # la issue; chi e quando finisce in audit.log (vedi .claude/scripts/audit.sh).
 if [ -n "$ISSUE" ] && [ "$ISSUE" != "-" ]; then
+  cd "$MAIN_ROOT"  # la cwd era il worktree, ormai eliminato
   STAMPY_AGENT="$ID" "$MAIN_ROOT/.claude/scripts/project-status.sh" "$ISSUE" Done \
     || echo "⚠ merge fatto ma la issue #$ISSUE non è passata a Done: dillo al proprietario"
 else
