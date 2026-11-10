@@ -42,7 +42,7 @@ done
 API_PORT=$((API_BASE_PORT + SLOT)); WEB_PORT=$((WEB_BASE_PORT + SLOT))
 
 echo "▶ worktree $WT_DIR ($BRANCH), slot $SLOT: api $API_PORT, web $WEB_PORT, db $DB"
-echo "$SLOT $DB $BRANCH" > "$(slot_file "$ID")"
+echo "$SLOT $DB $BRANCH ${ISSUE:--}" > "$(slot_file "$ID")"
 cleanup_on_error() { echo "✘ avvio fallito: pulisco" >&2
   db_psql -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" 2>/dev/null || true
   git -C "$MAIN_ROOT" worktree remove --force "$WT_DIR" 2>/dev/null || true
@@ -90,13 +90,23 @@ db_psql -c "CREATE DATABASE \"$DB\""
 ( cd "$WT_DIR/stampy-backend" \
   && node --env-file=.env ./node_modules/.bin/drizzle-kit migrate --config=src/drizzle.config.ts >/dev/null )
 
-# Report della task, pronto da compilare.
+# Report della task, pronto da compilare: titolo e issue li riempie lo script.
+TITLE="$SLUG"
+if [ -n "$ISSUE" ]; then TITLE="$(gh issue view "$ISSUE" --json title -q .title 2>/dev/null || echo "$SLUG")"; fi
+REPORT="$(<"$(dirname "$0")/report-template.md")"
+REPORT="${REPORT//<id>/$ID}"
+REPORT="${REPORT//<titolo della task>/$TITLE}"
+REPORT="${REPORT//<branch>/$BRANCH}"
+REPORT="${REPORT//<AAAA-MM-GG>/$(date +%F)}"
+if [ -n "$ISSUE" ]; then ISSUE_TXT="#$ISSUE"; else ISSUE_TXT="nessuna"; fi
+REPORT="${REPORT//'#<numero> (o "nessuna")'/$ISSUE_TXT}"
 mkdir -p "$WT_DIR/docs/reports"
-sed "s|<id>|$ID|; s|<branch>|$BRANCH|; s|<AAAA-MM-GG>|$(date +%F)|" "$(dirname "$0")/report-template.md" \
-  > "$WT_DIR/docs/reports/$ID-$SLUG.md"
+printf '%s\n' "$REPORT" > "$WT_DIR/docs/reports/$ID-$SLUG.md"
 
 trap - ERR
-if [ -n "$ISSUE" ]; then "$(dirname "$0")/project-status.sh" "$ISSUE" "In Progress" || echo "⚠ issue #$ISSUE non spostata: fallo a mano"; fi
+if [ -n "$ISSUE" ]; then
+  STAMPY_AGENT="$ID" "$(dirname "$0")/project-status.sh" "$ISSUE" "In Progress" || echo "⚠ issue #$ISSUE non spostata: fallo a mano"
+fi
 
 cat <<EOF
 ✔ pronto

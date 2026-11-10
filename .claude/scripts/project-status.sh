@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# Sposta una issue nella colonna Status del GitHub Project "Stampy" (progetto 1).
+# Sposta una issue nella colonna Status del GitHub Project "Stampy" (progetto 1) e registra chi
+# l'ha fatto e quando in un log di audit (../stampy-wt/audit.log, fuori da git).
+# Attenzione: il progetto ha il workflow "Auto-close issue": impostare Done CHIUDE la issue.
+# GitHub attribuisce tutto al tuo account, quindi il "chi" (agente o proprietario) lo scrive questo log.
 # Uso: .claude/scripts/project-status.sh <numero-issue> <"Todo"|"In Progress"|"Done">
+# Chi agisce: variabile STAMPY_AGENT (la imposta worktree-finish.sh); altrimenti si deduce dalla cartella.
 set -euo pipefail
+source "$(dirname "$0")/lib-worktree.sh"
 
 OWNER="gianlucarigoni"
 PROJECT=1
@@ -25,4 +30,28 @@ PY
 )
 
 gh project item-edit --id "$ITEM_ID" --project-id "$PROJECT_ID" --field-id "$FIELD_ID" --single-select-option-id "$OPTION_ID" >/dev/null
-echo "#$ISSUE → $STATUS"
+
+# Chi: STAMPY_AGENT, oppure il nome del worktree in cui gira lo script, oppure il proprietario.
+AGENT="${STAMPY_AGENT:-}"
+if [ -z "$AGENT" ]; then
+  TOP="$(git rev-parse --show-toplevel)"
+  if [ -f "$TOP/.git" ]; then AGENT="agente:$(basename "$TOP")"; else AGENT="cartella-principale"; fi
+fi
+
+# Se è Done, l'automazione chiude la issue: aspetto un attimo e registro lo stato reale.
+CLOSED=""
+if [ "$STATUS" = "Done" ]; then
+  REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "$OWNER/stampy")"
+  for _ in 1 2 3 4 5; do
+    # Il cambio di stato è già avvenuto: un errore qui non deve impedire di scrivere l'audit.
+    CLOSED="$(gh issue view "$ISSUE" --repo "$REPO" --json state,closedAt -q 'if .state=="CLOSED" then "chiusa "+.closedAt else "aperta" end' 2>/dev/null || echo "verifica-non-riuscita")"
+    [ "${CLOSED#aperta}" != "$CLOSED" ] || break
+    sleep 2
+  done
+fi
+
+mkdir -p "$WT_ROOT"
+printf '%s\t#%s\t%s\tchi=%s\tgh=%s\t%s\n' \
+  "$(date -u +%FT%TZ)" "$ISSUE" "$STATUS" "$AGENT" "$(gh api user -q .login)" "${CLOSED:--}" >> "$WT_ROOT/audit.log"
+
+echo "#$ISSUE → $STATUS${CLOSED:+ ($CLOSED)} [chi: $AGENT]"
