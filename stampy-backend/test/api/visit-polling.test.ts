@@ -6,8 +6,9 @@
  * `visit-test-*@test.it`, e li elimina in afterAll.
  */
 import crypto from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { pool } from "../../src/db";
+import requestSrv from "../../src/api/requests/requests.service";
 import { request, startServer, type Res } from "../helpers/server";
 import { makeFixtures } from "../helpers/fixtures";
 
@@ -226,5 +227,55 @@ describe("schermata Wallet: not_added → active", () => {
 
     expect((await walletAdded(y.token)).status).toBe(404);
     expect((await cardOf(x.id))!.wallet_status).toBe("not_added");
+  });
+});
+
+describe("race su newRequest", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("newRequest perde la race e la pendente è sparita → 409 'Errore nella richiesta, riprova'", async () => {
+    const u = await fx.newUserWithSession("race1");
+    await visit(u.token, { query: "" }); // crea la card
+    vi.spyOn(requestSrv, "newRequest").mockResolvedValue(null);
+
+    const r = await visit(u.token);
+    expect(r.status).toBe(409);
+    expect(r.body.message).toBe("Errore nella richiesta, riprova");
+    expect(await pendingCount((await cardOf(u.id))!.id)).toBe(0);
+  });
+
+  it("il 409 non consuma stato: dopo la race un nuovo tocco senza mock crea la richiesta (201)", async () => {
+    const u = await fx.newUserWithSession("race2");
+    await visit(u.token, { query: "" });
+    const spy = vi.spyOn(requestSrv, "newRequest").mockResolvedValue(null);
+    expect((await visit(u.token)).status).toBe(409);
+    spy.mockRestore();
+
+    const r = await visit(u.token);
+    expect(r.status).toBe(201);
+    expect(r.body.state).toBe("request_pending");
+    expect(await pendingCount((await cardOf(u.id))!.id)).toBe(1);
+  });
+
+  it("newRequest perde la race ma la pendente del vincitore esiste → 200 request_pending con la stessa requestId (non 409)", async () => {
+    const u = await fx.newUserWithSession("race3");
+    await visit(u.token, { query: "" });
+    const cardId = (await cardOf(u.id))!.id;
+    const { rows } = await pool.query(
+      `INSERT INTO stamp_requests (card_id, venue_id, status, expires_at) VALUES ($1, $2, 'pending', now() + interval '3 minutes') RETURNING id`,
+      [cardId, venueId],
+    );
+    // il controller non vede la pendente alla prima lettura, la vede dopo la race
+    vi.spyOn(requestSrv, "getPendingRequest").mockResolvedValueOnce(null);
+    vi.spyOn(requestSrv, "newRequest").mockResolvedValue(null);
+
+    const r = await visit(u.token);
+    expect(r.status).toBe(200);
+    expect(r.body.state).toBe("request_pending");
+    expect(r.body.requestId).toBe(rows[0].id);
+    expect(r.body.promotionChanged).toBe(false);
+    expect(await pendingCount(cardId)).toBe(1);
   });
 });
