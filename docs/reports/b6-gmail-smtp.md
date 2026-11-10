@@ -11,7 +11,7 @@ mantenendo il log su console come doppio controllo in sviluppo.
 
 ## Decisioni e motivazioni
 
-- **`EMAIL_PROVIDER` = `console` | `gmail` | `both`** (default `console`). `both` è un'aggiunta rispetto a BACKLOG B6
+- **`OTP_PROVIDER` = `console` | `gmail` | `both`** (default `console`). `both` è un'aggiunta rispetto a BACKLOG B6
   (che prevedeva solo `console | gmail`), chiesta dal proprietario per i test.
 - **App password via SMTP (`smtp.gmail.com:465`, nodemailer)**, scartato OAuth2: il refresh token in stato «Testing»
   scade dopo 7 giorni (V3) e per un MVP senza clienti è manutenzione inutile.
@@ -26,7 +26,7 @@ mantenendo il log su console come doppio controllo in sviluppo.
 
 ## Assunzioni e cose da validare
 
-- **Invio reale**: provato dal proprietario il 2026-11-10 con `EMAIL_PROVIDER=both`: la mail arriva (in spam).
+- **Invio reale**: provato dal proprietario il 2026-11-10 con `OTP_PROVIDER=both`: la mail arriva (in spam).
 - **Spam**: provato il 2026-11-10 con un Gmail personale: l'OTP arriva ma finisce in posta indesiderata. Si risolve col dominio (SPF/DKIM). Invio reale e consegna verificati dal proprietario.
 - **Resa dell'email nei client** (Gmail web/app, Outlook, Apple Mail, tema scuro): verificata solo l'HTML, non nei client.
 - Versioni: `nodemailer` ^10.5.0 e `@types/nodemailer` ^8.0.2 sono quelle risolte da npm al momento; i tipi non seguono la stessa major.
@@ -37,7 +37,7 @@ mantenendo il log su console come doppio controllo in sviluppo.
 
 - File: `src/config/env.ts`, `src/utils/email/email-sender.ts`, `src/utils/email/gmail-email-sender.ts` (nuovo),
   `src/utils/email/otp-email.ts` (nuovo), `package.json`, `package-lock.json`.
-  `.env` (non versionato): aggiunte `EMAIL_PROVIDER=console`, `GMAIL_USER=`, `GMAIL_APP_PASSWORD=`.
+  `.env` (non versionato): aggiunte `OTP_PROVIDER=console`, `GMAIL_USER=`, `GMAIL_APP_PASSWORD=`.
 - Test: +27 (`test/unit/env-email.test.ts` 12, `test/unit/email-sender.test.ts` 13, `test/api/otp-request-email-failure.test.ts` 2);
   totale della suite prima 237 → dopo 264.
 
@@ -48,7 +48,7 @@ mantenendo il log su console come doppio controllo in sviluppo.
   `email/email-sender.ts   EmailSender, ConsoleEmailSender, createEmailSender(provider) (console | gmail | both)`,
   `email/gmail-email-sender.ts   GmailEmailSender (SMTP smtp.gmail.com:465, app password)`,
   `email/otp-email.ts   renderOtpEmail(code): oggetto, testo e HTML`.
-- §env: `EMAIL_PROVIDER` (default `console`; in produzione solo `gmail`), `GMAIL_USER`, `GMAIL_APP_PASSWORD` (obbligatorie se il provider non è `console`).
+- §env: `OTP_PROVIDER` (default `console`; in produzione solo `gmail`), `GMAIL_USER`, `GMAIL_APP_PASSWORD` (obbligatorie se il provider non è `console`).
 - §7 test: +3 file (vedi sopra), totale 264.
 
 ### BACKLOG.md

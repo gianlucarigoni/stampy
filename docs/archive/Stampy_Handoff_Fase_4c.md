@@ -129,7 +129,7 @@ Il vecchio `email.service.ts` va cancellato se ancora presente. La transazione d
 Verifica con `google-auth-library` (già nelle dipendenze): firma, `aud`, `iss`, `exp`; `email_verified` vero; email `@gmail.com` oppure `hd` valorizzato, altrimenti rifiuto con `google_untrusted_email_rejected`; ricerca di `(google, sub)`; se assente, collegamento all'utente con la stessa `users.email` (`identity_linked`) o creazione; sessione e `login_success`. **Come ottenere un ID token in test senza frontend: da verificare nella documentazione ufficiale** (non assumere). Dipende da configurazione esterna (client ID, schermata di consenso).
 
 ### E. Invio email reale
-`GmailEmailSender` e `EMAIL_PROVIDER` (`console` | `gmail`) in `env.ts`. Limiti di invio e autenticazione di Gmail (password per le app o OAuth) **da verificare** nella documentazione ufficiale. Valutare quando passare a un provider transazionale (serve un dominio per SPF/DKIM).
+`GmailEmailSender` e `OTP_PROVIDER` (`console` | `gmail`) in `env.ts`. Limiti di invio e autenticazione di Gmail (password per le app o OAuth) **da verificare** nella documentazione ufficiale. Valutare quando passare a un provider transazionale (serve un dominio per SPF/DKIM).
 
 ## 6. Decisioni chiuse il 26/10 (non riaprire)
 

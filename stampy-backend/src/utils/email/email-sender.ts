@@ -42,4 +42,4 @@ export function createEmailSender(provider: EmailProvider, gmail?: GmailOptions)
   return new BothEmailSender(new ConsoleEmailSender(), gmailSender);
 }
 
-export const emailSender: EmailSender = createEmailSender(env.EMAIL_PROVIDER);
+export const emailSender: EmailSender = createEmailSender(env.OTP_PROVIDER);
