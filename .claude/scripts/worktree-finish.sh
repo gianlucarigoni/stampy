@@ -4,7 +4,8 @@
 # Uso: .claude/scripts/worktree-finish.sh <id> -m "messaggio di commit (con l'attribuzione)"
 # Codici di uscita: 0 ok · 2 uso errato · 3 conflitti (nulla cambiato) · 4 verifica rossa · 5 diff sospetto
 set -euo pipefail
-source "$(dirname "$0")/lib-worktree.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"  # assoluto: il worktree (e la cwd) viene eliminato prima di project-status.sh
+source "$SCRIPT_DIR/lib-worktree.sh"
 
 ID="$(tr 'A-Z' 'a-z' <<<"${1:?id della task}")"; shift
 MSG=""
@@ -74,7 +75,7 @@ echo "✔ $BRANCH unito in main e pubblicato. Worktree e database $DB eliminati;
 # Done si imposta SOLO qui, a merge riuscito. Il workflow "Auto-close issue" del progetto chiude poi
 # la issue; chi e quando finisce in audit.log (vedi .claude/scripts/audit.sh).
 if [ -n "$ISSUE" ] && [ "$ISSUE" != "-" ]; then
-  STAMPY_AGENT="$ID" "$(dirname "$0")/project-status.sh" "$ISSUE" Done \
+  STAMPY_AGENT="$ID" "$SCRIPT_DIR/project-status.sh" "$ISSUE" Done \
     || echo "⚠ merge fatto ma la issue #$ISSUE non è passata a Done: dillo al proprietario"
 else
   echo "  Nessuna issue associata: nessun cambio di stato."
