@@ -186,14 +186,16 @@ una struttura estendibile ad Apple e telefono senza riscritture.
   nuovo codice). Il tetto di 5 invii/ora si applica sempre.
 - Valori nostri, non standard: gli standard (NIST/OWASP) fissano tetti più larghi.
 
-### 5.3 Google (login non ancora implementato)
+### 5.3 Google
 
-- Verifica di firma, `aud`, `iss`, `exp` del token.
-- Collegamento automatico a un account esistente **solo** se l'email è `@gmail.com` oppure
-  `email_verified` è true **con `hd` impostato**.
-- **Google con email di terzi (es. libero.it): rifiutato** nell'MVP, con un invito a usare
-  l'email con codice e un evento `google_untrusted_email_rejected`. Accettarle in futuro
-  richiederà una migrazione additiva, non una riscrittura.
+- Verifica di firma, `aud`, `iss`, `exp` del token. L'identità è il claim `sub`, non l'email.
+- `email_verified` falso: rifiuto sempre, per qualunque dominio (evento `google_untrusted_email_rejected`).
+- Collegamento automatico a un account esistente **solo** se l'email è `@gmail.com` oppure c'è `hd`
+  (in entrambi i casi con `email_verified` true).
+- **Google con email di terzi (es. libero.it, senza `hd`):** se Google la dichiara verificata
+  (`email_verified`), l'accesso è ammesso e crea un utente nuovo; **non** si collega in automatico a un
+  utente già esistente con quella email (rifiuto con un invito a usare l'email con codice, e l'evento
+  `google_untrusted_email_rejected`). Deciso dal proprietario il 2026-11-11; nessuna migrazione.
 
 ### 5.4 Sessioni e cookie
 
