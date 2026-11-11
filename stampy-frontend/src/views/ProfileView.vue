@@ -11,11 +11,12 @@ const { user, logout } = useAuth()
 const error = ref('')
 // Owners and staff cannot delete their account from here (BACKLOG B4b). The backend answers 403
 // anyway: this only avoids offering a button that cannot work.
-const blocked = ref(false)
+const isMember = ref<boolean | null>(null) // null = not known yet
+const blocked = computed(() => isMember.value === true)
 
 onMounted(async () => {
   try {
-    if ((await getMyVenues()).venues.length > 0) blocked.value = true
+    isMember.value = (await getMyVenues()).venues.length > 0
   } catch {
     /* the 403 from the server is the real check */
   }
@@ -41,7 +42,8 @@ async function signOut() {
       </div>
     </section>
 
-    <section class="card">
+    <!-- The customer history is for customers: owners and staff see their venue's history from the menu. -->
+    <section v-if="isMember === false" class="card">
       <RouterLink class="profile-row card-body d-flex align-items-center justify-content-between" :to="{ name: 'history' }">
         <span class="fw-semibold">Storico richieste</span>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -50,12 +52,12 @@ async function signOut() {
       </RouterLink>
     </section>
 
-    <section class="card card-body border-danger" aria-labelledby="danger-title">
-      <h2 id="danger-title" class="h6 text-danger">Zona pericolosa</h2>
+    <section class="card card-body danger-zone" aria-labelledby="danger-title">
+      <h2 id="danger-title" class="h6 danger-zone-title">Zona pericolosa</h2>
       <p v-if="blocked" class="text-body-secondary mb-0">Questo account gestisce un locale e non può essere eliminato da qui.</p>
       <template v-else>
-        <RouterLink class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center" :to="{ name: 'delete-account' }">
-          Eimina account
+        <RouterLink class="btn btn-outline-danger btn-danger-soft w-100 d-flex align-items-center justify-content-center" :to="{ name: 'delete-account' }">
+          Elimina account
         </RouterLink>
       </template>
     </section>

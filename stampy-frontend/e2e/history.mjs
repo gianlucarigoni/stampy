@@ -50,7 +50,7 @@ try {
   check('opened from the header menu; lists the 3 requests', (await rows().count()) === 3, String(await rows().count()))
   check('live count "3 richieste" in a status region', (await staff.getByRole('status').innerText()).includes('3 richieste'))
   const all = await staff.locator('ul.list-unstyled').innerText()
-  check('shows outcomes and "3 confermati"', /Approvata/.test(all) && /Rifiutata/.test(all) && /3 confermati/.test(all), all)
+  check('shows outcomes and "3 timbri"', /Approvata/.test(all) && /Rifiutata/.test(all) && /3 timbri/.test(all), all)
   check('no email shown', !/@/.test(await staff.locator('main, body').first().innerText()))
   check('no horizontal scroll at 360 px', !(await overflow(staff)))
   check('no "Filtra" button and no "Carica altre"', (await staff.getByRole('button', { name: 'Filtra' }).count()) === 0 && (await staff.getByText('Carica altre').count()) === 0)
@@ -155,7 +155,7 @@ try {
   const ownRows = own.locator('ul.list-unstyled > li')
   check('only the customer\'s own request, although the venue has 30', (await ownRows.count()) === 1, String(await ownRows.count()))
   const rowText = await ownRows.first().innerText()
-  check('row shows the venue name, the outcome and the confirmed stamps', /E2E \w+/.test(rowText) && rowText.includes('Approvata') && rowText.includes('3 confermati'), rowText)
+  check('row shows the venue name, the outcome and the confirmed stamps', /E2E \w+/.test(rowText) && rowText.includes('Approvata') && rowText.includes("3 timbri"), rowText)
   check('same filters as staff (panel opens, status filter in the URL)', await (async () => {
     await own.getByRole('button', { name: /Filtri/ }).click()
     await own.locator('#h-status').selectOption('rejected')

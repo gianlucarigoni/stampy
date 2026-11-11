@@ -169,3 +169,33 @@ main:focus {
     background-color: rgba(var(--bs-primary-rgb), 0.15);
   }
 }
+
+// Danger zone: one red per theme, defined once. Light keeps the classic Bootstrap-like red; dark uses a lighter,
+// less saturated red (the pure #dc3545 vibrates on the dark brown background). Border and fill are the same red at low
+// alpha, so the card reads as "tinted" in both themes instead of a hard outline.
+:root {
+  --stampy-danger: #c92a3a; // 5.6:1 on white, 5.1:1 on the tinted card
+  --stampy-danger-rgb: 201, 42, 58;
+}
+[data-bs-theme="dark"] {
+  --stampy-danger: #f0808b; // ~7:1 on the dark card
+  --stampy-danger-rgb: 240, 128, 139;
+}
+.danger-zone {
+  border-color: rgba(var(--stampy-danger-rgb), 0.55);
+  background-color: rgba(var(--stampy-danger-rgb), 0.06);
+}
+.danger-zone-title {
+  color: var(--stampy-danger);
+}
+.btn-danger-soft {
+  --bs-btn-color: var(--stampy-danger);
+  --bs-btn-border-color: rgba(var(--stampy-danger-rgb), 0.7);
+  --bs-btn-hover-color: var(--stampy-danger);
+  --bs-btn-hover-bg: rgba(var(--stampy-danger-rgb), 0.14);
+  --bs-btn-hover-border-color: var(--stampy-danger);
+  --bs-btn-active-color: var(--stampy-danger);
+  --bs-btn-active-bg: rgba(var(--stampy-danger-rgb), 0.22);
+  --bs-btn-active-border-color: var(--stampy-danger);
+  --bs-btn-focus-shadow-rgb: var(--stampy-danger-rgb);
+}

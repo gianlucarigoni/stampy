@@ -11,7 +11,6 @@ import {
   type QueueItem,
 } from '@/api/endpoints'
 import PromotionNotice from '@/components/PromotionNotice.vue'
-import ToastStack, { type Toast } from '@/components/ToastStack.vue'
 import { usePolling } from '@/composables/usePolling'
 import { formatTime } from '@/utils/format'
 
@@ -34,15 +33,13 @@ type Resolved = {
   publicCode: string
   index: number // where the card was in the queue
   outcome:
-    | { kind: 'approved'; stampsAdded: number; stampsCount: number; stampsRequired: number }
+    | { kind: 'approved'; stampsAdded: number; rewards: number; reward: string; rewardReady: boolean }
     | { kind: 'rejected' }
 }
 const resolved = ref<Resolved[]>([])
-const toasts = ref<Toast[]>([])
 const announcement = ref('') // screen-reader text for the outcome (cards appear without a live region)
-// Short on purpose: the feedback must not sit on top of the next request (toast and card).
+// Short on purpose: the feedback must not sit on top of the next request.
 const RESOLVED_MS = 8000
-const TOAST_MS = 5000
 const timers = new Set<ReturnType<typeof setTimeout>>()
 // Display-only clock for "scade tra …" (the server decides what is expired, not this).
 const now = ref(Date.now())
@@ -146,14 +143,6 @@ function settle(entry: Resolved) {
 const dismissResolved = (requestId: string) =>
   (resolved.value = resolved.value.filter((r) => r.requestId !== requestId))
 
-function addToast(toast: Toast) {
-  if (toasts.value.some((t) => t.id === toast.id)) return // one per confirmation
-  toasts.value = [...toasts.value, toast]
-  later(() => dismissToast(toast.id), TOAST_MS)
-}
-
-const dismissToast = (id: string) => (toasts.value = toasts.value.filter((t) => t.id !== id))
-
 // Queue order with the just-handled cards kept where they were (they are no longer in the
 // queue, but staff needs to see the outcome in place of the card).
 type Row =
@@ -202,18 +191,13 @@ function onApproved(item: QueueItem, index: number, result: ConfirmResult) {
     outcome: {
       kind: 'approved',
       stampsAdded: result.stampsAdded,
-      stampsCount: result.stampsCount,
-      stampsRequired: result.stampsRequired,
+      rewards: result.rewards,
+      reward: result.reward,
+      // The customer's card is now full: staff only needs to know a reward is waiting, not the balance.
+      rewardReady: result.stampsCount >= result.stampsRequired,
     },
   })
-  announcement.value = `${item.publicCode}: richiesta approvata, saldo ${result.stampsCount} su ${result.stampsRequired}.`
-  if (result.rewards > 0) {
-    const many = result.rewards > 1 ? ` (${result.rewards} premi)` : ''
-    addToast({
-      id: item.requestId,
-      text: `${item.publicCode}: ${result.reward}${many}.`,
-    })
-  }
+  announcement.value = `${item.publicCode}: richiesta approvata${result.rewards > 0 ? `, premio ritirato: ${result.reward}` : ''}.`
 }
 
 function confirm(item: QueueItem) {
@@ -290,11 +274,15 @@ onMounted(async () => {
         <p class="fw-semibold mb-1">✔ Richiesta approvata</p>
         <p class="mb-0">
           <template v-if="row.entry.outcome.stampsAdded > 0">
-            +{{ row.entry.outcome.stampsAdded }} {{ row.entry.outcome.stampsAdded === 1 ? 'timbro' : 'timbri' }} ·
+            +{{ row.entry.outcome.stampsAdded }} {{ row.entry.outcome.stampsAdded === 1 ? 'timbro' : 'timbri' }}
           </template>
-          <template v-else>Nessun timbro aggiunto (prodotto in premio) · </template>
-          saldo {{ row.entry.outcome.stampsCount }} / {{ row.entry.outcome.stampsRequired }}
-          <strong v-if="row.entry.outcome.stampsCount >= row.entry.outcome.stampsRequired">· Premio disponibile</strong>
+          <template v-if="row.entry.outcome.rewards > 0">
+            <template v-if="row.entry.outcome.stampsAdded > 0"> · </template>
+            <strong>{{ row.entry.outcome.rewards === 1 ? 'Premio ritirato' : `${row.entry.outcome.rewards} premi ritirati` }}:</strong>
+            {{ row.entry.outcome.reward }}
+          </template>
+          <template v-else-if="row.entry.outcome.stampsAdded === 0">Nessun timbro aggiunto</template>
+          <strong v-if="row.entry.outcome.rewardReady"> · Premio disponibile</strong>
         </p>
       </div>
       <div v-else class="alert alert-warning mb-3">
@@ -397,17 +385,10 @@ onMounted(async () => {
     </article>
     </template>
     </template>
-    <!-- room under the last card: the fixed toast never covers its buttons -->
-    <div v-if="toasts.length > 0" class="toast-room" aria-hidden="true"></div>
-    <ToastStack :toasts="toasts" @dismiss="dismissToast" />
   </template>
 </template>
 
 <style scoped>
-.toast-room {
-  height: 6rem;
-}
-
 .stepper {
   display: grid;
   grid-template-columns: 3.5rem 1fr 3.5rem;
