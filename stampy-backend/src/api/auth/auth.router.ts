@@ -1,5 +1,6 @@
 import { Router } from "express";
 import emailRouter from "./email/email.router";
+import accountRouter from "./account/account.router";
 import { logout, me } from "./auth.controller";
 import { isAuthenticated } from "../../utils/middlewares/session.middleware";
 
@@ -7,6 +8,9 @@ const router = Router();
 
 // Pubbliche: protette dai limiti nel DB, nessuna sessione richiesta.
 router.use("/email", emailRouter);
+
+// Eliminazione account (conferma OTP): le rotte montano da sole isAuthenticated.
+router.use("/account", accountRouter);
 
 // Protette: ordine rate limit -> isAuthenticated -> requireRole -> validate -> controller.
 router.get("/me", isAuthenticated, me);
