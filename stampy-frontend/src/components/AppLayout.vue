@@ -41,7 +41,7 @@ const staffVenueId = computed(() => {
 // - staff screen of a venue the user belongs to: the venue's history, plus "Cambia locale"
 //   only when the user belongs to more than one venue (the queue is reached with the back button)
 // - staff venue list (or a venue not yet confirmed): no page items, only "Esci"
-// - every other screen: the customer's own history
+// - every other screen: the customer's profile (history and account deletion live there)
 interface MenuItem {
   label: string
   to: RouteLocationRaw
@@ -53,8 +53,7 @@ const menuItems = computed<MenuItem[]>(() => {
   if (!venueId) {
     if (isStaffArea.value) return []
     return [
-      { label: 'Storico richieste', to: { name: 'history' }, name: 'history' },
-      { label: 'Elimina account', to: { name: 'delete-account' }, name: 'delete-account' },
+      { label: 'Profilo', to: { name: 'profile' }, name: 'profile' },
     ]
   }
   const items: MenuItem[] = [
@@ -64,18 +63,23 @@ const menuItems = computed<MenuItem[]>(() => {
   return items
 })
 
-// Back control: only on the history pages, always at the same spot. Staff go to the queue of the
-// venue. A customer has no home screen, so back goes to the page they opened the history from
-// (not `router.back()`: every filter change is a history entry, back would only undo a filter).
-const showBack = computed(() => route.name === 'history' || (route.name === 'staff-history' && !!staffVenueId.value))
-let historyOrigin: string | null = null
+// Back control: only on the history and profile pages, always at the same spot. Staff go to the
+// queue of the venue. A customer has no home screen: from the history back goes to the profile;
+// from the profile, to the page they opened it from (not `router.back()`: every filter change is
+// a history entry, back would only undo a filter).
+const showBack = computed(
+  () => route.name === 'history' || route.name === 'profile' || (route.name === 'staff-history' && !!staffVenueId.value),
+)
+let profileOrigin: string | null = null
 const stopOrigin = router.afterEach((to, from) => {
-  if (to.name === 'history' && from.name !== 'history') historyOrigin = from.matched.length > 0 ? from.fullPath : null
+  const inProfileArea = from.name === 'profile' || from.name === 'history' || from.name === 'delete-account'
+  if (to.name === 'profile' && !inProfileArea) profileOrigin = from.matched.length > 0 ? from.fullPath : null
 })
 onBeforeUnmount(stopOrigin)
 function goBack() {
   if (route.name === 'staff-history') router.push({ name: 'staff-queue', params: { venueId: staffVenueId.value! } })
-  else router.push(historyOrigin ?? { name: 'no-venue' })
+  else if (route.name === 'history') router.push({ name: 'profile' })
+  else router.push(profileOrigin ?? { name: 'no-venue' })
 }
 
 async function signOut() {

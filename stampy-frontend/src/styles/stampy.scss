@@ -144,3 +144,28 @@ main:focus {
 .narrow {
   max-width: 28rem;
 }
+
+// Profile page: initial in a brand circle, and a whole-card tappable row.
+.profile-avatar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--stampy-brand);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+.profile-row {
+  min-height: 3.5rem;
+  color: inherit;
+  text-decoration: none;
+  border-radius: inherit;
+
+  &:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.15);
+  }
+}
