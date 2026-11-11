@@ -7,10 +7,11 @@
 > Ultimo allineamento con il codice: 5 novembre 2026.
 
 **Stato in una riga**: backend completo dal tocco del tag alla conferma dello staff (card,
-richieste, auth email, sessioni, ruoli, coda, confirm/reject, aggiornamento del pass Google).
-Mancano ancora: login Google e invio email reale. `stampy-frontend/` (Vue 3 + TS + Vite + Vue
-Router, `/api` in proxy su `:3000` in sviluppo) ha il login email, le pagine del cliente
-(schermata Wallet, polling della richiesta, storico), la coda dello staff e lo storico dello staff.
+richieste, auth email con invio reale (Gmail) e login con Google, sessioni, ruoli, coda,
+confirm/reject, aggiornamento del pass Google). Ciò che manca è nel `BACKLOG.md`. `stampy-frontend/`
+(Vue 3 + TS + Vite + Vue Router, `/api` in proxy su `:3000` in sviluppo) ha il login (email con codice e
+«Continua con Google»), le pagine del cliente (schermata Wallet, polling della richiesta, Profilo, storico), la
+coda dello staff e lo storico dello staff.
 
 ---
 
@@ -21,8 +22,8 @@ Router, `/api` in proxy su `:3000` in sviluppo) ha il login email, le pagine del
 - `class-validator`/`class-transformer` per i DTO, `zod` per env, branding, config delle
   promozioni, metadata di audit.
 - `jsonwebtoken` per firmare il link del Wallet, `nanoid` per `public_code` (fino a 3 tentativi
-  in caso di collisione), `google-auth-library` è installata ma **inutilizzata** (serve per il
-  futuro login Google).
+  in caso di collisione), `google-auth-library` verifica gli ID token del login con Google
+  (`api/auth/google/google-token.service.ts`).
 
 ```bash
 # dalla radice del repo (package.json radice: solo `concurrently`, niente workspaces)
@@ -45,7 +46,8 @@ Variabili d'ambiente (`src/config/env.ts`, zod, il processo termina se non valid
 `PORT`, `NODE_ENV`, `DATABASE_URL`, `APP_ORIGIN` (origin del frontend), `WALLET_ISSUER_ID`,
 `WALLET_SERVICE_ACCOUNT_EMAIL`, `WALLET_SERVICE_ACCOUNT_KEY_PATH`, `OTP_HMAC_SECRET`,
 `TRUST_PROXY` (numero di hop, default 0), `IP_RATE_LIMIT` (`on`/`off`, facoltativa),
-`OTP_PROVIDER` (`console` | `gmail` | `both`, default `console`; **in produzione solo `gmail`**: `console` e `both` loggano il codice e fanno fallire l'avvio), `GMAIL_USER` e `GMAIL_APP_PASSWORD` (password per le app; obbligatorie se il provider non è `console`, una stringa vuota vale «assente»). `envSchema` è esportato per i test.
+`OTP_PROVIDER` (`console` | `gmail` | `both`, default `console`; **in produzione solo `gmail`**: `console` e `both` loggano il codice e fanno fallire l'avvio), `GMAIL_USER` e `GMAIL_APP_PASSWORD` (password per le app; obbligatorie se il provider non è `console`, una stringa vuota vale «assente»), `GOOGLE_CLIENT_ID` (client ID OAuth di tipo Web per il login con Google, **non è un segreto**; facoltativa, una stringa vuota vale «assente»: senza, `POST /api/auth/google` risponde `503`). `envSchema` è esportato per i test.
+Frontend: `VITE_GOOGLE_CLIENT_ID` in `stampy-frontend/.env.local` (ignorato da git; assente = nessun pulsante «Continua con Google»); il client ID deve avere tra le «Origini JavaScript autorizzate» l'origine da cui si apre l'app (una per porta in sviluppo, senza wildcard). Guida di configurazione: `docs/google/google-sign-in-setup.md`.
 
 ## 2. Struttura
 
@@ -69,7 +71,7 @@ src/
       health.router.ts      GET /api/health
       health.controller.ts  health
     auth/
-      auth.router.ts        /email/* pubbliche; /account/* e /me e /logout dietro isAuthenticated
+      auth.router.ts        /email/* e /google pubbliche; /account/* e /me e /logout dietro isAuthenticated
       auth.controller.ts    me, logout
       account/
         account.router.ts   /delete/request e /delete/confirm: limiter IP -> isAuthenticated -> validate
@@ -83,8 +85,14 @@ src/
         email.router.ts     request/verify
         email.controller.ts request, verify
         email.dto.ts        emailDTO, verifyDTO
+      google/
+        google.router.ts    POST /: limiter IP -> validate(body) -> controller
+        google.controller.ts login: verifica del token, `loginWithGoogle` + sessione + eventi in una transazione, cookie dopo il commit; evento di rifiuto fuori dalla transazione
+        google.dto.ts       googleLoginDTO (`idToken`, stringa 1-4096)
+        google-token.service.ts GoogleTokenService (client `google-auth-library` iniettato): `verify(idToken)` con `audience = GOOGLE_CLIENT_ID`, restituisce solo `{sub,email,emailVerified,hd}`; 503 senza client ID, `InvalidGoogleToken` per qualsiasi errore di verifica
+        google-email.ts     classifyGoogleEmail: `autorevole` (Gmail, oppure `hd`, con `email_verified`) | `terzi` | `non-verificata`
       identity/
-        identity.service.ts loginWithEmail: utente + identità `email`, in una transazione
+        identity.service.ts loginWithEmail e loginWithGoogle: utente + identità, in una transazione
       otp/
         otp.service.ts      crea/consuma/invalida challenge, tentativi, cooldown, tetto orario
       session/
@@ -137,7 +145,7 @@ drizzle/                    migrazioni 0000-0003 + meta (fonte di verità dello 
 Convenzione di `api/`: ogni cartella di dominio espone i file `<domain>.router.ts`,
 `<domain>.controller.ts`, `<domain>.service.ts` e `<domain>.dto.ts` (dove servono);
 i file di supporto vivono in una sottocartella col nome del loro ambito (`email/`, `staff/`,
-`membership/`, `resolve/`, `otp/`, `identity/`, `session/`, `auth-events/`, `account/`, `retention/`). Tutti i
+`membership/`, `resolve/`, `otp/`, `identity/`, `google/`, `session/`, `auth-events/`, `account/`, `retention/`). Tutti i
 middleware vivono in `utils/middlewares/`.
 
 ### Frontend (`stampy-frontend/src/`)
@@ -154,16 +162,18 @@ utils/redirect.ts           safeNext (guardia open-redirect), destinationAfterLo
 utils/format.ts             formattazione di attese e orari
 styles/stampy.scss          Bootstrap 5.3 (solo Sass, niente JS): variabili, poi le parti usate
 components/AppHeader.vue    header: wordmark a sinistra; con `centered`, tre colonne uguali (slot `start` | wordmark | slot di default) così il wordmark sta al centro
-components/AppLayout.vue    route di layout per le pagine autenticate: UN header per clienti e staff (`<AppHeader centered>`), `<RouterView>`. Menu = burger (44 px, `aria-expanded`, si chiude con Escape / clic fuori / navigazione) costruito da `menuItems`: schermate staff di un locale di cui l'utente è membro (`getMyVenues()`, chiesto una volta, solo sulle schermate staff) → "Storico richieste" e, solo se l'utente è membro di più di un locale, "Cambia locale" (`/staff`; la coda si raggiunge con il pulsante indietro, il vecchio link "Cambia locale" nella pagina della coda è stato tolto); elenco dei locali dello staff (`/staff`) o locale non ancora confermato → nessuna voce di pagina (e nessun divisore), solo "Esci"; ogni altra schermata → "Storico richieste" del cliente (`/history`) e "Elimina account" (`/account/delete`); sempre "Esci" per ultimo. Pulsante indietro (44 px, a sinistra, `aria-label="Indietro"`) solo sulle due pagine di storico: staff → la coda del locale, cliente → la pagina da cui si è aperto lo storico (lo ricorda `router.afterEach`; non `router.back()`, perché ogni cambio di filtro è una voce di cronologia; deep link → `/scan`). I link sono solo una comodità: il backend controlla il ruolo a ogni richiesta
-components/RequestHistory.vue la schermata di storico (filtri, stato nell'URL, elenco), condivisa da staff e cliente: props `title`, `fetchHistory(filters)`; emette `forbidden` su un 403; il titolo della riga è `venueName ?? publicCode`
+components/AppLayout.vue    route di layout per le pagine autenticate: UN header per clienti e staff (`<AppHeader centered>`), `<RouterView>`. Menu = burger (44 px, `aria-expanded`, si chiude con Escape / clic fuori / navigazione) costruito da `menuItems`: "Profilo" sempre; dentro un locale di cui l'utente è membro (schermate staff: coda e storico; `getMyVenues()`, chiesto una volta, solo lì) anche "Storico richieste" del locale e, solo se i locali sono più di uno, "Cambia locale" (`/staff`, mai sulla lista dei locali); "Esci" sempre per ultimo. Lo storico del cliente e "Elimina account" non sono nel menu: stanno nel Profilo. Pulsante indietro (44 px, a sinistra, `aria-label="Indietro"`) su storico e Profilo: storico staff → la coda del locale, storico cliente → Profilo, Profilo → la pagina da cui è stato aperto (lo ricorda `router.afterEach`; non `router.back()`, perché ogni cambio di filtro è una voce di cronologia; senza origine → `/scan`). I link sono solo una comodità: il backend controlla il ruolo a ogni richiesta
+components/RequestHistory.vue la schermata di storico (filtri, stato nell'URL, elenco), condivisa da staff e cliente: props `title`, `fetchHistory(filters)`; emette `forbidden` su un 403; il titolo della riga è `venueName ?? publicCode`; dettaglio delle approvate = timbri aggiunti (`stampsAdded`, premio escluso) più «N premio riscattato» se ce n'è uno (nessun calcolo dei timbri nel frontend)
 views/StaffHistoryView.vue  /staff/:venueId/history: `RequestHistory` + `getHistory(venueId)` + la card "Non sei autorizzato"
-views/CustomerHistoryView.vue /history: `RequestHistory` + `getMyHistory`, titolo "Le tue richieste"
+views/ProfileView.vue       /profile: nome e email, riga "Storico richieste" (solo per chi non è membro di un locale: il backend non lo vieta ancora a staff e owner, `BACKLOG.md` F5), "Zona pericolosa" con "Elimina account" (per un membro di un locale il pulsante è sostituito da un avviso)
+views/CustomerHistoryView.vue /history: `RequestHistory` + `getMyHistory`, titolo "Le tue richieste"; un membro di un locale viene rimandato al Profilo (solo frontend)
 views/DeleteAccountView.vue /account/delete: eliminazione account in due passi (avviso → `requestAccountDeletion` → codice a 6 cifre → `confirmAccountDeletion`); la sfida sopravvive al reload (`sessionStorage`); nessun invio automatico alla sesta cifra (azione irreversibile); se `getMyVenues()` non è vuoto, o il backend risponde 403, mostra il messaggio di blocco senza pulsanti; a successo `accountDeleted()` e `/login?deleted=1`
-components/EmailLogin.vue   pagina /login (layout proprio): email -> codice; sfida mantenuta tra i reload della tab; con `?deleted=1` mostra «Account eliminato…» anche nel passo email
+components/EmailLogin.vue   pagina /login (layout proprio): email -> codice; sfida mantenuta tra i reload della tab; con `?deleted=1` mostra «Account eliminato…» anche nel passo email; nel primo passo anche «Continua con Google» (`signInWithGoogle` → `POST /auth/google`, poi come dopo il codice: `setUser` e `destinationAfterLogin`); errori: 403 con il messaggio del backend, 401 «Accesso con Google non riuscito, riprova», 503 «…non disponibile: usa il codice via email»
+components/GoogleSignInButton.vue «oppure» + pulsante di Google (modalità popup); non mostra nulla senza `VITE_GOOGLE_CLIENT_ID` o se lo script non si carica (resta il login col codice); la larghezza (200-400 px) è calcolata alla comparsa
+utils/googleIdentity.ts     carica `https://accounts.google.com/gsi/client` solo nella pagina di login, un solo `initialize()` per client ID (il gestore del token può cambiare tra una visita e l'altra), `renderButton` (`locale: 'it'`)
 components/PromotionNotice.vue avviso "nuova promozione, card da zero" (`variant` customer | staff), mostrato se `promotionChanged`
 components/StampProgress.vue saldo; card piena mostrata come "Premio disponibile"
 components/RewardDialog.vue <dialog> nativo (showModal) per un premio ritirato, si chiude solo con "Chiudi"/Esc
-components/ToastStack.vue  toast non bloccanti (avviso di premio per lo staff), aria-live, chiudibili
 utils/seenStorage.ts        flag in localStorage "il modale del premio di questa richiesta è stato chiuso"
 views/CustomerVisitView.vue /v/:venueId  (dove puntano i tag): visita, schermata di salvataggio nel Wallet
 views/CustomerRequestView.vue /r/:requestId  (solo polling, non chiama mai visit)
@@ -203,8 +213,8 @@ views/NotFoundView.vue      qualsiasi altro percorso
   l'esito è sconosciuto ("Esito non confermato…"). Ogni card mostra "scade tra …" (orologio del dispositivo,
   solo visualizzazione), una quantità digitabile (1–50, il backend valida comunque), "Rifiuta" in
   `btn-outline-danger`, e nomi dei pulsanti che includono il codice della richiesta.
-- **Feedback sulle richieste** (2026-11-03): l'alert `success` generico in alto non c'è più. Staff: dopo confirm/reject la card viene sostituita **sul posto** da una card di esito (`alert-success` "✔ Richiesta approvata" con `+N timbri` e il saldo, oppure `alert-warning` "⚠ Richiesta rifiutata"; un rifiuto è un successo tecnico) mantenuta 8 s (2026-11-04) o fino a "Ok", più un annuncio per gli screen reader. Una conferma con `rewards > 0` aggiunge un toast per richiesta (5 s dal 2026-11-04, chiudibile) che nomina il premio reale. Cliente: la card approvata mostra "Richiesta approvata!" con `+N timbri aggiunti` (oppure "Nessun nuovo timbro: questo prodotto era il premio."); se `rewardsRedeemed > 0` si apre `RewardDialog` finché non viene chiuso; la chiusura salva `stampy.reward-seen.<requestId>` in `localStorage`, quindi un reload prima della chiusura lo mostra di nuovo e dopo la chiusura mai. Raggiungere N/N da solo non mostra nessun modale (resta il banner "Premio disponibile"). Tutti i numeri e il nome del premio vengono dal backend.
-- **Tempi del feedback** (2026-11-04): il toast del premio dura 5 s e dice solo "Premio ritirato · CODE: <premio>" (nessuna istruzione sul prodotto: il modo di onorare un premio dipende dal locale e dalla promozione); le card di esito sul posto durano 8 s ("Ok" le chiude prima). Mentre un toast è visibile, uno spaziatore vuoto sotto l'elenco mantiene cliccabili i pulsanti dell'ultima card.
+- **Feedback sulle richieste** (2026-11-03): l'alert `success` generico in alto non c'è più. Staff: dopo confirm/reject la card viene sostituita **sul posto** da una card di esito (`alert-success` "✔ Richiesta approvata" con `+N timbri` e, se la conferma ha ritirato un premio, "Premio ritirato: <premio>"; "· Premio disponibile" se la card del cliente è piena; **senza saldo**; oppure `alert-warning` "⚠ Richiesta rifiutata"; un rifiuto è un successo tecnico) mantenuta 8 s (2026-11-04) o fino a "Ok", più un annuncio per gli screen reader. Dal 2026-11-11 (F4) **non c'è più il toast del premio** né `ToastStack.vue`: il premio ritirato è nella card di esito. Cliente: la card approvata mostra "Richiesta approvata!" con `+N timbri aggiunti` (oppure "Nessun nuovo timbro: questo prodotto era il premio."); se `rewardsRedeemed > 0` si apre `RewardDialog` finché non viene chiuso; la chiusura salva `stampy.reward-seen.<requestId>` in `localStorage`, quindi un reload prima della chiusura lo mostra di nuovo e dopo la chiusura mai. Raggiungere N/N da solo non mostra nessun modale (resta il banner "Premio disponibile"). Tutti i numeri e il nome del premio vengono dal backend.
+- **Tempi del feedback** (2026-11-04, rivisto 2026-11-11): le card di esito sul posto durano 8 s ("Ok" le chiude prima); nessuna istruzione sul prodotto del premio (il modo di onorarlo dipende dal locale e dalla promozione). Il toast e lo spaziatore sotto l'elenco non esistono più.
 - **Storico** (`components/RequestHistory.vue`, montato da `/staff/:venueId/history` (staff, dal menu dell'header) e `/history` (cliente, dal menu dell'header)): la query string dell'URL è la fonte di verità (`?status=approved&minStamps=3&from=2026-11-01&to=2026-11-04`, stessi nomi dell'API; assente = non filtrato; i valori malformati vengono scartati in silenzio). Un watcher su `route.query` riempie il form e fa la richiesta (deep link, reload, avanti/indietro); un watcher con debounce (250 ms) sul form valida e fa `router.push` della query solo se è diversa, così Indietro ripristina i filtri precedenti e una raffica di digitazione è una sola voce. Nessun pulsante Filtra; "Azzera" svuota la query. Filtri: stato, **Timbri** (Min / Max, quantità confermata, premio incluso), **Periodo** (Dal / Al; entrambi con `max` = oggi, "Al" ha `min` = "Dal"; le date future digitate e `to < from` mostrano un errore inline e non inviano nessuna richiesta). Un contatore di richieste ignora le risposte obsolete. Nessuna paginazione: l'elenco completo è renderizzato, con un conteggio live gentile ("12 richieste"). Mobile: toggle "Filtri" ripiegato (44 px, `aria-expanded`; nessun conteggio dei filtri attivi) + "Azzera" (mostrato solo mentre un filtro è attivo), pannello chiuso di default (~278 px aperto a 375 px). I giorni scelti sono inviati come istanti reali (inizio del giorno "dal", ultimo millisecondo del giorno "al", fuso orario del dispositivo). Le righe mostrano il codice, mai l'email.
 - **Codice card sulla pagina del cliente**: `/r/:requestId` mostra "Codice card: …" mentre è pending e dopo la chiusura della richiesta (da `publicCode` nella risposta del polling).
 - **Quantità digitata** (corregge il bug del reset): l'input mostra una stringa `drafts` per richiesta (`@input`), quindi i re-render di polling/orologio non possono sovrascriverla (il vecchio `:value` + `@change` veniva riportato al valore confermato a ogni polling). Una bozza valida aggiorna anche `products`; una non valida (vuota, non intera, fuori da 1–50) mostra "Quantità non valida…" e disabilita Conferma invece di essere forzata in silenzio. `+`/`−` mantengono i limiti 1–50. Le bozze delle richieste uscite dalla coda vengono scartate.
@@ -219,7 +229,7 @@ views/NotFoundView.vue      qualsiasi altro percorso
   quindi `$min-contrast-ratio: 3` evita che `color-contrast()` di Bootstrap scelga testo nero sull'arancione,
   e `.btn-outline-primary` forza il testo bianco in hover/active; il più scuro `#c2410c` è solo lo stato
   premuto di "Azzera"; i link sul tema scuro usano `#f4813f`), poi importa le parti usate.
-  `main.ts` imposta `data-bs-theme` da `prefers-color-scheme` e segue i cambi.
+  `main.ts` imposta `data-bs-theme` da `prefers-color-scheme` e segue i cambi. Rosso per tema `--stampy-danger` / `--stampy-danger-rgb` (`#c92a3a` chiaro, `#f0808b` scuro) con le classi `.danger-zone` (bordo e sfondo a bassa opacità) e `.btn-danger-soft`, usate dalla «Zona pericolosa» del Profilo.
 - Il testo della UI è in italiano, scritto direttamente nei componenti; niente i18n, Pinia, JS di Bootstrap né bootstrap-vue.
 
 ## 3. Endpoint
@@ -229,6 +239,7 @@ views/NotFoundView.vue      qualsiasi altro percorso
 | `GET /api/health` | no | `200` |
 | `POST /api/auth/email/request` | no (limiter IP) | `202 {challengeId}`; cooldown di 45 s e tetto 5/ora → `429` + `Retry-After`; errore email → `503` |
 | `POST /api/auth/email/verify` | no (limiter IP) | `200 {user:{id,email,displayName}}` + cookie `sid`; codice sbagliato su una sfida viva → `400 {error:"InvalidCode", message:"Codice non valido", attemptsRemaining}`; qualsiasi sfida non utilizzabile (scaduta, tentativi esauriti, già usata, sostituita, sconosciuta) → `400 {error:"CodeExpired", message:"Codice scaduto"}` |
+| `POST /api/auth/google` | no (limiter IP) | body `{idToken}` (stringa 1-4096; il resto → `400`) → `200 {user:{id,email,displayName}}` + cookie `sid` (mai il token nel body). Il token è verificato (firma, `aud` = `GOOGLE_CLIENT_ID`, `iss`, `exp`). `sub` già noto → accesso allo stesso utente (anche se l'email nel token è cambiata); `sub` nuovo: `email_verified` falso → `403 GoogleEmailRejected` + evento `google_untrusted_email_rejected`; email libera → utente nuovo (anche con email di terzi, es. `libero.it`); email di un utente esistente → collegamento (evento `identity_linked`) **solo** se `@gmail.com` oppure `hd` presente, altrimenti `403 GoogleEmailRejected` + evento di rifiuto; dati incoerenti (utente anonimizzato, altra identità google dello stesso utente) → stesso `403` **senza** evento; token non verificabile → `401 InvalidGoogleToken`; `GOOGLE_CLIENT_ID` assente → `503`. Il nome non viene salvato (`displayName` resta `null`) |
 | `GET /api/auth/me` | sì | `200 {user:{id,email,displayName}}` (sonda in sola lettura) |
 | `POST /api/auth/logout` | sì | `204`, cookie rimosso, evento `logout` |
 | `POST /api/auth/account/delete/request` | sì (limiter IP) | nessun body; `202 {challengeId}`, il codice OTP va **sempre** all'email dell'utente di sessione (mai da body); owner/staff di un locale e admin di piattaforma → `403 Forbidden`, nessuna sfida; cooldown e tetto orario come il login (`429` + `Retry-After`) |
@@ -302,6 +313,8 @@ transazione; codice sbagliato → `otp_failed`, invalidazione al quinto errore, 
 codice giusto → una transazione con consumo monouso, `loginWithEmail`, sessione, eventi
 (`otp_verified`, `identity_linked` se l'identità è stata aggiunta, `login_success`). Cookie
 scritto **dopo** il commit.
+
+**Login con Google**: `GoogleTokenService.verify` (401 se il token non si verifica) → una transazione con `loginWithGoogle` (ricerca per `(google, sub)`; altrimenti `classifyGoogleEmail` e `INSERT … ON CONFLICT DO NOTHING` su `users` e su `auth_identities`; la richiesta perdente di una race rilegge per `sub` ed entra nello stesso utente), sessione con `auth_provider = google`, eventi (`identity_linked` se collegato, `login_success`); un rifiuto scrive `google_untrusted_email_rejected` **fuori** dalla transazione (altrimenti sparirebbe) e risponde 403. Cookie dopo il commit. Chi ha creato l'account con Google e un'email di terzi può poi entrare anche col codice via email: `loginWithEmail` aggiunge l'identità `email` allo stesso utente. L'email è normalizzata (minuscola) sia nel service sia nel controller (il vincolo `users_email_normalized_ck` darebbe `500`). Non c'è un `nonce` (`BACKLOG.md` B25).
 
 **Richiesta autenticata**: cookie `sid` → controllo della forma (43 caratteri) → SHA-256 → SELECT
 con join su `users` e filtri (`revoked_at NULL`, `expires_at > now()`,
@@ -419,7 +432,7 @@ del codice (regola completa in `AGENTS.md`). Runner: **Vitest**. Non ci sono pi�
 
 ```text
 stampy-backend/test/
-  unit/      niente server, niente DB            (stamps, wallet-update, env-email, email-sender)
+  unit/      niente server, niente DB            (stamps, wallet-update, env-email, env-google, email-sender, google-email, google-token)
   api/       app in-process + DB di sviluppo     (tutti gli altri)
   helpers/   server.ts (startServer, request, cookieToken), fixtures.ts (utenti, sessioni, locali, cleanup),
              auth-db.ts (sfide OTP, conteggi eventi)
@@ -444,7 +457,7 @@ npm test                         # tutto Vitest
 npm run test:unit                # solo test/unit
 npm run test:api                 # solo test/api
 npx vitest run -t "5 codici"     # un solo test per nome
-.claude/skills/verify/scripts/verify.sh   # typecheck + suite, base 295 (fallisce se meno)
+.claude/skills/verify/scripts/verify.sh   # typecheck + suite, base 335 (fallisce se meno)
 ```
 
 | File | Test | Copertura |
@@ -454,6 +467,10 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `unit/env-email.test.ts` | 12 | validazione di `OTP_PROVIDER` e delle credenziali Gmail con `envSchema` (default `console`, stringa vuota = assente, `gmail`/`both` senza credenziali → errore, valore sconosciuto, `console`/`both` in produzione → errore, `gmail` in produzione valido) |
 | `unit/email-sender.test.ts` | 13 | `renderOtpEmail` (codice, minuti, colore del brand, niente script né risorse esterne), `GmailEmailSender` con `jsonTransport` di nodemailer (un messaggio, corpo, `From`, errore che si propaga e logga senza email né codice), `createEmailSender` (console / gmail / both con l'ordine console→Gmail anche se Gmail fallisce) |
 | `unit/vitest-env.test.ts` | 2 | `OTP_PROVIDER` è `console` durante i test; `emailSender` è un `ConsoleEmailSender` (C17) |
+| `unit/google-email.test.ts` | 8 | `classifyGoogleEmail`: Gmail e Workspace verificati → `autorevole`, non verificati → `non-verificata`, `libero.it` → `terzi`, domini simili a gmail.com (`gmail.com.evil.it`, `xgmail.com`) mai `autorevole`, dominio in maiuscolo |
+| `unit/google-token.test.ts` | 5 | `GoogleTokenService.verify` con un client finto: `audience` uguale a `GOOGLE_CLIENT_ID`, claim restituiti con email normalizzata, payload senza `sub` o `email`, errore della libreria → `InvalidGoogleToken` senza il messaggio interno, senza client ID → `503` senza chiamare la libreria |
+| `unit/env-google.test.ts` | 2 | `GOOGLE_CLIENT_ID`: stringa vuota → `undefined`, valorizzato → passa invariato |
+| `api/google-login.test.ts` | 25 | `POST /api/auth/google` con `GoogleTokenService.verify` simulato (`vi.spyOn`, mai il DB): validazione, token non valido (nessuna scrittura), utente nuovo (Gmail, Workspace, email di terzi, maiuscole), collegamento (Gmail sì, email di terzi → 403 senza identità né sessione), accesso di ritorno (stesso `sub`, email cambiata, due richieste parallele), accesso col codice dopo un account Google di terzi, rifiuti (non verificata, evento con metadata vuoti e `subject_hash`, utente anonimizzato con identità rimasta, rientro dopo l'anonimizzazione, altra identità google), `GET /me` dopo il login, nessuna email in chiaro negli eventi |
 | `api/otp-request-email-failure.test.ts` | 2 | `sendOtp` che rigetta → `503` senza eco di email o codice; `sendOtp` riceve l'email in minuscolo e un codice di 6 cifre (sender sostituito con `vi.spyOn`) |
 | `api/otp-request.test.ts` | 20 | JSON malformato, 400 senza eco, 404 JSON, cooldown e body 429, cooldown saltato per un codice morto, tetto orario, finestra, race, risposta uniforme |
 | `api/otp-verify.test.ts` | 16 | validazione, utente nuovo (cookie, sessione, eventi), nessuna email in chiaro, riuso, tentativi, scaduta/sostituita/inesistente, utente esistente con e senza identità, race |
@@ -468,11 +485,11 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `api/cors-origin.test.ts` | 13 | CORS ristretto ad APP_ORIGIN (preflight, mai `*`, nessun header per origin estranee), controllo di `Origin` sui metodi che cambiano stato (403 con estranea e con `null`, passa senza `Origin`, sessione non toccata, 403 prima del 404) |
 | `api/db-constraints.test.ts` | 14 | vincoli delle migrazioni 2 e 3 (email minuscole, unicità, una sfida OTP attiva, FK RESTRICT, `request_id` non univoco, `promotions_no_overlap`), ognuno in una transazione con ROLLBACK |
 
-Base della suite: **295** (`BASELINE` in `verify.sh`). `verify.sh` fallisce se i test passati sono meno della base o se ce n'è uno rosso; con più test della base segnala la differenza. Con più agenti in parallelo la base la riallinea `/docs-sync`, non la singola task.
+Base della suite: **335** (`BASELINE` in `verify.sh`). `verify.sh` fallisce se i test passati sono meno della base o se ce n'è uno rosso; con più test della base segnala la differenza. Con più agenti in parallelo la base la riallinea `/docs-sync`, non la singola task.
 
 **Lavoro in parallelo (agenti).** Ogni task gira in un worktree in `../stampy-wt/<id>` con porte (`3000+N` backend, `5173+N` frontend) e database (`stampy_wt_<id>` nel container `stampy-db`) propri. Script in `.claude/scripts/`: `worktree-start.sh` (crea tutto, comprese le porte in `stampy-backend/.env` e `stampy-frontend/.env.local`, letti da `vite.config.ts`), `worktree-finish.sh` (commit, verifica su `main` aggiornato, merge solo senza conflitti, pulizia; i registri degli slot stanno in `../stampy-wt/.slots/`), `worktree-clean.sh` (orfani, solo per il proprietario), `lib-worktree.sh` (funzioni comuni), `report-template.md`, `audit.sh` (chi/quando ha cambiato lo stato delle issue). `Done` lo imposta solo `worktree-finish.sh` (tramite `project-status.sh`) e il workflow GitHub "Auto-close issue" chiude la issue; ogni cambio di stato è in `../stampy-wt/audit.log` con l'agente che l'ha fatto (`worktree-start.sh` salva la issue nello slot). L'hook `.claude/hooks/guard-protected.sh` (registrato in `.claude/settings.json`) impedisce agli agenti di scrivere `docs/` (tranne `docs/reports/*.md`), `AGENTS.md`, `.claude/` e `.github/`; la skill `/docs-sync` integra i report nei documenti e li elimina. Provato il 2026-11-10 su Postgres reale: avvio, due worktree in parallelo, chiusura concorrente con lock, pulizia degli orfani.
 
-Ultima esecuzione registrata: **11 novembre 2026: `npm test` 295 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
+Ultima esecuzione registrata: **11 novembre 2026: `npm test` 335 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
 
 Frontend: `npm run build` in `stampy-frontend/` esegue `vue-tsc` e la build di produzione.
 Test nel browser (Playwright, devDependency `playwright`, chiude B17): `npm run e2e` esegue tre script: `node e2e/staff-input.mjs` (7 check: la quantità digitata sopravvive al polling, il testo non valido blocca Conferma, Conferma invia esattamente il valore digitato) e `node e2e/feedback.mjs` (32 check: approvazione/rifiuto/toast del premio dello staff, testo di approvazione del cliente, persistenza/focus/tastiera/reload del modale del premio, overflow a 390 px) e `node e2e/account-delete.mjs` (15 check, 2026-11-11: voce di menu, avviso, codice sbagliato con i tentativi rimasti, nessuna eliminazione alla sesta cifra, eliminazione e ritorno al login, cookie rimosso, DB anonimizzato, staff bloccato, nessun overflow a 360 px; il codice OTP del test è sostituito nel DB con l'HMAC di un codice noto, leggendo `OTP_HMAC_SECRET` dal `.env` del backend). Richiedono `npm run dev`, il container `stampy-db` e un locale con branding nel DB; creano utenti `e2e-*@test.it` più un locale `e2e-*` e li eliminano. Se non è stato eseguito `playwright install`, puntare `E2E_CHROMIUM` a un binario di Chromium. `node e2e/t6d.mjs` (43 check, la checklist staff T6-D) e `node e2e/history.mjs` (48 check, uno ancora fallito: si aspetta l'etichetta "Filtri · N" che il toggle non mostra più: storico dello staff aperto dal menu dell'header, stato nell'URL, filtri dal vivo, avanti/indietro, regole sulle date, nessuna paginazione, pannello mobile, codice card del cliente, storico del cliente: solo richieste proprie, nome del locale, stessi filtri, header con pulsante indietro e logo centrato); nessuno dei due fa parte di `npm run e2e`. Ultima esecuzione: 2026-11-04, t6d 43 ✔, history 38 ✔, feedback 32 ✔, staff-input 7 ✔; 2026-11-03, 38 check verdi. L'esecuzione del 2026-11-01 era uno script usa-e-getta. Ultima esecuzione manuale nel browser:
@@ -498,6 +515,7 @@ Utility (non test) in `stampy-backend/scripts/`: `create-owner.ts`, `create-venu
 | cambiare l'invio delle email (OTP) | `utils/email/` (`email-sender.ts`, `gmail-email-sender.ts`, `otp-email.ts`) + `config/env.ts` (`OTP_PROVIDER`) + `test/unit/email-sender.test.ts` |
 | scrivere o cambiare un test | `test/` (`unit/` senza DB, `api/` con DB, `helpers/`) + `vitest.config.mts` + §7 |
 | aggiornare il pass del Wallet | `wallet/wallet.service.ts` (`updateCard`) + `syncWalletPass` in `venues/staff/staff.controller.ts` + `docs/google/wallet-pass-update.md` |
+| toccare il login con Google | `auth/google/` + `identity.service.ts` (`loginWithGoogle`) + `test/api/google-login.test.ts`, `test/unit/google-*.test.ts` + frontend `components/GoogleSignInButton.vue`, `utils/googleIdentity.ts` + `docs/google/google-sign-in-setup.md` |
 | toccare il login del frontend | `stampy-frontend/src/components/EmailLogin.vue`, `router/index.ts`, `utils/redirect.ts`, `composables/useAuth.ts` |
 | toccare le schermate del cliente o dello staff | `stampy-frontend/src/views/` + `api/endpoints.ts` |
 | scoprire cosa manca | `BACKLOG.md` |
