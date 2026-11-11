@@ -134,15 +134,9 @@ watch(code, (value) => {
     <p v-if="blocked" class="alert alert-warning" role="alert">{{ blockedMessage }}</p>
 
     <template v-else-if="!challengeId">
-      <p>Se continui:</p>
-      <ul class="text-body-secondary">
-        <li>il tuo indirizzo email e il tuo nome vengono cancellati;</li>
-        <li>le tue card attuali non sono più utilizzabili: se rientri con la stessa email, riparti da zero;</li>
-        <li>i locali conservano solo i totali dei timbri, senza alcun dato che ti identifichi;</li>
-        <li>il pass nel Wallet resta sul telefono, ma non funziona più: puoi rimuoverlo tu.</li>
-      </ul>
+      <p class="text-body-emphasis">Se continui tutti i dati dell'account vengono eliminati, comprese le card dei tuoi posti preferiti</p>
       <p class="fw-semibold">Non si può annullare.</p>
-      <p class="text-body-secondary">Per sicurezza ti mandiamo un codice via email.</p>
+      <p class="text-body-emphasis">Per motivi sicurezza dovrai confermare l'operazione tramite un codice che ti verrà inviato via email.</p>
 
       <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
       <p v-if="waiting" class="alert alert-warning">
