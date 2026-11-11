@@ -30,7 +30,8 @@ const code = ref('')
 const codeInput = ref<HTMLInputElement | null>(null)
 const busy = ref(false)
 const error = ref('')
-const notice = ref('')
+// After deleting the account the app lands here: say it worked.
+const notice = ref(route.query.deleted === '1' ? 'Account eliminato. Puoi sempre rientrare con la tua email.' : '')
 // The current code can no longer be used (expired, or out of attempts): only "new code" is left.
 const codeDead = ref(false)
 
@@ -151,6 +152,8 @@ watch(code, (value) => {
       <template v-if="!challengeId">
         <h1 class="h4">Accedi</h1>
         <p class="text-body-secondary">Ti mandiamo un codice via email. Niente password.</p>
+
+        <p v-if="notice" class="alert alert-success" role="status">{{ notice }}</p>
 
         <form @submit.prevent="sendCode">
           <div class="mb-3">
