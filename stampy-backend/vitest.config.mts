@@ -11,5 +11,7 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 15_000,
     hookTimeout: 15_000,
+    // Mai email vere dai test (C17): vince sul .env, che dotenv non sovrascrive.
+    env: { OTP_PROVIDER: "console" },
   },
 });
