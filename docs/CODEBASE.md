@@ -69,8 +69,14 @@ src/
       health.router.ts      GET /api/health
       health.controller.ts  health
     auth/
-      auth.router.ts        /email/* pubbliche; /me e /logout dietro isAuthenticated
+      auth.router.ts        /email/* pubbliche; /account/* e /me e /logout dietro isAuthenticated
       auth.controller.ts    me, logout
+      account/
+        account.router.ts   /delete/request e /delete/confirm: limiter IP -> isAuthenticated -> validate
+        account.controller.ts requestDeletion (OTP all'email di sessione), confirmDeletion (verifica, consumo, anonimizzazione in una transazione, cookie rimosso)
+        account.service.ts  isDeletionBlocked (owner/staff/admin, letto dal DB), anonymizeUser(userId, tx)
+      retention/
+        retention.service.ts purgeExpired(): otp_challenges > 1 giorno, sessions finite da > 30 giorni, auth_events > 12 mesi
       auth-events/
         auth-events.service.ts log() append-only, whitelist zod dei metadata, hashSubject
       email/
@@ -124,14 +130,14 @@ src/
     email/otp-email.ts      renderOtpEmail(code): oggetto, testo e HTML (CSS inline, arancione #f16417, tema scuro con `prefers-color-scheme`, nessuna risorsa esterna)
     schemas/                branding.schema.ts, promotion-config.schema.ts
     types/auth.type.ts      AuthUser, AuthSessionInfo, AuthContext
-scripts/                    utilità: create-owner, create-venue, reset-data.sql (vedi §7)
+scripts/                    utilità: create-owner, create-venue, purge-retention, reset-data.sql (vedi §7)
 drizzle/                    migrazioni 0000-0003 + meta (fonte di verità dello schema SQL)
 ```
 
 Convenzione di `api/`: ogni cartella di dominio espone i file `<domain>.router.ts`,
 `<domain>.controller.ts`, `<domain>.service.ts` e `<domain>.dto.ts` (dove servono);
 i file di supporto vivono in una sottocartella col nome del loro ambito (`email/`, `staff/`,
-`membership/`, `resolve/`, `otp/`, `identity/`, `session/`, `auth-events/`). Tutti i
+`membership/`, `resolve/`, `otp/`, `identity/`, `session/`, `auth-events/`, `account/`, `retention/`). Tutti i
 middleware vivono in `utils/middlewares/`.
 
 ### Frontend (`stampy-frontend/src/`)
@@ -140,7 +146,7 @@ middleware vivono in `utils/middlewares/`.
 api/client.ts               api(): unico wrapper di fetch, ApiError, hook per il 401, timeout (8 s; 4 s per `getMe`)
 api/endpoints.ts            chiamate tipizzate al backend (contratti: §3)
 router/index.ts             route, guardia `beforeEach`, handler del 401 (-> /login?next=)
-composables/useAuth.ts      stato di sessione (a livello di modulo), checkSession (in cache), setUser, logout
+composables/useAuth.ts      stato di sessione (a livello di modulo), checkSession (in cache), setUser, logout, accountDeleted (svuota la tab senza chiamare il backend)
 composables/usePolling.ts   polling senza sovrapposizioni, si ferma allo smontaggio
 composables/useCountdown.ts countdown da retryAfterSeconds del server
 utils/tabStorage.ts         sessionStorage avvolto in try/catch
@@ -148,11 +154,12 @@ utils/redirect.ts           safeNext (guardia open-redirect), destinationAfterLo
 utils/format.ts             formattazione di attese e orari
 styles/stampy.scss          Bootstrap 5.3 (solo Sass, niente JS): variabili, poi le parti usate
 components/AppHeader.vue    header: wordmark a sinistra; con `centered`, tre colonne uguali (slot `start` | wordmark | slot di default) così il wordmark sta al centro
-components/AppLayout.vue    route di layout per le pagine autenticate: UN header per clienti e staff (`<AppHeader centered>`), `<RouterView>`. Menu = burger (44 px, `aria-expanded`, si chiude con Escape / clic fuori / navigazione) costruito da `menuItems`: schermate staff di un locale di cui l'utente è membro (`getMyVenues()`, chiesto una volta, solo sulle schermate staff) → "Storico richieste" e, solo se l'utente è membro di più di un locale, "Cambia locale" (`/staff`; la coda si raggiunge con il pulsante indietro, il vecchio link "Cambia locale" nella pagina della coda è stato tolto); elenco dei locali dello staff (`/staff`) o locale non ancora confermato → nessuna voce di pagina (e nessun divisore), solo "Esci"; ogni altra schermata → "Storico richieste" del cliente (`/history`); sempre "Esci" per ultimo. Pulsante indietro (44 px, a sinistra, `aria-label="Indietro"`) solo sulle due pagine di storico: staff → la coda del locale, cliente → la pagina da cui si è aperto lo storico (lo ricorda `router.afterEach`; non `router.back()`, perché ogni cambio di filtro è una voce di cronologia; deep link → `/scan`). I link sono solo una comodità: il backend controlla il ruolo a ogni richiesta
+components/AppLayout.vue    route di layout per le pagine autenticate: UN header per clienti e staff (`<AppHeader centered>`), `<RouterView>`. Menu = burger (44 px, `aria-expanded`, si chiude con Escape / clic fuori / navigazione) costruito da `menuItems`: schermate staff di un locale di cui l'utente è membro (`getMyVenues()`, chiesto una volta, solo sulle schermate staff) → "Storico richieste" e, solo se l'utente è membro di più di un locale, "Cambia locale" (`/staff`; la coda si raggiunge con il pulsante indietro, il vecchio link "Cambia locale" nella pagina della coda è stato tolto); elenco dei locali dello staff (`/staff`) o locale non ancora confermato → nessuna voce di pagina (e nessun divisore), solo "Esci"; ogni altra schermata → "Storico richieste" del cliente (`/history`) e "Elimina account" (`/account/delete`); sempre "Esci" per ultimo. Pulsante indietro (44 px, a sinistra, `aria-label="Indietro"`) solo sulle due pagine di storico: staff → la coda del locale, cliente → la pagina da cui si è aperto lo storico (lo ricorda `router.afterEach`; non `router.back()`, perché ogni cambio di filtro è una voce di cronologia; deep link → `/scan`). I link sono solo una comodità: il backend controlla il ruolo a ogni richiesta
 components/RequestHistory.vue la schermata di storico (filtri, stato nell'URL, elenco), condivisa da staff e cliente: props `title`, `fetchHistory(filters)`; emette `forbidden` su un 403; il titolo della riga è `venueName ?? publicCode`
 views/StaffHistoryView.vue  /staff/:venueId/history: `RequestHistory` + `getHistory(venueId)` + la card "Non sei autorizzato"
 views/CustomerHistoryView.vue /history: `RequestHistory` + `getMyHistory`, titolo "Le tue richieste"
-components/EmailLogin.vue   pagina /login (layout proprio): email -> codice; sfida mantenuta tra i reload della tab
+views/DeleteAccountView.vue /account/delete: eliminazione account in due passi (avviso → `requestAccountDeletion` → codice a 6 cifre → `confirmAccountDeletion`); la sfida sopravvive al reload (`sessionStorage`); nessun invio automatico alla sesta cifra (azione irreversibile); se `getMyVenues()` non è vuoto, o il backend risponde 403, mostra il messaggio di blocco senza pulsanti; a successo `accountDeleted()` e `/login?deleted=1`
+components/EmailLogin.vue   pagina /login (layout proprio): email -> codice; sfida mantenuta tra i reload della tab; con `?deleted=1` mostra «Account eliminato…» anche nel passo email
 components/PromotionNotice.vue avviso "nuova promozione, card da zero" (`variant` customer | staff), mostrato se `promotionChanged`
 components/StampProgress.vue saldo; card piena mostrata come "Premio disponibile"
 components/RewardDialog.vue <dialog> nativo (showModal) per un premio ritirato, si chiude solo con "Chiudi"/Esc
@@ -224,6 +231,8 @@ views/NotFoundView.vue      qualsiasi altro percorso
 | `POST /api/auth/email/verify` | no (limiter IP) | `200 {user:{id,email,displayName}}` + cookie `sid`; codice sbagliato su una sfida viva → `400 {error:"InvalidCode", message:"Codice non valido", attemptsRemaining}`; qualsiasi sfida non utilizzabile (scaduta, tentativi esauriti, già usata, sostituita, sconosciuta) → `400 {error:"CodeExpired", message:"Codice scaduto"}` |
 | `GET /api/auth/me` | sì | `200 {user:{id,email,displayName}}` (sonda in sola lettura) |
 | `POST /api/auth/logout` | sì | `204`, cookie rimosso, evento `logout` |
+| `POST /api/auth/account/delete/request` | sì (limiter IP) | nessun body; `202 {challengeId}`, il codice OTP va **sempre** all'email dell'utente di sessione (mai da body); owner/staff di un locale e admin di piattaforma → `403 Forbidden`, nessuna sfida; cooldown e tetto orario come il login (`429` + `Retry-After`) |
+| `POST /api/auth/account/delete/confirm` | sì (limiter IP) | body `{challengeId, code}` (stesso DTO di `verify`) → `204` e cookie `sid` rimosso; codice sbagliato → `400 InvalidCode` con `attemptsRemaining`; sfida non utilizzabile **o di un altro indirizzo** → `400 CodeExpired`; diventato owner/staff tra richiesta e conferma → `403` (controllo dentro la transazione); l'utente è anonimizzato (vedi §6) |
 | `POST /api/venues/:venueId/visit[?requestStamp=1]` | sì | nuova card → `201 {state:"card_created", saveUrl, publicCode}`; richiesta pending viva → `200 {state:"request_pending", requestId, expiresAt, promotionChanged}`; card `not_added` e senza `requestStamp=1` → `200 {state:"card_not_added", saveUrl, publicCode}` (nessuna richiesta); nuova richiesta → `201` (stessi campi; `promotionChanged` = la card è ferma su una promozione non più attiva); più di 10 nuove/ora per card → `429` + `Retry-After`; `requestStamp` diverso da `1` → `400` |
 | `POST /api/venues/:venueId/card/wallet-added` | sì | `204`; `not_added` → `active` (UPDATE condizionato, idempotente); nessuna card per questo utente e locale → `404` |
 | `GET /api/requests/:requestId` | sì | `200 {status, publicCode, expiresAt, stampsCount, stampsRequired, promotionChanged}` (se `promotionChanged` è `true`, mai per `approved`, `stampsCount` è `0` e `stampsRequired` quello della promozione attiva; `publicCode` = il codice della card, così il cliente può leggerlo allo staff a qualsiasi passo); se `approved` anche `stampsAdded` (somma degli eventi `stamp` di quella richiesta), `rewardsRedeemed` (conteggio dei suoi eventi `redeem`) e `reward` (nome del premio della promozione); richiesta di un altro o inesistente → `404` identico |
@@ -388,7 +397,8 @@ Invarianti da non rompere:
   `quantity > 0`; FK composte su card, promotion e request.
 - `stamps_count >= 0` e **nessun** tetto massimo: `= stampsRequired` è il normale stato
   "premio disponibile".
-- Anonimizzazione invece di cancellazione: tutte le FK sono `RESTRICT`.
+- Anonimizzazione invece di cancellazione: tutte le FK sono `RESTRICT`. `AccountService.anonymizeUser(userId, tx)` (B4, 2026-11-11), sempre dentro la transazione del chiamante e idempotente (`false` se l'utente non c'è o è già anonimizzato): `users.email` e `display_name` a NULL e `anonymized_at = now()`; cancella le `auth_identities`; revoca le sessioni vive (un evento `session_revoked` ciascuna); azzera `auth_events.subject_hash` calcolando l'hash **prima** di svuotare l'email, così si ripuliscono anche gli eventi con `user_id` NULL (è l'unico `UPDATE` su `auth_events`). Card, richieste, timbri e `venue_members` restano. L'email resta libera: chi rientra è un utente nuovo con card nuove.
+- Retention (`RetentionService.purgeExpired`, `scripts/purge-retention.ts`, `npm run script:purge-retention`, lanciato a mano; lo scheduler dell'host non c'è): `otp_challenges` con `created_at` oltre 1 giorno, `sessions` con `LEAST(expires_at, revoked_at)` oltre 30 giorni, `auth_events` oltre 12 mesi (è l'unico `DELETE` su `auth_events`). Non tocca `users`, `cards` né `stamp_*`.
 
 Migrazioni (una per modifica):
 
@@ -434,7 +444,7 @@ npm test                         # tutto Vitest
 npm run test:unit                # solo test/unit
 npm run test:api                 # solo test/api
 npx vitest run -t "5 codici"     # un solo test per nome
-.claude/skills/verify/scripts/verify.sh   # typecheck + suite, base 266 (fallisce se meno)
+.claude/skills/verify/scripts/verify.sh   # typecheck + suite, base 295 (fallisce se meno)
 ```
 
 | File | Test | Copertura |
@@ -452,23 +462,26 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `api/promotion-rollover.test.ts` | 33 | rollover alla conferma (saldo ripartito da 0, card piena, soglia nuova, eventi sulla promozione nuova, rifiuto/scadenza/senza promozione/altro locale invariati, doppia conferma concorrente), `promotionChanged` in `visit`, polling e coda (mai il numero dei timbri persi), sync del pass dopo il rollover (promozione della card, errore Google ignorato, race) e `saveUrl` a 0 timbri per card vecchia `not_added` |
 | `api/staff-requests.test.ts` | 28 | `/venues/mine`, coda (401/403, senza email, isolamento tra locali), confirm 15 → 4/10 con 3 eventi, pass Google best effort, doppia conferma 409, validazione, reject, scadenza, 404 tra locali, owner, soglia esatta, card piena, rate limit di `visit` |
 | `api/history.test.ts` | 47 | storico staff e cliente (`GET /api/requests/mine`): auth/403, campi e nessuna email, filtri per stato / timbri / date (ISO, `from > to` → `400`), filtri combinati, nessuna paginazione, isolamento tra tenant, scadenza lazy, attraversa i locali, `publicCode` nel polling |
+| `api/account-anonymize.test.ts` | 9 | `anonymizeUser`: email e nome azzerati, identità cancellate (non quelle di altri), sessioni vive revocate con evento `session_revoked`, card/richieste/timbri/membership intatti, `subject_hash` azzerato anche per gli eventi senza utente e non per altri, idempotenza, utente inesistente, tutto o niente |
+| `api/account-delete.test.ts` | 14 | richiesta (401, 202 con la sfida all'email di sessione, body ignorato, owner/staff/admin → 403 identico senza sfide, cooldown 429) e conferma (401, formato, 204 + cookie rimosso + sessione vecchia 401, rientro con la stessa email = utente nuovo, codice sbagliato/scaduto/già usato, sfida di un altro indirizzo, diventato staff nel frattempo → 403) |
+| `api/retention.test.ts` | 6 | `purgeExpired`: `otp_challenges` > 1 giorno, sessioni scadute/revocate > 30 giorni (le vive e le recenti restano), `auth_events` > 12 mesi, `users`/`cards`/`stamp_requests` intatti, idempotenza |
 | `api/cors-origin.test.ts` | 13 | CORS ristretto ad APP_ORIGIN (preflight, mai `*`, nessun header per origin estranee), controllo di `Origin` sui metodi che cambiano stato (403 con estranea e con `null`, passa senza `Origin`, sessione non toccata, 403 prima del 404) |
 | `api/db-constraints.test.ts` | 14 | vincoli delle migrazioni 2 e 3 (email minuscole, unicità, una sfida OTP attiva, FK RESTRICT, `request_id` non univoco, `promotions_no_overlap`), ognuno in una transazione con ROLLBACK |
 
-Base della suite: **266** (`BASELINE` in `verify.sh`). `verify.sh` fallisce se i test passati sono meno della base o se ce n'è uno rosso; con più test della base segnala la differenza. Con più agenti in parallelo la base la riallinea `/docs-sync`, non la singola task.
+Base della suite: **295** (`BASELINE` in `verify.sh`). `verify.sh` fallisce se i test passati sono meno della base o se ce n'è uno rosso; con più test della base segnala la differenza. Con più agenti in parallelo la base la riallinea `/docs-sync`, non la singola task.
 
 **Lavoro in parallelo (agenti).** Ogni task gira in un worktree in `../stampy-wt/<id>` con porte (`3000+N` backend, `5173+N` frontend) e database (`stampy_wt_<id>` nel container `stampy-db`) propri. Script in `.claude/scripts/`: `worktree-start.sh` (crea tutto, comprese le porte in `stampy-backend/.env` e `stampy-frontend/.env.local`, letti da `vite.config.ts`), `worktree-finish.sh` (commit, verifica su `main` aggiornato, merge solo senza conflitti, pulizia; i registri degli slot stanno in `../stampy-wt/.slots/`), `worktree-clean.sh` (orfani, solo per il proprietario), `lib-worktree.sh` (funzioni comuni), `report-template.md`, `audit.sh` (chi/quando ha cambiato lo stato delle issue). `Done` lo imposta solo `worktree-finish.sh` (tramite `project-status.sh`) e il workflow GitHub "Auto-close issue" chiude la issue; ogni cambio di stato è in `../stampy-wt/audit.log` con l'agente che l'ha fatto (`worktree-start.sh` salva la issue nello slot). L'hook `.claude/hooks/guard-protected.sh` (registrato in `.claude/settings.json`) impedisce agli agenti di scrivere `docs/` (tranne `docs/reports/*.md`), `AGENTS.md`, `.claude/` e `.github/`; la skill `/docs-sync` integra i report nei documenti e li elimina. Provato il 2026-11-10 su Postgres reale: avvio, due worktree in parallelo, chiusura concorrente con lock, pulizia degli orfani.
 
-Ultima esecuzione registrata: **11 novembre 2026: `npm test` 266 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
+Ultima esecuzione registrata: **11 novembre 2026: `npm test` 295 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
 
 Frontend: `npm run build` in `stampy-frontend/` esegue `vue-tsc` e la build di produzione.
-Test nel browser (Playwright, devDependency `playwright`, chiude B17): `npm run e2e` esegue entrambi: `node e2e/staff-input.mjs` (7 check: la quantità digitata sopravvive al polling, il testo non valido blocca Conferma, Conferma invia esattamente il valore digitato) e `node e2e/feedback.mjs` (32 check: approvazione/rifiuto/toast del premio dello staff, testo di approvazione del cliente, persistenza/focus/tastiera/reload del modale del premio, overflow a 390 px). Richiedono `npm run dev`, il container `stampy-db` e un locale con branding nel DB; creano utenti `e2e-*@test.it` più un locale `e2e-*` e li eliminano. Se non è stato eseguito `playwright install`, puntare `E2E_CHROMIUM` a un binario di Chromium. `node e2e/t6d.mjs` (43 check, la checklist staff T6-D) e `node e2e/history.mjs` (48 check, uno ancora fallito: si aspetta l'etichetta "Filtri · N" che il toggle non mostra più: storico dello staff aperto dal menu dell'header, stato nell'URL, filtri dal vivo, avanti/indietro, regole sulle date, nessuna paginazione, pannello mobile, codice card del cliente, storico del cliente: solo richieste proprie, nome del locale, stessi filtri, header con pulsante indietro e logo centrato); nessuno dei due fa parte di `npm run e2e`. Ultima esecuzione: 2026-11-04, t6d 43 ✔, history 38 ✔, feedback 32 ✔, staff-input 7 ✔; 2026-11-03, 38 check verdi. L'esecuzione del 2026-11-01 era uno script usa-e-getta. Ultima esecuzione manuale nel browser:
+Test nel browser (Playwright, devDependency `playwright`, chiude B17): `npm run e2e` esegue tre script: `node e2e/staff-input.mjs` (7 check: la quantità digitata sopravvive al polling, il testo non valido blocca Conferma, Conferma invia esattamente il valore digitato) e `node e2e/feedback.mjs` (32 check: approvazione/rifiuto/toast del premio dello staff, testo di approvazione del cliente, persistenza/focus/tastiera/reload del modale del premio, overflow a 390 px) e `node e2e/account-delete.mjs` (15 check, 2026-11-11: voce di menu, avviso, codice sbagliato con i tentativi rimasti, nessuna eliminazione alla sesta cifra, eliminazione e ritorno al login, cookie rimosso, DB anonimizzato, staff bloccato, nessun overflow a 360 px; il codice OTP del test è sostituito nel DB con l'HMAC di un codice noto, leggendo `OTP_HMAC_SECRET` dal `.env` del backend). Richiedono `npm run dev`, il container `stampy-db` e un locale con branding nel DB; creano utenti `e2e-*@test.it` più un locale `e2e-*` e li eliminano. Se non è stato eseguito `playwright install`, puntare `E2E_CHROMIUM` a un binario di Chromium. `node e2e/t6d.mjs` (43 check, la checklist staff T6-D) e `node e2e/history.mjs` (48 check, uno ancora fallito: si aspetta l'etichetta "Filtri · N" che il toggle non mostra più: storico dello staff aperto dal menu dell'header, stato nell'URL, filtri dal vivo, avanti/indietro, regole sulle date, nessuna paginazione, pannello mobile, codice card del cliente, storico del cliente: solo richieste proprie, nome del locale, stessi filtri, header con pulsante indietro e logo centrato); nessuno dei due fa parte di `npm run e2e`. Ultima esecuzione: 2026-11-04, t6d 43 ✔, history 38 ✔, feedback 32 ✔, staff-input 7 ✔; 2026-11-03, 38 check verdi. L'esecuzione del 2026-11-01 era uno script usa-e-getta. Ultima esecuzione manuale nel browser:
 1 novembre 2026 (dopo il cambio di login/redirect e bootstrap), 47 check verdi (Chromium
 headless a 360 px contro i server di sviluppo, script usa-e-getta fuori dal repo).
 Giro manuale di test del frontend (`BACKLOG.md` T6), 2–3 novembre 2026: **A (login), B (redirect e guardie) e C (flusso del cliente) fatti**;
 **D (flusso dello staff) non fatto (in pausa dal 2026-11-03).**
 
-Utility (non test) in `stampy-backend/scripts/`: `create-owner.ts`, `create-venue.ts` e `reset-data.sql`
+Utility (non test) in `stampy-backend/scripts/`: `create-owner.ts`, `create-venue.ts`, `purge-retention.ts` e `reset-data.sql`
 (svuota tutte le righe del DB di sviluppo mantenendo schema e vincoli:
 `docker exec -i stampy-db psql -U stampy -d stampy_dev -v ON_ERROR_STOP=1 < scripts/reset-data.sql`).
 
@@ -480,6 +493,7 @@ Utility (non test) in `stampy-backend/scripts/`: `create-owner.ts`, `create-venu
 | toccare la regola dei timbri | `utils/stamps.ts` + `test/unit/stamps.test.ts` + `CONTEXT.md` §4.4 |
 | toccare confirm | `requests/resolve/resolve.service.ts` + `venues/staff/staff.controller.ts` |
 | toccare l'auth | `auth/` (otp, identity, session, auth-events) + `CONTEXT.md` §5 |
+| toccare l'eliminazione dell'account o la retention | `auth/account/` + `auth/retention/` + `scripts/purge-retention.ts` + `test/api/account-*.test.ts`, `retention.test.ts` + frontend `views/DeleteAccountView.vue` |
 | toccare lo schema | `db/schema.ts` → `generate` → leggere l'SQL → `migrate` → aggiornare §6 |
 | cambiare l'invio delle email (OTP) | `utils/email/` (`email-sender.ts`, `gmail-email-sender.ts`, `otp-email.ts`) + `config/env.ts` (`OTP_PROVIDER`) + `test/unit/email-sender.test.ts` |
 | scrivere o cambiare un test | `test/` (`unit/` senza DB, `api/` con DB, `helpers/`) + `vitest.config.mts` + §7 |
