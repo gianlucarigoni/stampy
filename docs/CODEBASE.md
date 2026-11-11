@@ -423,7 +423,7 @@ stampy-backend/test/
 - Struttura `describe` (endpoint o funzione) → `describe` (scenario) → `it` (comportamento in italiano).
 - `vitest.config.mts`: `fileParallelism: false` (un file alla volta sul DB condiviso). Con
   `NODE_ENV=test` (impostato da Vitest) `morgan` e il logger di Drizzle sono spenti; il logger di Drizzle (query e parametri) è acceso **solo** con `NODE_ENV=development` (che è anche il default di `env.ts`: in staging/produzione impostare `NODE_ENV=production`).
-- **`OTP_PROVIDER` deve essere `console` quando si lanciano i test.** I test `api/otp-request*` non sostituiscono il sender: con `both` o `gmail` mandano email vere a indirizzi finti (`@test.it`), con timeout e `503` (visto il 2026-11-10; vedi C17 in `BACKLOG.md`). I test dei sender non spediscono nulla (`jsonTransport`).
+- **`OTP_PROVIDER` è forzato a `console` nei test** (`test.env` in `vitest.config.mts`, C17): vince sul `.env`, quindi i test non mandano mai email vere (prima, con `both` o `gmail`, i test `api/otp-request*` spedivano a indirizzi finti `@test.it`, con timeout e `503`). I test dei sender non spediscono nulla (`jsonTransport`).
 - L'aggiornamento del pass Google dopo `confirm` è sostituito da un finto (`vi.spyOn(walletSrv, "updateCard")`):
   i test non chiamano mai Google.
 - L'output di default stampa solo il riepilogo e i test falliti; `npx vitest run --reporter=verbose`
@@ -434,7 +434,7 @@ npm test                         # tutto Vitest
 npm run test:unit                # solo test/unit
 npm run test:api                 # solo test/api
 npx vitest run -t "5 codici"     # un solo test per nome
-.claude/skills/verify/scripts/verify.sh   # typecheck + suite, base 264 (fallisce se meno)
+.claude/skills/verify/scripts/verify.sh   # typecheck + suite, base 266 (fallisce se meno)
 ```
 
 | File | Test | Copertura |
@@ -443,6 +443,7 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `unit/wallet-update.test.ts` | 5 | `updateCard` con un client mockato: PATCH, URL, saldo, 3 moduli, niente id/classId/notifyPreference, timeout/retry, l'errore si propaga |
 | `unit/env-email.test.ts` | 12 | validazione di `OTP_PROVIDER` e delle credenziali Gmail con `envSchema` (default `console`, stringa vuota = assente, `gmail`/`both` senza credenziali → errore, valore sconosciuto, `console`/`both` in produzione → errore, `gmail` in produzione valido) |
 | `unit/email-sender.test.ts` | 13 | `renderOtpEmail` (codice, minuti, colore del brand, niente script né risorse esterne), `GmailEmailSender` con `jsonTransport` di nodemailer (un messaggio, corpo, `From`, errore che si propaga e logga senza email né codice), `createEmailSender` (console / gmail / both con l'ordine console→Gmail anche se Gmail fallisce) |
+| `unit/vitest-env.test.ts` | 2 | `OTP_PROVIDER` è `console` durante i test; `emailSender` è un `ConsoleEmailSender` (C17) |
 | `api/otp-request-email-failure.test.ts` | 2 | `sendOtp` che rigetta → `503` senza eco di email o codice; `sendOtp` riceve l'email in minuscolo e un codice di 6 cifre (sender sostituito con `vi.spyOn`) |
 | `api/otp-request.test.ts` | 20 | JSON malformato, 400 senza eco, 404 JSON, cooldown e body 429, cooldown saltato per un codice morto, tetto orario, finestra, race, risposta uniforme |
 | `api/otp-verify.test.ts` | 16 | validazione, utente nuovo (cookie, sessione, eventi), nessuna email in chiaro, riuso, tentativi, scaduta/sostituita/inesistente, utente esistente con e senza identità, race |
@@ -454,11 +455,11 @@ npx vitest run -t "5 codici"     # un solo test per nome
 | `api/cors-origin.test.ts` | 13 | CORS ristretto ad APP_ORIGIN (preflight, mai `*`, nessun header per origin estranee), controllo di `Origin` sui metodi che cambiano stato (403 con estranea e con `null`, passa senza `Origin`, sessione non toccata, 403 prima del 404) |
 | `api/db-constraints.test.ts` | 14 | vincoli delle migrazioni 2 e 3 (email minuscole, unicità, una sfida OTP attiva, FK RESTRICT, `request_id` non univoco, `promotions_no_overlap`), ognuno in una transazione con ROLLBACK |
 
-Base della suite: **264** (`BASELINE` in `verify.sh`). `verify.sh` fallisce se i test passati sono meno della base o se ce n'è uno rosso; con più test della base segnala la differenza. Con più agenti in parallelo la base la riallinea `/docs-sync`, non la singola task.
+Base della suite: **266** (`BASELINE` in `verify.sh`). `verify.sh` fallisce se i test passati sono meno della base o se ce n'è uno rosso; con più test della base segnala la differenza. Con più agenti in parallelo la base la riallinea `/docs-sync`, non la singola task.
 
 **Lavoro in parallelo (agenti).** Ogni task gira in un worktree in `../stampy-wt/<id>` con porte (`3000+N` backend, `5173+N` frontend) e database (`stampy_wt_<id>` nel container `stampy-db`) propri. Script in `.claude/scripts/`: `worktree-start.sh` (crea tutto, comprese le porte in `stampy-backend/.env` e `stampy-frontend/.env.local`, letti da `vite.config.ts`), `worktree-finish.sh` (commit, verifica su `main` aggiornato, merge solo senza conflitti, pulizia; i registri degli slot stanno in `../stampy-wt/.slots/`), `worktree-clean.sh` (orfani, solo per il proprietario), `lib-worktree.sh` (funzioni comuni), `report-template.md`, `audit.sh` (chi/quando ha cambiato lo stato delle issue). `Done` lo imposta solo `worktree-finish.sh` (tramite `project-status.sh`) e il workflow GitHub "Auto-close issue" chiude la issue; ogni cambio di stato è in `../stampy-wt/audit.log` con l'agente che l'ha fatto (`worktree-start.sh` salva la issue nello slot). L'hook `.claude/hooks/guard-protected.sh` (registrato in `.claude/settings.json`) impedisce agli agenti di scrivere `docs/` (tranne `docs/reports/*.md`), `AGENTS.md`, `.claude/` e `.github/`; la skill `/docs-sync` integra i report nei documenti e li elimina. Provato il 2026-11-10 su Postgres reale: avvio, due worktree in parallelo, chiusura concorrente con lock, pulizia degli orfani.
 
-Ultima esecuzione registrata: **10 novembre 2026: `npm test` 264 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
+Ultima esecuzione registrata: **11 novembre 2026: `npm test` 266 ✔ sul DB di sviluppo, `npm run typecheck:all` pulito**, nessun dato di test rimasto nel DB.
 
 Frontend: `npm run build` in `stampy-frontend/` esegue `vue-tsc` e la build di produzione.
 Test nel browser (Playwright, devDependency `playwright`, chiude B17): `npm run e2e` esegue entrambi: `node e2e/staff-input.mjs` (7 check: la quantità digitata sopravvive al polling, il testo non valido blocca Conferma, Conferma invia esattamente il valore digitato) e `node e2e/feedback.mjs` (32 check: approvazione/rifiuto/toast del premio dello staff, testo di approvazione del cliente, persistenza/focus/tastiera/reload del modale del premio, overflow a 390 px). Richiedono `npm run dev`, il container `stampy-db` e un locale con branding nel DB; creano utenti `e2e-*@test.it` più un locale `e2e-*` e li eliminano. Se non è stato eseguito `playwright install`, puntare `E2E_CHROMIUM` a un binario di Chromium. `node e2e/t6d.mjs` (43 check, la checklist staff T6-D) e `node e2e/history.mjs` (48 check, uno ancora fallito: si aspetta l'etichetta "Filtri · N" che il toggle non mostra più: storico dello staff aperto dal menu dell'header, stato nell'URL, filtri dal vivo, avanti/indietro, regole sulle date, nessuna paginazione, pannello mobile, codice card del cliente, storico del cliente: solo richieste proprie, nome del locale, stessi filtri, header con pulsante indietro e logo centrato); nessuno dei due fa parte di `npm run e2e`. Ultima esecuzione: 2026-11-04, t6d 43 ✔, history 38 ✔, feedback 32 ✔, staff-input 7 ✔; 2026-11-03, 38 check verdi. L'esecuzione del 2026-11-01 era uno script usa-e-getta. Ultima esecuzione manuale nel browser:
