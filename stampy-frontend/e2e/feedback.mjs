@@ -42,7 +42,7 @@ try {
   await a.getByRole('button', { name: /^Conferma/ }).click()
   await staff.getByText('Richiesta approvata').first().waitFor()
   a = await articleOf(plainCode)
-  check('approval: in-card text shows +2 timbri and balance 2 / 5', /\+2 timbri/.test(await a.innerText()) && /saldo 2 \/ 5/.test(await a.innerText()), await a.innerText())
+  check('approval: in-card text shows +2 timbri, no balance', /\+2 timbri/.test(await a.innerText()) && !/saldo/.test(await a.innerText()), await a.innerText())
   check('approval: card is alert-success', (await a.locator('.alert-success').count()) === 1)
   check('approval: no generic alert at the top', (await staff.locator('.feedback .alert').count()) === 0)
   check('approval: no reward toast', (await staff.locator('.toast-stack .alert').count()) === 0)

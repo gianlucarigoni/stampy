@@ -182,11 +182,14 @@ const countText = computed(() =>
 const when = (iso: string) =>
   new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
+// Stamps added (the reward is not counted among them) and, only when the request redeemed any, "N premio riscattato".
 function detail(item: HistoryItem) {
   if (item.status !== 'approved') return ''
-  const parts = [`${item.stamps} confermati`]
-  if ((item.stampsAdded ?? 0) > 0) parts.push(`+${item.stampsAdded} ${item.stampsAdded === 1 ? 'timbro' : 'timbri'}`)
-  if ((item.rewardsRedeemed ?? 0) > 0) parts.push(`${item.rewardsRedeemed} ${item.rewardsRedeemed === 1 ? 'premio' : 'premi'}`)
+  const added = item.stampsAdded ?? 0
+  const rewards = item.rewardsRedeemed ?? 0
+  const parts: string[] = []
+  if (added > 0 || rewards === 0) parts.push(`${added} ${added === 1 ? 'timbro' : 'timbri'}`)
+  if (rewards > 0) parts.push(`${rewards} ${rewards === 1 ? 'premio riscattato' : 'premi riscattati'}`)
   return parts.join(' · ')
 }
 </script>

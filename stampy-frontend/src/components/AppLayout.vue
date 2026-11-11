@@ -37,11 +37,10 @@ const staffVenueId = computed(() => {
   return memberships.value?.some((v) => v.venueId === id) ? id : null
 })
 
-// One header for everyone; only the items differ, depending on the page:
-// - staff screen of a venue the user belongs to: the venue's history, plus "Cambia locale"
-//   only when the user belongs to more than one venue (the queue is reached with the back button)
-// - staff venue list (or a venue not yet confirmed): no page items, only "Esci"
-// - every other screen: the customer's profile (history and account deletion live there)
+// One header for everyone: "Profilo" first (customer: history and account deletion live there; staff and
+// owners have no customer history there). Inside a venue the user belongs to, "Storico richieste" (that
+// venue's requests) comes right after, and "Cambia locale" only when the user belongs to more than one
+// venue (never on the venue list itself, where it would point to the same page).
 interface MenuItem {
   label: string
   to: RouteLocationRaw
@@ -49,17 +48,14 @@ interface MenuItem {
 }
 const isStaffArea = computed(() => isStaffScreen.value || route.name === 'staff-venues')
 const menuItems = computed<MenuItem[]>(() => {
+  const items: MenuItem[] = [{ label: 'Profilo', to: { name: 'profile' }, name: 'profile' }]
   const venueId = staffVenueId.value
-  if (!venueId) {
-    if (isStaffArea.value) return []
-    return [
-      { label: 'Profilo', to: { name: 'profile' }, name: 'profile' },
-    ]
+  if (venueId) {
+    items.push({ label: 'Storico richieste', to: { name: 'staff-history', params: { venueId } }, name: 'staff-history' })
   }
-  const items: MenuItem[] = [
-    { label: 'Storico richieste', to: { name: 'staff-history', params: { venueId } }, name: 'staff-history' },
-  ]
-  if ((memberships.value?.length ?? 0) > 1) items.push({ label: 'Cambia locale', to: { name: 'staff-venues' }, name: 'staff-venues' })
+  if (isStaffArea.value && route.name !== 'staff-venues' && (memberships.value?.length ?? 0) > 1) {
+    items.push({ label: 'Cambia locale', to: { name: 'staff-venues' }, name: 'staff-venues' })
+  }
   return items
 })
 

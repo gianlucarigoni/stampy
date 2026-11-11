@@ -88,13 +88,15 @@ async function sendCode() {
   busy.value = true
   error.value = ''
   notice.value = ''
+  const resend = challengeId.value !== ''
   try {
     const result = await requestCode(email.value.trim())
     challengeId.value = result.challengeId
     codeDead.value = false
     code.value = ''
     writeTab(STORAGE_KEY, { email: email.value.trim(), challengeId: result.challengeId })
-    notice.value = `Codice inviato a ${email.value.trim()}`
+    // First send: the "Abbiamo scritto a…" text already says it. Only a resend needs feedback.
+    if (resend) notice.value = `Codice inviato a ${email.value.trim()}`
     await nextTick()
     codeInput.value?.focus() // the code field replaces the email one: keep the keyboard flow going
   } catch (err) {

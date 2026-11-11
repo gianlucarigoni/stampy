@@ -82,13 +82,15 @@ async function sendCode() {
   busy.value = true
   error.value = ''
   notice.value = ''
+  const resend = challengeId.value !== ''
   try {
     const result = await requestAccountDeletion()
     challengeId.value = result.challengeId
     codeDead.value = false
     code.value = ''
     writeTab(STORAGE_KEY, { challengeId: result.challengeId })
-    notice.value = `Codice inviato a ${user.value?.email ?? 'la tua email'}`
+    // First send: the "Abbiamo scritto a…" text already says it. Only a resend needs feedback.
+    if (resend) notice.value = `Codice inviato a ${user.value?.email ?? 'la tua email'}`
     await nextTick()
     codeInput.value?.focus()
   } catch (err) {
