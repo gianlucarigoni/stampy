@@ -1,8 +1,10 @@
 import { bodyParserHandler } from "./body-parser.error";
 import { codeExpiredHandler } from "./code-expired.error";
 import { forbiddenHandler } from "./forbidden.error";
+import { googleEmailRejectedHandler } from "./google-email-rejected.error";
 import { genericErrorHandler } from "./generic";
 import { invalidCodeHandler } from "./invalid-code.error";
+import { invalidGoogleTokenHandler } from "./invalid-google-token.error";
 import { originNotAllowedHandler } from "./origin-not-allowed.error";
 import { promotionNotFoundHandler } from "./promotion-not-found.error";
 import { RequestNotFoundError, requestNotFoundHandler } from "./request-not-found.error";
@@ -22,6 +24,8 @@ export const errorHandlers = [
   tryLaterHandler,
   invalidCodeHandler,
   codeExpiredHandler,
+  invalidGoogleTokenHandler,
+  googleEmailRejectedHandler,
   forbiddenHandler,
   originNotAllowedHandler,
   // prima del generico, altrimenti non verrebbe mai raggiunto

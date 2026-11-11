@@ -23,6 +23,8 @@ export const envSchema = z
     OTP_PROVIDER: z.enum(["console", "gmail", "both"]).default("console"),
     GMAIL_USER: z.preprocess(emptyToUndefined, z.string().email().optional()),
     GMAIL_APP_PASSWORD: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    // Client ID OAuth (tipo Web) per il login con Google: non è un segreto. Se manca, POST /auth/google risponde 503.
+    GOOGLE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   })
   .superRefine((e, ctx) => {
     if (e.OTP_PROVIDER !== "console") {
