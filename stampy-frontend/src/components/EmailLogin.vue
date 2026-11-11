@@ -2,8 +2,9 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
-import { requestCode, verifyCode } from '@/api/endpoints'
+import { googleLogin, requestCode, verifyCode } from '@/api/endpoints'
 import AppHeader from '@/components/AppHeader.vue'
+import GoogleSignInButton from '@/components/GoogleSignInButton.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useCountdown } from '@/composables/useCountdown'
 import { formatWait } from '@/utils/format'
@@ -125,6 +126,29 @@ async function submitCode() {
   }
 }
 
+// Google sign-in (POST /auth/google). The backend decides whether the address is acceptable:
+// 403 carries its own message ("usa il codice via email"), 401 means the token did not verify.
+async function signInWithGoogle(idToken: string) {
+  if (busy.value) return
+  busy.value = true
+  error.value = ''
+  notice.value = ''
+  try {
+    const result = await googleLogin(idToken)
+    removeTab(STORAGE_KEY)
+    setUser(result.user)
+    await router.replace(await destinationAfterLogin(route.query.next))
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 403) error.value = err.message
+    else if (err instanceof ApiError && err.status === 401) error.value = 'Accesso con Google non riuscito, riprova'
+    else if (err instanceof ApiError && err.status === 503)
+      error.value = 'Accesso con Google non disponibile: usa il codice via email'
+    else showError(err, 'Accesso con Google non riuscito, riprova')
+  } finally {
+    busy.value = false
+  }
+}
+
 function changeEmail() {
   resetWait()
   removeTab(STORAGE_KEY)
@@ -190,6 +214,8 @@ watch(code, (value) => {
             {{ busy ? 'Invio…' : 'Invia il codice' }}
           </button>
         </form>
+
+        <GoogleSignInButton @credential="signInWithGoogle" />
       </template>
 
       <template v-else>
