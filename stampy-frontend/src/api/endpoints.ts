@@ -60,6 +60,10 @@ export const requestCode = (email: string) =>
 export const verifyCode = (challengeId: string, code: string) =>
   api<{ user: AuthUser }>('/auth/email/verify', { method: 'POST', body: { challengeId, code } })
 
+/** Login with Google: the ID token from Google Identity Services; the session cookie comes back as usual. */
+export const googleLogin = (idToken: string) =>
+  api<{ user: AuthUser }>('/auth/google', { method: 'POST', body: { idToken } })
+
 /** Account deletion step 1: the code goes to the session user's own email (the body stays empty). */
 export const requestAccountDeletion = () =>
   api<{ challengeId: string }>('/auth/account/delete/request', { method: 'POST' })
