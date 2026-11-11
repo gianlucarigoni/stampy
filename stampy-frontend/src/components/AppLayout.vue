@@ -50,7 +50,13 @@ interface MenuItem {
 const isStaffArea = computed(() => isStaffScreen.value || route.name === 'staff-venues')
 const menuItems = computed<MenuItem[]>(() => {
   const venueId = staffVenueId.value
-  if (!venueId) return isStaffArea.value ? [] : [{ label: 'Storico richieste', to: { name: 'history' }, name: 'history' }]
+  if (!venueId) {
+    if (isStaffArea.value) return []
+    return [
+      { label: 'Storico richieste', to: { name: 'history' }, name: 'history' },
+      { label: 'Elimina account', to: { name: 'delete-account' }, name: 'delete-account' },
+    ]
+  }
   const items: MenuItem[] = [
     { label: 'Storico richieste', to: { name: 'staff-history', params: { venueId } }, name: 'staff-history' },
   ]

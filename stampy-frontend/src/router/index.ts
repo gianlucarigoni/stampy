@@ -44,6 +44,11 @@ const router = createRouter({
           component: () => import('@/views/CustomerHistoryView.vue'),
         },
         {
+          path: 'account/delete',
+          name: 'delete-account',
+          component: () => import('@/views/DeleteAccountView.vue'),
+        },
+        {
           path: 'scan',
           name: 'no-venue',
           component: () => import('@/views/NoVenueView.vue'),

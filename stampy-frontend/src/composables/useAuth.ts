@@ -39,6 +39,12 @@ async function logout() {
   user.value = null
 }
 
+/** The account was anonymised and the server dropped the cookie: nothing of this user stays in the tab. */
+function accountDeleted() {
+  clearTab()
+  user.value = null
+}
+
 export function useAuth() {
-  return { user, checkSession, setUser, clearUser, logout }
+  return { user, checkSession, setUser, clearUser, logout, accountDeleted }
 }

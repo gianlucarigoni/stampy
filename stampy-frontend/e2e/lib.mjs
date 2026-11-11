@@ -11,7 +11,7 @@ const RUN = Date.now().toString(36)
 
 if (process.env.NODE_ENV === 'production') throw new Error('Refusing to run with NODE_ENV=production')
 
-const psql = (sql) =>
+export const psql = (sql) =>
   execSync(`docker exec -i stampy-db psql -U stampy -d ${DB} -At -v ON_ERROR_STOP=1`, { input: sql })
     .toString()
     .trim()
@@ -19,7 +19,7 @@ const psql = (sql) =>
 
 const ids = { users: [], venues: [] }
 
-function newUser(tag) {
+export function newUser(tag) {
   const id = psql(`INSERT INTO users (email, display_name) VALUES ('e2e-${RUN}-${tag}@test.it','E2E') RETURNING id`)
   ids.users.push(id)
   const token = crypto.randomBytes(32).toString('base64url')
@@ -47,7 +47,7 @@ export function createFixtures(customers = 1) {
 export function cleanup() {
   if (ids.users.length === 0) return
   const u = ids.users.map((i) => `'${i}'`).join(',')
-  const v = ids.venues.map((i) => `'${i}'`).join(',')
+  const v = ids.venues.map((i) => `'${i}'`).join(',') || "'00000000-0000-0000-0000-000000000000'" // no venues: keep the IN list valid
   const cards = `SELECT id FROM cards WHERE user_id IN (${u})`
   psql(`DELETE FROM stamp_events WHERE card_id IN (${cards});
         DELETE FROM stamp_requests WHERE card_id IN (${cards});

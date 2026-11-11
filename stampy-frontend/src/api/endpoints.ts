@@ -60,6 +60,14 @@ export const requestCode = (email: string) =>
 export const verifyCode = (challengeId: string, code: string) =>
   api<{ user: AuthUser }>('/auth/email/verify', { method: 'POST', body: { challengeId, code } })
 
+/** Account deletion step 1: the code goes to the session user's own email (the body stays empty). */
+export const requestAccountDeletion = () =>
+  api<{ challengeId: string }>('/auth/account/delete/request', { method: 'POST' })
+
+/** Account deletion step 2: 204 and the session cookie is gone. */
+export const confirmAccountDeletion = (challengeId: string, code: string) =>
+  api<void>('/auth/account/delete/confirm', { method: 'POST', body: { challengeId, code } })
+
 export const getMe = () => api<{ user: AuthUser }>('/auth/me', { timeoutMs: 4000 })
 
 export const logout = () => api<void>('/auth/logout', { method: 'POST' })
