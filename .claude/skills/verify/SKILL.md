@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Runs the full verification of stampy-backend (typecheck + the Vitest suite, at least the 295 ✔ baseline, no failures) and reports what failed. Use it after EVERY change to backend code, refactor, migration or new endpoint, before saying a job is finished, and whenever the user asks "run the tests", "verify", "check it works", "is everything green?", even if they do not name the tests.
+description: Runs the full verification of stampy-backend (typecheck + the Vitest suite, at least the 335 ✔ baseline, no failures) and reports what failed. Use it after EVERY change to backend code, refactor, migration or new endpoint, before saying a job is finished, and whenever the user asks "run the tests", "verify", "check it works", "is everything green?", even if they do not name the tests.
 ---
 
 # Verify stampy-backend
@@ -18,7 +18,7 @@ is needed. `verify.sh` runs the typecheck and the whole suite.
    (from the repo root; `--skip-typecheck` if you just ran it).
 2. DB connection errors: start the container (`docker start stampy-db`) and check
    `DATABASE_URL` in `stampy-backend/.env`.
-3. Read the summary. Success = exit 0, no `✘`, and a total **≥ the baseline** (295, `BASELINE` in `verify.sh`).
+3. Read the summary. Success = exit 0, no `✘`, and a total **≥ the baseline** (335, `BASELINE` in `verify.sh`).
 
 ## Interpreting failures
 
