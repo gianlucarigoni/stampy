@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "script:create-owner": "tsx ./scripts/create-owner",
     "script:create-venue": "tsx ./scripts/create-venue",
+    "script:purge-retention": "tsx ./scripts/purge-retention",
     "typecheck:all": "tsc --noEmit -p tsconfig.check.json",
     "test": "vitest run",
     "test:unit": "vitest run test/unit",
