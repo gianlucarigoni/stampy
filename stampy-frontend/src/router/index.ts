@@ -44,6 +44,11 @@ const router = createRouter({
           component: () => import('@/views/ProfileView.vue'),
         },
         {
+          path: 'name',
+          name: 'display-name',
+          component: () => import('@/views/DisplayNameView.vue'),
+        },
+        {
           path: 'history',
           name: 'history',
           component: () => import('@/views/CustomerHistoryView.vue'),
@@ -99,6 +104,13 @@ router.beforeEach(async (to) => {
   if (!user.value && to.matched.some((r) => r.meta.requiresAuth)) {
     return { name: 'login', query: { next: to.fullPath } }
   }
+  // Logged in without a display name (new account, or an old one): ask for it once, then go on.
+  // The login page is left alone: it forwards a logged-in user by itself and lands here.
+  if (user.value && user.value.displayName === null && to.matched.some((r) => r.meta.requiresAuth) && to.name !== 'display-name') {
+    return { name: 'display-name', query: { next: safeNext(to.fullPath) ?? undefined } }
+  }
+  // The name is already set: nothing to ask here.
+  if (to.name === 'display-name' && user.value?.displayName) return destinationAfterLogin(to.query.next)
   // Already logged in on the login page: continue as if they had just logged in.
   if (to.name === 'login' && user.value) return destinationAfterLogin(to.query.next)
   return true
