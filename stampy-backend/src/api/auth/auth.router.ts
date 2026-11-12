@@ -2,8 +2,11 @@ import { Router } from "express";
 import emailRouter from "./email/email.router";
 import googleRouter from "./google/google.router";
 import accountRouter from "./account/account.router";
-import { logout, me } from "./auth.controller";
+import { logout, me, updateMe } from "./auth.controller";
+import { displayNameDTO } from "./auth.dto";
 import { isAuthenticated } from "../../utils/middlewares/session.middleware";
+import { ipAuthRateLimit } from "../../utils/middlewares/ip-rate-limit.middleware";
+import { validate } from "../../utils/middlewares/validation.middleware";
 
 const router = Router();
 
@@ -18,6 +21,7 @@ router.use("/account", accountRouter);
 
 // Protette: ordine rate limit -> isAuthenticated -> requireRole -> validate -> controller.
 router.get("/me", isAuthenticated, me);
+router.patch("/me", ipAuthRateLimit, isAuthenticated, validate(displayNameDTO, "body"), updateMe);
 router.post("/logout", isAuthenticated, logout);
 
 export default router;
