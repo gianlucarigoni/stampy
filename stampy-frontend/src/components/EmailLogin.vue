@@ -30,6 +30,9 @@ const challengeId = ref(saved?.challengeId ?? '')
 const code = ref('')
 const codeInput = ref<HTMLInputElement | null>(null)
 const busy = ref(false)
+// Google sign-in in progress (the popup closed, the app is finishing the login): the e-mail form
+// stays disabled but must not say it is sending anything, so this is separate from `busy`.
+const googleBusy = ref(false)
 const error = ref('')
 // After deleting the account the app lands here: say it worked.
 const notice = ref(route.query.deleted === '1' ? 'Account eliminato. Puoi sempre rientrare con la tua email.' : '')
@@ -85,7 +88,7 @@ function showCodeError(err: unknown) {
 }
 
 async function sendCode() {
-  if (busy.value || waiting.value) return
+  if (busy.value || googleBusy.value || waiting.value) return
   busy.value = true
   error.value = ''
   notice.value = ''
@@ -129,8 +132,8 @@ async function submitCode() {
 // Google sign-in (POST /auth/google). The backend decides whether the address is acceptable:
 // 403 carries its own message ("usa il codice via email"), 401 means the token did not verify.
 async function signInWithGoogle(idToken: string) {
-  if (busy.value) return
-  busy.value = true
+  if (busy.value || googleBusy.value) return
+  googleBusy.value = true
   error.value = ''
   notice.value = ''
   try {
@@ -145,7 +148,7 @@ async function signInWithGoogle(idToken: string) {
       error.value = 'Accesso con Google non disponibile: usa il codice via email'
     else showError(err, 'Accesso con Google non riuscito, riprova')
   } finally {
-    busy.value = false
+    googleBusy.value = false
   }
 }
 
@@ -209,7 +212,7 @@ watch(code, (value) => {
           <button
             class="btn btn-primary w-100"
             type="submit"
-            :disabled="busy || waiting || !email.trim()"
+            :disabled="busy || googleBusy || waiting || !email.trim()"
           >
             {{ busy ? 'Invio…' : 'Invia il codice' }}
           </button>
