@@ -74,6 +74,10 @@ export const confirmAccountDeletion = (challengeId: string, code: string) =>
 
 export const getMe = () => api<{ user: AuthUser }>('/auth/me', { timeoutMs: 4000 })
 
+/** Sets or changes the user's own display name (3-50 characters, rules in `utils/displayName.ts`). */
+export const updateDisplayName = (displayName: string) =>
+  api<{ user: AuthUser }>('/auth/me', { method: 'PATCH', body: { displayName } })
+
 export const logout = () => api<void>('/auth/logout', { method: 'POST' })
 
 /**

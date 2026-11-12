@@ -3,12 +3,14 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { getMyVenues } from '@/api/endpoints'
+import DisplayNameForm from '@/components/DisplayNameForm.vue'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 const { user, logout } = useAuth()
 
 const error = ref('')
+const editingName = ref(false)
 // Owners and staff cannot delete their account from here (BACKLOG B4b). The backend answers 403
 // anyway: this only avoids offering a button that cannot work.
 const isMember = ref<boolean | null>(null) // null = not known yet
@@ -40,6 +42,11 @@ async function signOut() {
         <h1 id="profile-title" class="h5 mb-0 text-break">{{ user?.displayName || 'Il tuo profilo' }}</h1>
         <p class="mb-0 text-body-secondary text-break">{{ user?.email }}</p>
       </div>
+      <button v-if="!editingName" class="btn btn-link ms-auto" type="button" @click="editingName = true">Modifica nome</button>
+    </section>
+    <section v-if="editingName" class="card card-body">
+      <DisplayNameForm :initial="user?.displayName" submit-label="Salva" @saved="editingName = false" />
+      <button class="btn btn-link mt-2" type="button" @click="editingName = false">Annulla</button>
     </section>
 
     <!-- The customer history is for customers: owners and staff see their venue's history from the menu. -->

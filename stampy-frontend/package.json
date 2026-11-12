@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "e2e": "node e2e/staff-input.mjs && node e2e/feedback.mjs && node e2e/account-delete.mjs"
+    "e2e": "node e2e/staff-input.mjs && node e2e/feedback.mjs && node e2e/account-delete.mjs && node e2e/display-name.mjs"
   },
   "dependencies": {
     "bootstrap": "5.3",

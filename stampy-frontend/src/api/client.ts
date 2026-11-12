@@ -38,7 +38,7 @@ async function parseBody(response: Response): Promise<Record<string, unknown>> {
 
 export async function api<T>(
   path: string,
-  options: { method?: 'GET' | 'POST'; body?: unknown; timeoutMs?: number } = {},
+  options: { method?: 'GET' | 'POST' | 'PATCH'; body?: unknown; timeoutMs?: number } = {},
 ): Promise<T> {
   let response: Response
   try {
