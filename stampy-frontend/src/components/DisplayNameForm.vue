@@ -61,6 +61,8 @@ async function submit() {
         ref="input"
         v-model="name"
         class="form-control"
+        :class="{ 'is-invalid': error }"
+        :readonly="busy"
         type="text"
         name="displayName"
         autocomplete="name"
@@ -68,6 +70,7 @@ async function submit() {
         spellcheck="false"
         :maxlength="200"
         :aria-invalid="error ? 'true' : undefined"
+        @input="error = ''"
         :aria-describedby="error ? 'display-name-hint display-name-error' : 'display-name-hint'"
       />
       <div id="display-name-hint" class="form-text">Da {{ NAME_MIN }} a {{ NAME_MAX }} caratteri.</div>
