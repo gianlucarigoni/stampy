@@ -151,7 +151,7 @@ middleware vivono in `utils/middlewares/`.
 ### Frontend (`stampy-frontend/src/`)
 
 ```text
-api/client.ts               api(): unico wrapper di fetch (GET/POST/PATCH), ApiError, hook per il 401, timeout (8 s; 4 s per `getMe`)
+api/client.ts               api(): unico wrapper di fetch (GET/POST/PATCH), ApiError (con `details` dei `400` del validator, mai mostrati così come sono), hook per il 401, timeout (8 s; 4 s per `getMe`)
 api/endpoints.ts            chiamate tipizzate al backend (contratti: §3)
 router/index.ts             route, guardia `beforeEach` (utente autenticato con `displayName === null` → `/name?next=…`), handler del 401 (-> /login?next=)
 composables/useAuth.ts      stato di sessione (a livello di modulo), checkSession (in cache), setUser, logout, accountDeleted (svuota la tab senza chiamare il backend)
@@ -166,8 +166,8 @@ components/AppLayout.vue    route di layout per le pagine autenticate: UN header
 components/RequestHistory.vue la schermata di storico (filtri, stato nell'URL, elenco), condivisa da staff e cliente: props `title`, `fetchHistory(filters)`; emette `forbidden` su un 403; il titolo della riga è `venueName ?? publicCode`; dettaglio delle approvate = timbri aggiunti (`stampsAdded`, premio escluso) più «N premio riscattato» se ce n'è uno (nessun calcolo dei timbri nel frontend)
 views/StaffHistoryView.vue  /staff/:venueId/history: `RequestHistory` + `getHistory(venueId)` + la card "Non sei autorizzato"
 views/DisplayNameView.vue /name (dentro il layout autenticato): «Come ti chiami?», non saltabile; salva con `PATCH /auth/me` e va a `?next=` (via `safeNext`); chi ha già un nome viene rimandato alla destinazione
-components/DisplayNameForm.vue form del nome, usato da `/name` e dal Profilo («Modifica nome» → form inline con Annulla)
-utils/displayName.ts        regole del nome speculari al backend (trim, 3-50, lettere/cifre/spazio/`'`/`-`/`.`); il backend resta il controllo vero
+components/DisplayNameForm.vue form del nome, usato da `/name` e dal Profilo («Modifica nome» → form inline con Annulla); il focus va sul campo a ogni errore e, nel Profilo, entra nel campo all'apertura e torna su «Modifica nome» alla chiusura (`focus()` esposto al genitore)
+utils/displayName.ts        regole del nome speculari a `auth.dto.ts` (NFC, trim, spazi interni, 3-50 code point, lettere/segni combinanti/cifre/spazio/`'`/`’`/`-`/`.`, almeno una lettera; un messaggio per causa); `problemFromDetails` sceglie il messaggio di un `400` dai `details` del validator; il backend resta il controllo vero
 views/ProfileView.vue       /profile: nome e email, riga "Storico richieste" (solo per chi non è membro di un locale: il backend non lo vieta ancora a staff e owner, `BACKLOG.md` F5), "Zona pericolosa" con "Elimina account" (per un membro di un locale il pulsante è sostituito da un avviso)
 views/CustomerHistoryView.vue /history: `RequestHistory` + `getMyHistory`, titolo "Le tue richieste"; un membro di un locale viene rimandato al Profilo (solo frontend)
 views/DeleteAccountView.vue /account/delete: eliminazione account in due passi (avviso → `requestAccountDeletion` → codice a 6 cifre → `confirmAccountDeletion`); la sfida sopravvive al reload (`sessionStorage`); nessun invio automatico alla sesta cifra (azione irreversibile); se `getMyVenues()` non è vuoto, o il backend risponde 403, mostra il messaggio di blocco senza pulsanti; a successo `accountDeleted()` e `/login?deleted=1`
