@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { getMyVenues } from '@/api/endpoints'
@@ -11,6 +11,20 @@ const { user, logout } = useAuth()
 
 const error = ref('')
 const editingName = ref(false)
+const nameForm = ref<InstanceType<typeof DisplayNameForm> | null>(null)
+const editButton = ref<HTMLButtonElement | null>(null)
+
+// Keyboard focus follows the form: into the field when it opens, back to the button when it closes.
+async function startEditingName() {
+  editingName.value = true
+  await nextTick()
+  nameForm.value?.focus()
+}
+async function stopEditingName() {
+  editingName.value = false
+  await nextTick()
+  editButton.value?.focus()
+}
 // Owners and staff cannot delete their account from here (BACKLOG B4b). The backend answers 403
 // anyway: this only avoids offering a button that cannot work.
 const isMember = ref<boolean | null>(null) // null = not known yet
@@ -42,11 +56,11 @@ async function signOut() {
         <h1 id="profile-title" class="h5 mb-0 text-break">{{ user?.displayName || 'Il tuo profilo' }}</h1>
         <p class="mb-0 text-body-secondary text-break">{{ user?.email }}</p>
       </div>
-      <button v-if="!editingName" class="btn btn-link ms-auto" type="button" @click="editingName = true">Modifica nome</button>
+      <button v-if="!editingName" ref="editButton" class="btn btn-link ms-auto" type="button" @click="startEditingName">Modifica nome</button>
     </section>
     <section v-if="editingName" class="card card-body">
-      <DisplayNameForm :initial="user?.displayName" submit-label="Salva" @saved="editingName = false" />
-      <button class="btn btn-link mt-2" type="button" @click="editingName = false">Annulla</button>
+      <DisplayNameForm ref="nameForm" :initial="user?.displayName" submit-label="Salva" @saved="stopEditingName" />
+      <button class="btn btn-link mt-2" type="button" @click="stopEditingName">Annulla</button>
     </section>
 
     <!-- The customer history is for customers: owners and staff see their venue's history from the menu. -->

@@ -11,6 +11,8 @@ export class ApiError extends Error {
     readonly retryAfterSeconds?: number,
     /** Only on `InvalidCode`: wrong-code attempts left before a new code is needed. */
     readonly attemptsRemaining?: number,
+    /** Only on a 400 from the validator: `[{ property, constraints }]`. Never shown as is. */
+    readonly details?: unknown,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -67,5 +69,6 @@ export async function api<T>(
     typeof body.message === 'string' ? body.message : 'Errore interno',
     Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
     typeof body.attemptsRemaining === 'number' ? body.attemptsRemaining : undefined,
+    body.details,
   )
 }

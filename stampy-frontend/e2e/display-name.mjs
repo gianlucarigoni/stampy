@@ -28,6 +28,17 @@ try {
   await page.getByRole('button', { name: 'Continua' }).click()
   await page.getByText(/Usa solo lettere/).waitFor()
   check('forbidden characters: message, nothing saved', nameOf(fresh.id) === 'NULL')
+  check('the error is linked to the field and holds the focus',
+    (await page.getByLabel('Il tuo nome').getAttribute('aria-invalid')) === 'true' &&
+      (await page.evaluate(() => document.activeElement?.id)) === 'display-name')
+  await page.getByLabel('Il tuo nome').fill('123')
+  await page.getByRole('button', { name: 'Continua' }).click()
+  await page.getByText('Scrivi almeno una lettera').waitFor()
+  check('digits only: its own message, nothing saved', nameOf(fresh.id) === 'NULL')
+  await page.getByLabel('Il tuo nome').fill('Mario Rossi')
+  await page.getByRole('button', { name: 'Continua' }).click()
+  await page.getByText(/Usa solo lettere/).waitFor()
+  check('non-breaking space inside: refused', nameOf(fresh.id) === 'NULL')
 
   section('Saving')
   await page.getByLabel('Il tuo nome').fill("  Zoë   D'Angelo  ")
@@ -50,6 +61,13 @@ try {
   await page.getByRole('button', { name: 'Salva' }).click()
   await page.getByRole('heading', { name: 'Anna Bianchi' }).waitFor()
   check('profile shows and saves the new name', nameOf(fresh.id) === 'Anna Bianchi', nameOf(fresh.id))
+  check('focus returns to "Modifica nome" after saving',
+    (await page.evaluate(() => document.activeElement?.textContent?.trim())) === 'Modifica nome')
+  await page.getByRole('button', { name: 'Modifica nome' }).click()
+  await page.getByLabel('Il tuo nome').fill('José राहुल शर्मा')
+  await page.getByRole('button', { name: 'Salva' }).click()
+  await page.getByRole('heading', { name: 'José राहुल शर्मा' }).waitFor()
+  check('combining marks and Devanagari accepted, saved in NFC', nameOf(fresh.id) === 'José राहुल शर्मा', nameOf(fresh.id))
 
   section('User with a name: never asked')
   const other = await pageFor(browser, named.token)
