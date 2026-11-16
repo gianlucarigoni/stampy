@@ -78,7 +78,9 @@ in italiano, nello stesso branch. `worktree-start.sh` lo crea già dal modello
 6. **Lacune emerse** e task suggerite.
 
 Il report va committato e finisce in `main` col merge. `/docs-sync` lo integra nei documenti e lo elimina.
-Il totale dei test (`BASELINE` in `verify.sh`, `CODEBASE.md` §7) lo riallinea `/docs-sync`, non l'agente.
+Il totale dei test (`BASELINE` in `.claude/skills/verify/scripts/verify.sh`, `CODEBASE.md` §7) lo riallinea
+`/docs-sync`, non l'agente: tu riporti nel report "prima → dopo" (la base attuale la leggi in quello script,
+o nell'output di `/verify`). Non esiste `.claude/scripts/verify.sh`.
 
 ## Metodo di sviluppo: TDD (backend)
 
@@ -131,6 +133,13 @@ Regole:
 - I test e `npm run dev` usano il tuo database `stampy_wt_<id>`. Mai il database principale, mai quello di altri agenti.
 - Se qualcosa non parte o le porte sono occupate, non cambiare a mano: rilancia lo script o fermati.
 - Gli script e2e del frontend (`npm run e2e`) puntano a `E2E_APP_URL`: impostalo alla porta del tuo frontend.
+  Su un worktree appena creato il DB è **vuoto** e le fixture cercano un locale con branding
+  ("No venue with branding in the DB"): gli e2e non partono finché non ne crei uno (`scripts/create-venue.ts`).
+  Se non puoi eseguirli, dillo nel report invece di darli per verdi. Il tema scuro e la resa a schermo
+  non si verificano da terminale: annotali nel report come "non verificato a vista".
+- Per fermare i tuoi `npm run dev` **non usare `pkill -f` con un pattern largo** (es. `stampy-wt/<id>`):
+  può terminare anche la shell del tool (exit 144). Ferma il processo per PID o per porta
+  (`lsof -ti:<porta> | xargs kill`), solo sulle tue porte.
 
 Pulizia: `.claude/scripts/worktree-clean.sh` elenca (e con `--yes` elimina) worktree e database orfani:
 lo lancia solo il proprietario.
@@ -186,14 +195,27 @@ cancellerebbero i vincoli scritti a mano (es. `promotions_no_overlap`, un EXCLUD
 
 ## Comandi
 
+Dove si lanciano (tutti i percorsi partono dalla radice **del tuo worktree**; il `package.json` della radice
+ha solo `dev`, `dev:api`, `dev:web`: gli altri script stanno nei sottoprogetti):
+
 ```bash
-npm run dev             # dalla radice del worktree: backend + frontend (porte dal .env del worktree)
-                        # (in stampy-backend/: solo nodemon; .env è letto solo all'avvio)
+# dalla radice del worktree
+npm run dev             # backend + frontend (porte dal .env del worktree)
+
+# da stampy-backend/
+npm run dev             # solo nodemon; .env è letto solo all'avvio
 npm run typecheck:all   # tsc su src + scripts + test — deve essere pulito prima di finire
 npm test                # Vitest: test/unit (niente DB) + test/api (DB del worktree, app in-process)
 npm run test:unit       # solo i test puri
 npm run test:watch      # Vitest in modalità watch
 npx vitest run -t "nome"  # un solo test per nome
+
+# da stampy-frontend/
+npm run type-check      # vue-tsc
+E2E_APP_URL=http://localhost:<porta frontend> npm run e2e   # vedi "Worktree"
+
+# dalla radice del worktree
+.claude/skills/verify/scripts/verify.sh   # typecheck + suite + confronto con BASELINE (è ciò che fa /verify)
 ```
 
 I test stanno in `stampy-backend/test/`: `unit/` (mai DB), `api/` (usano il DB e ripuliscono),
