@@ -69,6 +69,7 @@ Nessuna di queste voci blocca lo sviluppo; quasi tutte bloccano il deploy.
 | C13 | `TODO` | `addOrGetCard` fa `INSERT` prima di `SELECT` (scelta accettata: evita la race). Se il codice cresce, valutare un `CardsService` più esplicito. | `cards.service.ts` |
 | C14 | `TODO` | `.vscode/settings.json` è tracciato: decidere se tenerlo. | `.vscode/` |
 | C15 | `TODO` | Il tag `fase-4d-chiusa` non è mai stato creato (il repo ha solo `refactor-struttura-chiuso`). I tag non sono essenziali, ma la chiusura delle fasi è tracciata solo dai commit. | Git |
+| C19 | `TODO` | `.env` ha `OTP_PROVIDER=both`: un `npm run dev` o un e2e lanciato da un worktree manda **email vere** (Gmail) agli indirizzi `@test.it`. I test Vitest sono al sicuro (C17 forza `console`), gli e2e no. Proposta: `worktree-start.sh` scrive `OTP_PROVIDER=console` nel `.env` del worktree, oppure gli e2e rifiutano un provider diverso da `console`. | `.claude/scripts/worktree-start.sh`, `stampy-frontend/e2e/` |
 
 ---
 
@@ -76,7 +77,6 @@ Nessuna di queste voci blocca lo sviluppo; quasi tutte bloccano il deploy.
 
 | ID | Stato | Cosa |
 |---|---|---|
-| T2 | `TODO` | Un fallimento isolato e non riprodotto in `otp-request` ("5 richieste simultanee" dopo un riavvio di nodemon). Se si ripresenta, salvare l'output prima di indagare. |
 | T3 | `TODO` | Test da aggiungere quando la funzionalità esiste: aggiornamento end-to-end del pass (B1), login Google con un **token vero** di Google (oggi la verifica è simulata nei test: V4, B26). |
 | T4 | `TODO` | **Collezione Bruno** per test manuali strutturati: solo proposta, non è stato creato nulla. Il piano prevedeva cartelle `00–09` e fixture generate da script (Bruno non ha accesso al DB né ai codici OTP). |
 | T5 | `TODO` | Test reale su browser/iPhone/HTTPS: cookie `Secure`, `SameSite=Lax` quando si apre da un tag, sliding della sessione. Oggi tutto è testato solo su HTTP locale. |
@@ -226,6 +226,7 @@ Non si riapre: se serve il dettaglio, è in `archive/` e nei commit.
 
 | Data | Cosa |
 |---|---|
+| 2026-11-18 | **T2 chiusa: race in `createChallenge` (issue #36)**: causa individuata, non osservata dal vivo (ipotesi coerente col codice): una richiesta che leggeva le statistiche prima del commit di un'altra ne invalidava la sfida e ne creava una nuova (due 202, il primo codice non valeva più). Fix: `pg_advisory_xact_lock` sul destinatario a inizio transazione (le perdenti rispondono 429 e lasciano `otp_send_blocked`) e `invalidateLiveChallenge` non tocca una sfida più giovane del cooldown e ancora utilizzabile. 9 test in `otp-request-race.test.ts` (race simulata con `vi.spyOn`; suite 367 → 376) e `e2e/email-request.mjs` (18 check, richiede `OTP_PROVIDER=console`; fuori da `npm run e2e`). Se T2 si ripresenta, salvare l'output prima di indagare. Il tema scuro non è verificato a vista. |
 | 2026-11-16 | **Verifica visiva e di flusso del nome visualizzato (f2c)**, in Chromium a 360×640 chiaro e scuro (768 e 1280 in parte): nessun bloccante; flusso login → `/name` → `next`, stati del form, rete (il nome mai nell'URL) e tastiera ok. Corretti in `DisplayNameForm.vue`: classe `is-invalid` sul campo in errore, errore azzerato mentre si riscrive, campo `readonly` durante il salvataggio. Aperto: B28. Suite invariata (367). |
 | 2026-11-16 | **Revisione del frontend del nome visualizzato (f2b, follow-up di #56)**: `utils/displayName.ts` allineato a `auth.dto.ts` (NFC, `\p{M}`, almeno una lettera, lunghezza in code point; un messaggio per causa); `ApiError.details` e messaggio del `400` scelto dai vincoli; focus sul campo a ogni errore, `aria-describedby` con suggerimento, `maxlength` 200, focus gestito nel Profilo; 5 casi in più in `e2e/display-name.mjs` (15 ✔). Guardia del router, `safeNext` e doppio invio rivisti senza difetti. Suite backend invariata (367). |
 | 2026-11-16 | **Fix al nome visualizzato (b5b, follow-up di #58)**: `PATCH /api/auth/me` accetta i segni combinanti (nomi in forma scomposta, devanagari, thai), normalizza in NFC prima del salvataggio e rifiuta i nomi senza lettere (`...`, `---`, `123`); 10 test nuovi, suite 357 → 367. Aperto: la lunghezza si conta in unità UTF-16, da decidere solo se emerge un caso reale. |
