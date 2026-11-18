@@ -40,6 +40,10 @@ export class OtpService {
   async createChallenge(channel: OtpChannel, destination: string): Promise<CreateChallengeResult> {
     try {
       return await db.transaction(async (tx) => {
+        // Serializza le richieste dello stesso destinatario: senza, la seconda leggerebbe le statistiche
+        // prima del commit della prima e andrebbe avanti come se non ci fosse nulla. Il lock cade al commit.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`otp:${channel}:${destination}`}, 0))`);
+
         const inWindow = sql`${otpChallenges.createdAt} > now() - interval '1 hour'`;
         const [stats] = await tx
           .select({
@@ -123,6 +127,8 @@ export class OtpService {
   }
 
   // Chiude la sfida viva di un destinatario (nuovo invio). Solo righe non consumate e non invalidate.
+  // Una sfida più giovane del cooldown e ancora utilizzabile non si tocca mai: se compare qui è di
+  // una richiesta concorrente, e l'INSERT successivo fallisce sull'indice UNIQUE (→ 429).
   private async invalidateLiveChallenge(channel: OtpChannel, destination: string, tx: DbOrTx): Promise<void> {
     await tx
       .update(otpChallenges)
@@ -133,6 +139,9 @@ export class OtpService {
           eq(otpChallenges.destination, destination),
           isNull(otpChallenges.consumedAt),
           isNull(otpChallenges.invalidatedAt),
+          sql`(${otpChallenges.createdAt} <= now() - make_interval(secs => ${COOLDOWN_SECONDS})
+               or ${otpChallenges.expiresAt} <= now()
+               or ${otpChallenges.attempts} >= ${MAX_OTP_ATTEMPTS})`,
         ),
       );
   }
