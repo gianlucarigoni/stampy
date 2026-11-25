@@ -73,7 +73,7 @@ async function signOut() {
       </RouterLink>
     </section>
 
-    <!-- STATIC MODEL of a venue card with the official Google button inside (BACKLOG B25: real cards and
+    <!-- STATIC MODEL of a venue card with the official Google button inside (BACKLOG B30: real cards and
          the button wiring come later). Branding of the venue: backgroundColor (--brand) + logo.
          The coloured top is the venue; the bottom is the app surface, where Google's black button reads in both themes. -->
     <section class="card bg-body-tertiary rounded-4 overflow-hidden shadow-sm" style="--brand: #1e3a5f" aria-labelledby="wallet-card-title">
