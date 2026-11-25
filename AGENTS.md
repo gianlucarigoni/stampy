@@ -18,6 +18,9 @@ Le regole di questo file valgono per ogni agente, **ogni volta che parte**.
   *sfida*, *scadenza lazy*, *tetto assoluto*); non introdurre sinonimi.
 - `README.md` e le skill in `.claude/skills/` restano per ora in inglese (non rientrano nella traduzione del 2026-11-05).
 - Gli stati del backlog sono `DECIDED`, `TODO`, `TO-DECIDE`, `TO-VERIFY`, `BLOCKED`.
+- Gli ID del backlog (`B…`, `T…`, `V…`, `P…`, `C…`, `F…`) sono univoci: se proponi una issue nuova, cerca in
+  `docs/BACKLOG.md` e con `gh issue list --state all` il primo numero libero **prima** di dare il titolo,
+  e non riusare l'ID di una voce esistente (è già successo con B24/B25).
 - Le stringhe API per l'utente e gli identificatori nel codice già in italiano (es. `"Riprova più
   tardi"`, `"Codice scaduto"`) sono letterali del codice: lasciali come sono
   salvo richiesta del proprietario, e citali alla lettera nei documenti.
@@ -61,7 +64,7 @@ Prima di ogni compito, guarda `CODEBASE.md` §8 ("Da dove iniziare") per i file 
 - Il merge ha conflitti o `git pull` non è un fast-forward.
 - La task richiede una migrazione, una decisione `TO-DECIDE`, o contraddice `CONTEXT.md`.
 - Il diff contiene segreti o `.env`.
-- Gli script di worktree falliscono o lasciano risorse a metà.
+- Gli script di worktree falliscono o lasciano risorse a metà (anche solo la pulizia dopo un merge riuscito).
 
 ## Documentazione: report al posto dei docs
 
@@ -117,6 +120,8 @@ Ogni task che modifica file gira in un **worktree separato**, con branch, databa
 La cartella principale del repo resta su `main`: serve solo ai merge (che fa lo script) e al
 proprietario (per `/docs-sync` e per le task sul flusso stesso).
 Prerequisito: Docker acceso e container `stampy-db` avviato (gli script lo controllano).
+**Controllalo tu prima di lanciare `worktree-start.sh`** (`docker ps --filter name=stampy-db`): se non risponde,
+dillo all'utente e aspetta, invece di scoprirlo dall'errore dello script.
 
 Avvio: `.claude/scripts/worktree-start.sh <id> <slug> [feat|fix|docs|chore] [numero-issue]`
 (es. `worktree-start.sh b3 cors-origin feat 12`). Lo script:
@@ -137,6 +142,11 @@ Regole:
   ("No venue with branding in the DB"): gli e2e non partono finché non ne crei uno (`scripts/create-venue.ts`).
   Se non puoi eseguirli, dillo nel report invece di darli per verdi. Il tema scuro e la resa a schermo
   non si verificano da terminale: annotali nel report come "non verificato a vista".
+- **Prima di `worktree-finish.sh` nessun processo deve restare acceso nel worktree** (`npm run dev`, vite,
+  nodemon): se uno tiene aperta la cartella, la pulizia finale fallisce con «Directory not empty» *dopo* il merge
+  e il push, lasciando cartella, slot e database e la issue non in `Done`. Controlla le tue porte
+  (`lsof -ti:<porta backend>,<porta frontend>`): se il server l'hai avviato tu, fermalo per PID o per porta;
+  se l'ha avviato il proprietario, chiedigli di fermarlo prima di chiudere, non farlo senza dirlo.
 - Per fermare i tuoi `npm run dev` **non usare `pkill -f` con un pattern largo** (es. `stampy-wt/<id>`):
   può terminare anche la shell del tool (exit 144). Ferma il processo per PID o per porta
   (`lsof -ti:<porta> | xargs kill`), solo sulle tue porte.
@@ -165,6 +175,13 @@ branch, commit, push e merge in `main` non richiedono di chiedere ogni volta, ma
    - se ci sono **conflitti** (in uno dei due merge): `merge --abort`, esce con codice 3, `main` non cambia;
      worktree, database e issue restano come sono. Lo dici al proprietario e ti fermi.
    Codici di uscita: 0 ok · 3 conflitti · 4 verifica rossa · 5 diff sospetto.
+   **Se lo script si ferma dopo il merge** (pulizia fallita: `main` è già pubblicato, ma restano cartella, slot,
+   database e issue non in `Done`), **fermati e riporta lo stato esatto**: non cancellare la cartella a mano,
+   non rilanciare lo script a ripetizione, non impostare `Done` a mano. Il resto lo fa il proprietario
+   (`worktree-clean.sh`, che da solo non regge un worktree non più registrato in git, poi `project-status.sh <n> Done`).
+   Il codice 5 scatta per **ogni riga aggiunta** che contiene la parola `saveUrl`, anche nel report o in un
+   commento: nei testi scrivi «link di salvataggio». Se la parola serve davvero nel codice (nome di un campo),
+   lo script si ferma: dillo al proprietario, che decide come procedere.
 4. **Chiusura.** Dopo un merge riuscito lo script elimina worktree e database; **il branch resta**.
    **`Done` lo imposta `worktree-finish.sh` e nessun altro**, a merge riuscito, per la issue data a
    `worktree-start.sh`. Non lanciare `project-status.sh … Done` a mano e non usare `gh issue close`.
