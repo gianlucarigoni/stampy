@@ -1,0 +1,146 @@
+[
+ {
+  "id": "N01-light",
+  "name": "Tablet · N01 · Come ti chiami? · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 10
+ },
+ {
+  "id": "N01-dark",
+  "name": "Tablet · N01 · Come ti chiami? · vuoto · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 10
+ },
+ {
+  "id": "N02-light",
+  "name": "Tablet · N02 · Come ti chiami? · errore: nome troppo corto · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 10
+ },
+ {
+  "id": "N02-dark",
+  "name": "Tablet · N02 · Come ti chiami? · errore: nome troppo corto · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 10
+ },
+ {
+  "id": "N03-light",
+  "name": "Tablet · N03 · Come ti chiami? · tavola: salvataggio, rete, 429 · chiaro",
+  "fail": [],
+  "contrasts": 18,
+  "minContrast": 5.56,
+  "targets": 8,
+  "texts": 18
+ },
+ {
+  "id": "N03-dark",
+  "name": "Tablet · N03 · Come ti chiami? · tavola: salvataggio, rete, 429 · scuro",
+  "fail": [],
+  "contrasts": 18,
+  "minContrast": 5.71,
+  "targets": 8,
+  "texts": 18
+ },
+ {
+  "id": "S01-light",
+  "name": "Tablet · S01 · Scansiona (/scan) · default con gesto e passi · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 14
+ },
+ {
+  "id": "S01-dark",
+  "name": "Tablet · S01 · Scansiona (/scan) · default con gesto e passi · scuro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 14
+ },
+ {
+  "id": "R04-light",
+  "name": "Tablet · R04 · Richiesta timbro · approvata con timbri · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 7.52,
+  "targets": 3,
+  "texts": 14
+ },
+ {
+  "id": "R04-dark",
+  "name": "Tablet · R04 · Richiesta timbro · approvata con timbri · scuro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 7.66,
+  "targets": 3,
+  "texts": 14
+ },
+ {
+  "id": "R05-light",
+  "name": "Tablet · R05 · Richiesta timbro · approvata, dialog del premio (modale) · chiaro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7
+ },
+ {
+  "id": "R05-dark",
+  "name": "Tablet · R05 · Richiesta timbro · approvata, dialog del premio (modale) · scuro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7
+ },
+ {
+  "id": "P01-light",
+  "name": "Tablet · P01 · Profilo · default · chiaro",
+  "fail": [],
+  "contrasts": 24,
+  "minContrast": 5.61,
+  "targets": 7,
+  "texts": 24
+ },
+ {
+  "id": "P01-dark",
+  "name": "Tablet · P01 · Profilo · default · scuro",
+  "fail": [],
+  "contrasts": 24,
+  "minContrast": 6.36,
+  "targets": 7,
+  "texts": 24
+ },
+ {
+  "id": "H01-light",
+  "name": "Tablet · H01 · Storico richieste · default (righe per giorno) · chiaro",
+  "fail": [],
+  "contrasts": 31,
+  "minContrast": 5.85,
+  "targets": 4,
+  "texts": 31
+ },
+ {
+  "id": "H01-dark",
+  "name": "Tablet · H01 · Storico richieste · default (righe per giorno) · scuro",
+  "fail": [],
+  "contrasts": 31,
+  "minContrast": 6.14,
+  "targets": 4,
+  "texts": 31
+ }
+]

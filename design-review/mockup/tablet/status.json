@@ -1,0 +1,202 @@
+{
+ "A01-light": {
+  "stato": "importato",
+  "node": "232:2"
+ },
+ "A01-dark": {
+  "stato": "importato",
+  "node": "233:2"
+ },
+ "A07-light": {
+  "stato": "importato",
+  "node": "234:2"
+ },
+ "A07-dark": {
+  "stato": "importato",
+  "node": "235:2"
+ },
+ "A04-light": {
+  "stato": "importato",
+  "node": "236:2"
+ },
+ "A04-dark": {
+  "stato": "importato",
+  "node": "237:2"
+ },
+ "S01-light": {
+  "stato": "importato",
+  "node": "238:2"
+ },
+ "S01-dark": {
+  "stato": "importato",
+  "node": "239:2"
+ },
+ "R04-light": {
+  "stato": "importato",
+  "node": "240:2"
+ },
+ "R04-dark": {
+  "stato": "importato",
+  "node": "241:2"
+ },
+ "R05-light": {
+  "stato": "importato",
+  "node": "242:2"
+ },
+ "R05-dark": {
+  "stato": "importato",
+  "node": "243:2"
+ },
+ "P01-light": {
+  "stato": "importato",
+  "node": "244:2"
+ },
+ "P01-dark": {
+  "stato": "importato",
+  "node": "245:2"
+ },
+ "H01-light": {
+  "stato": "importato",
+  "node": "246:2"
+ },
+ "H01-dark": {
+  "stato": "importato",
+  "node": "247:2"
+ },
+ "L01-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "L01-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "L02-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "L02-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q01-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q01-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q02-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q02-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q03-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q03-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q04-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q04-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q05-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q05-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q06-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q06-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q07-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q07-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q08-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q08-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q09-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q09-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q10-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q10-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q11-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q11-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "SH01-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "SH01-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "SH02-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "SH02-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "SH03-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "SH03-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q01h-light": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ },
+ "Q01h-dark": {
+  "stato": "validato, non importato",
+  "nota": "limite Figma (Starter)"
+ }
+}

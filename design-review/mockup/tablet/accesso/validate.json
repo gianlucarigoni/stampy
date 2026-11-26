@@ -1,0 +1,56 @@
+[
+ {
+  "id": "A01-light",
+  "name": "Tablet · A01 · Login email · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A01-dark",
+  "name": "Tablet · A01 · Login email · vuoto · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A07-light",
+  "name": "Tablet · A07 · Codice · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A07-dark",
+  "name": "Tablet · A07 · Codice · vuoto · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A04-light",
+  "name": "Tablet · A04 · Login email · tavola: errori di sistema (429, rete) · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A04-dark",
+  "name": "Tablet · A04 · Login email · tavola: errori di sistema (429, rete) · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ }
+]

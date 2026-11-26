@@ -1,0 +1,88 @@
+/* resp.css · estensioni responsive (chat 14) sopra components.css. Nessun token nuovo: solo layout e stati hover (21 §2.1 «nuovo»). */
+.frame[data-theme=light]{--action-hover:#f7782f;--danger-hover:#9d2019}
+.frame[data-theme=dark]{--action-hover:#f87a35;--danger-hover:#ff9f96}
+.frame.T{--m:32px}.frame.D{--m:40px}
+.frame.T,.frame.D{font-size:17px}
+.wrap{width:100%;max-width:calc(1100px + 2*var(--m));margin:0 auto;padding:0 var(--m)}
+.wrap.col{max-width:calc(32rem + 2*var(--m))}
+.wrap.col720{max-width:calc(720px + 2*var(--m))}
+.wrap.col560{max-width:calc(560px + 2*var(--m))}
+/* header largo */
+.hw{height:64px;display:flex;align-items:center;border-bottom:1.5px solid var(--border);background:var(--surface);flex:none}
+.hw .wrap{display:flex;align-items:center;gap:12px;height:100%}
+.nav{display:flex;gap:4px;margin-left:12px}
+.nav a{display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:12px;font:700 16px/1 "Figtree",sans-serif;color:var(--text);position:relative;text-decoration:none}
+.nav a.cur{background:var(--surface2)}
+.nav a.cur::after{content:"";position:absolute;left:12px;right:12px;bottom:-10px;height:4px;border-radius:2px 2px 0 0;background:var(--action)}
+.nav a.hov{background:var(--surface2)}
+.nav a.focus{outline:3px solid var(--ring);outline-offset:2px}
+.badge{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:99px;background:var(--text);color:var(--bg);font:700 13px/1 "Figtree",sans-serif}
+.hw .sepv{width:1.5px;height:28px;background:var(--border);margin:0 4px}
+.hw .lnk{display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:12px;font:600 16px/1 "Figtree",sans-serif;color:var(--text2)}
+.hw .iconbtn{flex:none}
+.pagew{display:flex;flex-direction:column;flex:1;min-height:0}
+.frame.T,.frame.D{display:flex;flex-direction:column}
+.mainw{padding-top:32px;display:flex;flex-direction:column;gap:24px}
+.t-title.w{font-size:32px}
+.hbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:14px;color:var(--text2)}
+/* hover (solo puntatore: qui forzato con classe) */
+.btn.primary.hov{background:var(--action-hover)}.btn.secondary.hov{background:var(--surface2)}.btn.dout.hov{background:var(--danger-tint)}.btn.link.hov{text-decoration-thickness:2.5px}
+.sq.hov{background:var(--surface2)}.pill.hov span{background:var(--surface2)}.rowlink.hov{background:var(--surface2)}.xbtn.hov{background:var(--surface2);border-radius:50%}
+.focus-ring.r12{border-radius:12px}
+/* coda */
+.qgrid{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:24px;align-items:stretch}
+.qgrid .req{height:100%}
+.mdl{display:grid;gap:24px;align-items:start}
+.lst{display:flex;flex-direction:column;gap:8px}
+.li{display:flex;flex-direction:column;justify-content:center;gap:6px;min-height:76px;padding:10px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;position:relative}
+.li.sel{border:2px solid var(--text)}
+.li .lc{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.li .c16{font:700 17px/1 "Unbounded",sans-serif;letter-spacing:.04em}
+.li .lm{font-size:13px;color:var(--text2)}
+.li .chip{height:28px;padding:3px 8px}
+.det{display:grid;gap:28px;padding:24px;border:2px solid var(--text)}
+.det .c40{font:700 36px/1 "Unbounded",sans-serif;letter-spacing:.04em}
+.det .stp .sq{width:56px;height:56px;border-radius:14px}.det .stp .inp.sm{height:56px;width:84px;font-size:28px;border-radius:14px}
+.det .stp .pill{width:48px;height:56px}.det .stp .pill span{min-width:44px;height:44px;font-size:16px}
+.det .acts{display:flex;flex-direction:column;gap:16px;justify-content:flex-end}
+.det .lbl2{font:700 14px/1.2 "Figtree",sans-serif;color:var(--text2)}
+/* storico */
+.fbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.fbar .field{gap:4px}.fbar .lbl{font-size:14px}.fbar .inp{height:48px}
+.wr .hrow .tm{width:64px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font:700 14px/1.2 "Figtree",sans-serif;color:var(--text2);text-align:left;padding:12px 16px;border-bottom:1.5px solid var(--field);white-space:nowrap}
+.tbl td{padding:0 16px;height:52px;border-bottom:1.5px solid var(--border);font-size:16px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .code{font-size:16px;white-space:nowrap}
+.tbl tr.pr td{background:var(--prize-tint)}.tbl tr.pr td:first-child{box-shadow:inset 4px 0 0 var(--prize)}
+.tbl .num{text-align:right}
+.tbl td .chip{height:30px}
+/* cliente */
+.stampsrow .dots{gap:12px}
+.cardw{padding:24px}
+.two{display:grid;grid-template-columns:512px 360px;gap:32px;justify-content:center;align-items:start}
+/* dialog largo */
+.mdlg{position:absolute;left:50%;transform:translateX(-50%);width:440px}
+.sheet{position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:560px}
+.sheet .prizebox{border-radius:28px 28px 0 0;box-shadow:none;padding-bottom:28px}
+.conf2{position:absolute;left:0;top:0;width:100%;height:150px}.conf2 i{position:absolute;width:12px;height:12px;border-radius:50%}
+/* login split */
+.split{display:grid;grid-template-columns:1fr 440px;gap:56px;align-items:center;max-width:1000px;margin:0 auto;width:100%}
+.heroL{background:var(--stamp);border:2.5px solid var(--stamp-ink);border-radius:28px;min-height:520px;padding:36px;display:flex;flex-direction:column;justify-content:space-between;color:#1a1410;position:relative;overflow:hidden}
+.frame[data-theme=dark] .heroL{border-color:transparent}
+.heroL h2{font:800 44px/1.02 "Unbounded",sans-serif;letter-spacing:-.04em}
+.heroL p{font-size:18px;line-height:1.4;margin-top:14px;max-width:26ch}
+.heroL .dots{margin-top:0;max-width:340px;gap:10px}
+.heroL .stamp circle[style*="--stamp"]{fill:#1a1410}
+.cardc{padding:32px}
+/* tavola puntatore */
+.pb{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 24px;padding:32px 40px}
+.pb .cell{display:flex;flex-direction:column;gap:8px}
+.pb .cell .cap{margin:0}
+.curs{font:600 14px/1.3 "Figtree",sans-serif;color:var(--text2)}
+.curs b{color:var(--text)}
+
+.sq,.inp.sm{flex:none}
+.qgrid .stp{gap:6px}
+.qgrid .req>.btn.primary{margin-top:auto}

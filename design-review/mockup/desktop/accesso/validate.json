@@ -1,0 +1,146 @@
+[
+ {
+  "id": "A01-light",
+  "name": "Desktop · A01 · Login email · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A01-dark",
+  "name": "Desktop · A01 · Login email · vuoto · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A07-light",
+  "name": "Desktop · A07 · Codice · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A07-dark",
+  "name": "Desktop · A07 · Codice · vuoto · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A04-light",
+  "name": "Desktop · A04 · Login email · tavola: errori di sistema (429, rete) · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A04-dark",
+  "name": "Desktop · A04 · Login email · tavola: errori di sistema (429, rete) · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A03-light",
+  "name": "Desktop · A03 · Login email · errore: email non valida · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A03-dark",
+  "name": "Desktop · A03 · Login email · errore: email non valida · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A08-light",
+  "name": "Desktop · A08 · Codice · errore: codice non valido · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A08-dark",
+  "name": "Desktop · A08 · Codice · errore: codice non valido · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A09-light",
+  "name": "Desktop · A09 · Codice · tavola: codice scaduto / tentativi finiti · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.56,
+  "targets": 6,
+  "texts": 13
+ },
+ {
+  "id": "A09-dark",
+  "name": "Desktop · A09 · Codice · tavola: codice scaduto / tentativi finiti · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.71,
+  "targets": 6,
+  "texts": 13
+ },
+ {
+  "id": "A11-light",
+  "name": "Desktop · A11 · Errore di sessione · default · chiaro",
+  "fail": [],
+  "contrasts": 5,
+  "minContrast": 5.56,
+  "targets": 2,
+  "texts": 5
+ },
+ {
+  "id": "A11-dark",
+  "name": "Desktop · A11 · Errore di sessione · default · scuro",
+  "fail": [],
+  "contrasts": 5,
+  "minContrast": 5.71,
+  "targets": 2,
+  "texts": 5
+ },
+ {
+  "id": "A12-light",
+  "name": "Desktop · A12 · Pagina non trovata (404) · default · chiaro",
+  "fail": [],
+  "contrasts": 4,
+  "minContrast": 5.56,
+  "targets": 1,
+  "texts": 4
+ },
+ {
+  "id": "A12-dark",
+  "name": "Desktop · A12 · Pagina non trovata (404) · default · scuro",
+  "fail": [],
+  "contrasts": 4,
+  "minContrast": 5.71,
+  "targets": 1,
+  "texts": 4
+ }
+]

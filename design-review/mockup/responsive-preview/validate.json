@@ -1,0 +1,222 @@
+[
+ {
+  "id": "login-light",
+  "name": "login · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11,
+  "file": "tablet-login-light"
+ },
+ {
+  "id": "login-light",
+  "name": "login · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11,
+  "file": "desktop-login-a-light"
+ },
+ {
+  "id": "login-b-light",
+  "name": "login-b · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 13,
+  "file": "desktop-login-b-light"
+ },
+ {
+  "id": "card-light",
+  "name": "card · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 7.52,
+  "targets": 3,
+  "texts": 14,
+  "file": "tablet-card-light"
+ },
+ {
+  "id": "card-a-light",
+  "name": "card-a · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 7.52,
+  "targets": 3,
+  "texts": 14,
+  "file": "desktop-card-a-light"
+ },
+ {
+  "id": "card-b-light",
+  "name": "card-b · chiaro",
+  "fail": [],
+  "contrasts": 16,
+  "minContrast": 7.52,
+  "targets": 3,
+  "texts": 16,
+  "file": "desktop-card-b-light"
+ },
+ {
+  "id": "dialog-a-light",
+  "name": "dialog-a · chiaro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7,
+  "file": "tablet-dialog-a-light"
+ },
+ {
+  "id": "dialog-b-light",
+  "name": "dialog-b · chiaro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7,
+  "file": "tablet-dialog-b-light"
+ },
+ {
+  "id": "dialog-light",
+  "name": "dialog · chiaro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7,
+  "file": "desktop-dialog-light"
+ },
+ {
+  "id": "coda-a-light",
+  "name": "coda-a · chiaro",
+  "fail": [],
+  "contrasts": 30,
+  "minContrast": 5.56,
+  "targets": 17,
+  "texts": 30,
+  "file": "tablet-coda-a-light"
+ },
+ {
+  "id": "coda-a-dark",
+  "name": "coda-a · scuro",
+  "fail": [],
+  "contrasts": 30,
+  "minContrast": 5.71,
+  "targets": 17,
+  "texts": 30,
+  "file": "tablet-coda-a-dark"
+ },
+ {
+  "id": "coda-b-light",
+  "name": "coda-b · chiaro",
+  "fail": [],
+  "contrasts": 57,
+  "minContrast": 5.56,
+  "targets": 37,
+  "texts": 57,
+  "file": "tablet-coda-b-light"
+ },
+ {
+  "id": "coda-a-light",
+  "name": "coda-a · chiaro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 5.56,
+  "targets": 17,
+  "texts": 32,
+  "file": "desktop-coda-a-light"
+ },
+ {
+  "id": "coda-a-dark",
+  "name": "coda-a · scuro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 5.71,
+  "targets": 17,
+  "texts": 32,
+  "file": "desktop-coda-a-dark"
+ },
+ {
+  "id": "coda-b-light",
+  "name": "coda-b · chiaro",
+  "fail": [],
+  "contrasts": 59,
+  "minContrast": 5.56,
+  "targets": 37,
+  "texts": 59,
+  "file": "desktop-coda-b-light"
+ },
+ {
+  "id": "coda-a-light",
+  "name": "coda-a · chiaro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 5.56,
+  "targets": 17,
+  "texts": 32,
+  "file": "orizz-coda-a-light"
+ },
+ {
+  "id": "coda-b-light",
+  "name": "coda-b · chiaro",
+  "fail": [],
+  "contrasts": 59,
+  "minContrast": 5.56,
+  "targets": 37,
+  "texts": 59,
+  "file": "orizz-coda-b-light"
+ },
+ {
+  "id": "storico-a-light",
+  "name": "storico-a · chiaro",
+  "fail": [],
+  "contrasts": 37,
+  "minContrast": 5.85,
+  "targets": 6,
+  "texts": 37,
+  "file": "tablet-storico-a-light"
+ },
+ {
+  "id": "storico-b-light",
+  "name": "storico-b · chiaro",
+  "fail": [],
+  "contrasts": 38,
+  "minContrast": 5.85,
+  "targets": 6,
+  "texts": 38,
+  "file": "tablet-storico-b-light"
+ },
+ {
+  "id": "storico-a-light",
+  "name": "storico-a · chiaro",
+  "fail": [],
+  "contrasts": 47,
+  "minContrast": 5.85,
+  "targets": 10,
+  "texts": 47,
+  "file": "desktop-storico-a-light"
+ },
+ {
+  "id": "storico-b-light",
+  "name": "storico-b · chiaro",
+  "fail": [],
+  "contrasts": 55,
+  "minContrast": 5.85,
+  "targets": 10,
+  "texts": 55,
+  "file": "desktop-storico-b-light"
+ },
+ {
+  "id": "puntatore-light",
+  "name": "puntatore · chiaro",
+  "fail": [],
+  "contrasts": 66,
+  "minContrast": 4.64,
+  "targets": 18,
+  "texts": 66,
+  "file": "desktop-puntatore-light"
+ }
+]
