@@ -1,6 +1,6 @@
 # 11 · Decisioni del proprietario (design review)
 
-Ultimo aggiornamento: 2026-11-26 (chat 10: «Direzione scelta: dir-i»; prima: chat 8, passo 0, dopo le indicazioni del proprietario). Le critiche successive **le rispettano** e non le riaprono.
+Ultimo aggiornamento: 2026-11-26 (conferme di F6, sezione «Conferme di F6»; chat 10: «Direzione scelta: dir-i»; prima: chat 8, passo 0, dopo le indicazioni del proprietario). Le critiche successive **le rispettano** e non le riaprono.
 Le domande nuove si numerano dentro la critica della sezione in cui nascono (Cliente A: D9-D16; Cliente B: da D17 a D24; **Staff: da D25**).
 
 | ID | Tema | Stato | Decisione |
@@ -62,6 +62,30 @@ Fatte nel pilota HTML (`mockup/pilota/pilota.html`, vedi `23-style-from-png.md` 
 | P4 | Card timbri con ultimo timbro «nuovo» e **prossimo da riempire evidenziato** (anello tratteggiato arancione); `21` §4.5 diceva il contrario | PROVVISORIA, da confermare |
 | P5 | ~~Card Wallet «Bar Aurora» assente dal Profilo~~ → **sostituita** (richiesta del proprietario): il Profilo mostra le card del cliente (una per locale, branding: richiede backend) con il bottone ufficiale Google «Aggiungi a Google Wallet» | **decisa dal proprietario** (2026-11-26) |
 | P6 | Header staff = chip del locale + burger; titolo di pagina «Richieste in coda» | PROVVISORIA |
+
+## Conferme di F6 (2026-11-26, proprietario, issue #77)
+
+**Queste decisioni vincono sui mockup e sulle tabelle «provvisorie» sopra.** Ciò che non è confermato qui si conferma in dev. **Tutti i testi proposti restano non approvati**: si confermano in dev.
+
+| ID | Esito |
+|---|---|
+| D1, D6, D11 | **Confermate** come in dir-i. |
+| D10 | **Dialog audace** con animazione di 1,5 s (solo CSS); la sobria resta per `prefers-reduced-motion`. |
+| D16 | Card mostrata **durante la richiesta**: senza branding, uguale per tutti. Card del **Profilo**: con branding del locale. Servono backend (nome e branding) e frontend. Per ora il Profilo mostra una card statica a tutti, anche a chi non ha card. |
+| P1, P2 | Si tiene così (stella nera, codice col trattino); si può cambiare in dev. |
+| P3 | L'animazione del timbro «nuovo» si decide in dev. |
+| P4 | **Confermata.** |
+| P5 | Il Profilo mostra **tutte** le card associate all'utente, col branding del locale come nel Wallet, con la possibilità di aggiungerle al Wallet. L'eliminazione della card si valuta in dev. |
+| P6 | **Confermata.** L'header staff è cliccabile: menu a tendina con i locali di cui è staff o owner; un clic cambia locale. La pagina con tutti i locali resta. |
+| D25 | Le card «Scaduta/Già gestita» restano, con un pulsante per toglierle dalla coda (solo UI). |
+| D26 | «Conferma» sempre attivo; al tocco con quantità non valida, focus sul campo. |
+| D27 | Solo UI: un timer di durata sensata ritarda la chiamata; «Annulla» la cancella. |
+| D28 | Nessuna vibrazione né animazioni. In dev si può provare un lampeggio luminoso sul bordo della richiesta appena arrivata. **Ordine invertito rispetto al mockup**: la più nuova in alto, la più vecchia in basso. |
+| D29 | **No**: il nome del premio non va nella coda. |
+| D30 | **Sì**: nome completo / username, non le sole iniziali (richiede backend, B27). |
+| D31 | Sì: due colonne su tablet e desktop, una colonna con le card su mobile (come da mockup). |
+| D32 | «Esci» **con conferma**. |
+| D33 | **No**: l'ultimo locale non si ricorda. |
 
 ## Regole globali
 
