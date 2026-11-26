@@ -1,8 +1,6 @@
 // T6-D staff flow checklist, automated. npm run dev, then from stampy-frontend/:  node e2e/t6d.mjs
-import { execSync } from 'node:child_process'
-import { APP, cardCount, check, cleanup, createFixtures, finish, openBrowser, openRequest, pageFor, section, setCard } from './lib.mjs'
+import { APP, psql as sql, cardCount, check, cleanup, createFixtures, finish, openBrowser, openRequest, pageFor, section, setCard } from './lib.mjs'
 
-const sql = (q) => execSync(`docker exec -i stampy-db psql -U stampy -d stampy_dev -At -v ON_ERROR_STOP=1`, { input: q }).toString().trim()
 const api = (path, token, method = 'GET', body) =>
   fetch(`${APP}/api${path}`, { method, headers: { Cookie: `sid=${token}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
 const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
