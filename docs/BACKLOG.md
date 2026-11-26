@@ -65,10 +65,10 @@ proprietario prima di scrivere codice (vedi `AGENTS.md`).
 | F7 (#78) | `TODO` | **Design system dir-i: token e fondamenta** (mappatura Bootstrap Sass, font self-hosted, focus ring unico, bordi ≥ 3:1, nome come variabile). F6 chiusa. | Design review, 2026-11-26 |
 | F8 (#79) | `BLOCKED` | **Componenti base e pattern di errore** (bottone mai disabilitato, campo, avviso, chip, scheletri, stati vuoti). Dopo F7. | Design review, 2026-11-26 |
 | F9 (#80) | `BLOCKED` | **Accesso: login, nome, elimina account** (D4, D13, D19, D20, N-4; nome del locale con B32). Dopo F8. | Design review, 2026-11-26 |
-| F10 (#81) | `BLOCKED` | **Area cliente: `/scan`, Visita, Richiesta, card timbri, dialog del premio** (D10–D12, D14, D15, D23; assorbe B18; nome del locale con B31). Dopo F8. | Design review, 2026-11-26 |
+| F10 (#81) | `BLOCKED` | **Area cliente: `/scan`, Visita, Richiesta, card timbri, dialog del premio** (D10–D12, D14–D16, D23, P1–P4; assorbe B18; card della richiesta senza branding, branding solo nel Profilo con B30; dialog audace di 1,5 s; nome del locale con B31). Dopo F8. | Design review, 2026-11-26 |
 | F11 (#82) | `BLOCKED` | **Staff: coda, esito, header** (D23, D25–D28, D30, D32; header con menu a tendina dei locali, P6, che mostra sempre e in modo distinguibile il nome del locale in cui si opera (B36 chiusa: nessun contatore); niente nome del premio in coda, D29; nome del cliente con B27). Dopo F8. | Design review, 2026-11-26 |
 | F12 (#83) | `BLOCKED` | **Storico condiviso**: righe per giorno e chip (D22, D39), «Carica altri» (B19), filtro per locale (B34), premio nominato (B33). Dopo F8. | Design review, 2026-11-26 |
-| F13 (#84) | `BLOCKED` | **Responsive tablet e desktop** (D34–D43 confermate, `50-responsive-spec.md`). Dopo F9–F12. | Design review, 2026-11-26 |
+| F13 (#84) | `BLOCKED` | **Responsive tablet e desktop** (D34–D43 confermate, `50-responsive-spec.md`; staff su due colonne su tablet e desktop, una su mobile, D31). Dopo F9–F12. | Design review, 2026-11-26 |
 | B13 (#12) | `TO-DECIDE` | **Accesso con telefono + SMS**: solo con un cliente reale (costo per messaggio, il NIST lo classifica come "restricted"). Schema già predisposto. | `archive/progress.md` §5.27 |
 
 ---
