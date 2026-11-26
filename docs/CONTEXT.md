@@ -204,6 +204,17 @@ una struttura estendibile ad Apple e telefono senza riscritture.
   (`email_verified`), l'accesso è ammesso e crea un utente nuovo; **non** si collega in automatico a un
   utente già esistente con quella email (rifiuto con un invito a usare l'email con codice, e l'evento
   `google_untrusted_email_rejected`). Deciso dal proprietario il 2026-11-11; nessuna migrazione.
+- **Rischi residui accettati (deciso dal proprietario il 2026-11-26, B25 #65):**
+  - Il `nonce` **non** si controlla: un ID token rubato è riusabile fino alla scadenza (circa un'ora).
+  - **Pre-hijacking con email di terzi:** chi controlla una casella non Gmail e senza `hd` e ha un account
+    Google con quell'indirizzo può registrarsi con Google prima del vero titolare; se il titolare entra poi
+    col codice trova lo stesso utente, raggiungibile anche dall'identità Google dell'altro.
+  - Motivo: impatto basso (card timbri con conferma dello staff, nessun pagamento), probabilità molto bassa,
+    nessun cliente pilota, budget quasi zero.
+  - Scartate: scollegare l'identità Google di terzi al primo codice OTP (probabile migrazione per salvare `hd`),
+    codice obbligatorio per tenere un account Google di terzi, `nonce` monouso legato al browser.
+  - **Si riapre se:** i premi hanno valore o si salvano dati personali oltre all'email; capita un caso reale;
+    il login Google si estende a staff o owner.
 
 ### 5.4 Sessioni e cookie
 
