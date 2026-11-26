@@ -3,10 +3,30 @@
 // Needs `npm run dev` (backend + frontend) and the `stampy-db` container. DEV DATABASE ONLY.
 import { execSync } from 'node:child_process'
 import crypto from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
 
 export const APP = process.env.E2E_APP_URL ?? 'http://localhost:5173'
-const DB = process.env.E2E_DB ?? 'stampy_dev'
+
+// The DB comes from the worktree's own `.env` (DATABASE_URL), the same one the API under test uses:
+// fixtures and API must share one DB. `E2E_DB` overrides it. No silent default to `stampy_dev`.
+function dbName() {
+  if (process.env.E2E_DB) return process.env.E2E_DB
+  try {
+    const env = readFileSync(new URL('../../stampy-backend/.env', import.meta.url), 'utf8')
+    const m = env.match(/^DATABASE_URL=.*\/([A-Za-z0-9_]+)(?:\?.*)?$/m)
+    if (m) return m[1]
+  } catch {
+    /* handled below */
+  }
+  throw new Error('E2E database unknown: set E2E_DB or run from a worktree with DATABASE_URL in its .env')
+}
+const DB = dbName()
+if (DB === 'stampy_dev' && process.env.E2E_ALLOW_MAIN_DB !== '1') {
+  throw new Error('Refusing to write fixtures into the main DB stampy_dev (E2E_ALLOW_MAIN_DB=1 to allow)')
+}
+// Used when the DB has no venue with branding yet (fresh worktree). Same shape as `brandingSchema`.
+const DEFAULT_BRANDING = JSON.stringify({ v: 1, logoUrl: 'https://placehold.co/512x512.png', backgroundColor: '#AA0000' })
 const RUN = Date.now().toString(36)
 
 if (process.env.NODE_ENV === 'production') throw new Error('Refusing to run with NODE_ENV=production')
@@ -31,8 +51,7 @@ export function newUser(tag) {
 
 /** One venue (threshold 5, reward "Caffè E2E"), one staff member, `customers` customers. */
 export function createFixtures(customers = 1) {
-  const branding = psql(`SELECT branding FROM venues WHERE branding <> '{}'::jsonb LIMIT 1`)
-  if (!branding) throw new Error('No venue with branding in the DB: create one with scripts/create-venue.ts')
+  const branding = psql(`SELECT branding FROM venues WHERE branding <> '{}'::jsonb LIMIT 1`) || DEFAULT_BRANDING
   const venueId = psql(
     `INSERT INTO venues (name, slug, branding) VALUES ('E2E ${RUN}','e2e-${RUN}','${branding}'::jsonb) RETURNING id`,
   )
@@ -45,8 +64,8 @@ export function createFixtures(customers = 1) {
 }
 
 export function cleanup() {
-  if (ids.users.length === 0) return
-  const u = ids.users.map((i) => `'${i}'`).join(',')
+  if (ids.users.length === 0 && ids.venues.length === 0) return
+  const u = ids.users.map((i) => `'${i}'`).join(',') || "'00000000-0000-0000-0000-000000000000'" // no users: keep the IN list valid
   const v = ids.venues.map((i) => `'${i}'`).join(',') || "'00000000-0000-0000-0000-000000000000'" // no venues: keep the IN list valid
   const cards = `SELECT id FROM cards WHERE user_id IN (${u})`
   psql(`DELETE FROM stamp_events WHERE card_id IN (${cards});
