@@ -1,0 +1,326 @@
+[
+ {
+  "id": "N01-light",
+  "name": "N01 · Come ti chiami? · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 7
+ },
+ {
+  "id": "N01-dark",
+  "name": "N01 · Come ti chiami? · vuoto · scuro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 7
+ },
+ {
+  "id": "N02-light",
+  "name": "N02 · Come ti chiami? · errore: nome troppo corto · chiaro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 7
+ },
+ {
+  "id": "N02-dark",
+  "name": "N02 · Come ti chiami? · errore: nome troppo corto · scuro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 7
+ },
+ {
+  "id": "N03-light",
+  "name": "N03 · Come ti chiami? · tavola: salvataggio, rete, 429 · chiaro",
+  "fail": [],
+  "contrasts": 15,
+  "minContrast": 5.56,
+  "targets": 6,
+  "texts": 15
+ },
+ {
+  "id": "N03-dark",
+  "name": "N03 · Come ti chiami? · tavola: salvataggio, rete, 429 · scuro",
+  "fail": [],
+  "contrasts": 15,
+  "minContrast": 5.71,
+  "targets": 6,
+  "texts": 15
+ },
+ {
+  "id": "S01-light",
+  "name": "S01 · Scansiona (/scan) · default con gesto e passi · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 1,
+  "texts": 11
+ },
+ {
+  "id": "S01-dark",
+  "name": "S01 · Scansiona (/scan) · default con gesto e passi · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 1,
+  "texts": 11
+ },
+ {
+  "id": "V01-light",
+  "name": "V01 · Visita locale · caricamento (scheletro) · chiaro",
+  "fail": [],
+  "contrasts": 2,
+  "minContrast": 6.77,
+  "targets": 1,
+  "texts": 2
+ },
+ {
+  "id": "V01-dark",
+  "name": "V01 · Visita locale · caricamento (scheletro) · scuro",
+  "fail": [],
+  "contrasts": 2,
+  "minContrast": 8.42,
+  "targets": 1,
+  "texts": 2
+ },
+ {
+  "id": "V02-light",
+  "name": "V02 · Visita locale · card pronta (passi 1·2) · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "V02-dark",
+  "name": "V02 · Visita locale · card pronta (passi 1·2) · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "V03-light",
+  "name": "V03 · Visita locale · dopo il tap su Wallet · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 13
+ },
+ {
+  "id": "V03-dark",
+  "name": "V03 · Visita locale · dopo il tap su Wallet · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 13
+ },
+ {
+  "id": "V04-light",
+  "name": "V04 · Visita locale · tavola: link non valido / nessuna offerta · chiaro",
+  "fail": [],
+  "contrasts": 9,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 9
+ },
+ {
+  "id": "V04-dark",
+  "name": "V04 · Visita locale · tavola: link non valido / nessuna offerta · scuro",
+  "fail": [],
+  "contrasts": 9,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 9
+ },
+ {
+  "id": "V05-light",
+  "name": "V05 · Visita locale · tavola: 429 e errore generico · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "V05-dark",
+  "name": "V05 · Visita locale · tavola: 429 e errore generico · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "R01-light",
+  "name": "R01 · Richiesta timbro · in attesa (3 su 10) · chiaro",
+  "fail": [],
+  "contrasts": 12,
+  "minContrast": 6.77,
+  "targets": 1,
+  "texts": 12
+ },
+ {
+  "id": "R01-dark",
+  "name": "R01 · Richiesta timbro · in attesa (3 su 10) · scuro",
+  "fail": [],
+  "contrasts": 12,
+  "minContrast": 7.66,
+  "targets": 1,
+  "texts": 12
+ },
+ {
+  "id": "R02-light",
+  "name": "R02 · Richiesta timbro · in attesa, card piena (premio disponibile) · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 14
+ },
+ {
+  "id": "R02-dark",
+  "name": "R02 · Richiesta timbro · in attesa, card piena (premio disponibile) · scuro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 14
+ },
+ {
+  "id": "R03-light",
+  "name": "R03 · Richiesta timbro · in attesa, promozione cambiata · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 7.52,
+  "targets": 1,
+  "texts": 13
+ },
+ {
+  "id": "R03-dark",
+  "name": "R03 · Richiesta timbro · in attesa, promozione cambiata · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 7.66,
+  "targets": 1,
+  "texts": 13
+ },
+ {
+  "id": "R04-light",
+  "name": "R04 · Richiesta timbro · approvata con timbri · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 7.52,
+  "targets": 1,
+  "texts": 11
+ },
+ {
+  "id": "R04-dark",
+  "name": "R04 · Richiesta timbro · approvata con timbri · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 7.66,
+  "targets": 1,
+  "texts": 11
+ },
+ {
+  "id": "R05-light",
+  "name": "R05 · Richiesta timbro · approvata, dialog del premio (audace) · chiaro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7
+ },
+ {
+  "id": "R05-dark",
+  "name": "R05 · Richiesta timbro · approvata, dialog del premio (audace) · scuro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7
+ },
+ {
+  "id": "R06-light",
+  "name": "R06 · Richiesta timbro · premio riscattato (dopo la chiusura del dialog) · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 7.52,
+  "targets": 1,
+  "texts": 13
+ },
+ {
+  "id": "R06-dark",
+  "name": "R06 · Richiesta timbro · premio riscattato (dopo la chiusura del dialog) · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 7.66,
+  "targets": 1,
+  "texts": 13
+ },
+ {
+  "id": "R07-light",
+  "name": "R07 · Richiesta timbro · approvata, card piena · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 14
+ },
+ {
+  "id": "R07-dark",
+  "name": "R07 · Richiesta timbro · approvata, card piena · scuro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 14
+ },
+ {
+  "id": "R08-light",
+  "name": "R08 · Richiesta timbro · tavola: rifiutata / scaduta · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 13
+ },
+ {
+  "id": "R08-dark",
+  "name": "R08 · Richiesta timbro · tavola: rifiutata / scaduta · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 13
+ },
+ {
+  "id": "R09-light",
+  "name": "R09 · Richiesta timbro · tavola: non trovata / errore / caricamento · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "R09-dark",
+  "name": "R09 · Richiesta timbro · tavola: non trovata / errore / caricamento · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ }
+]

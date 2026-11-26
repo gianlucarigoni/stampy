@@ -1,0 +1,326 @@
+[
+ {
+  "id": "N01-light",
+  "name": "Desktop · N01 · Come ti chiami? · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 10
+ },
+ {
+  "id": "N01-dark",
+  "name": "Desktop · N01 · Come ti chiami? · vuoto · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 10
+ },
+ {
+  "id": "N02-light",
+  "name": "Desktop · N02 · Come ti chiami? · errore: nome troppo corto · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 10
+ },
+ {
+  "id": "N02-dark",
+  "name": "Desktop · N02 · Come ti chiami? · errore: nome troppo corto · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 10
+ },
+ {
+  "id": "N03-light",
+  "name": "Desktop · N03 · Come ti chiami? · tavola: salvataggio, rete, 429 · chiaro",
+  "fail": [],
+  "contrasts": 18,
+  "minContrast": 5.56,
+  "targets": 8,
+  "texts": 18
+ },
+ {
+  "id": "N03-dark",
+  "name": "Desktop · N03 · Come ti chiami? · tavola: salvataggio, rete, 429 · scuro",
+  "fail": [],
+  "contrasts": 18,
+  "minContrast": 5.71,
+  "targets": 8,
+  "texts": 18
+ },
+ {
+  "id": "S01-light",
+  "name": "Desktop · S01 · Scansiona (/scan) · default con gesto e passi · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 14
+ },
+ {
+  "id": "S01-dark",
+  "name": "Desktop · S01 · Scansiona (/scan) · default con gesto e passi · scuro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 14
+ },
+ {
+  "id": "R04-light",
+  "name": "Desktop · R04 · Richiesta timbro · approvata con timbri · chiaro",
+  "fail": [],
+  "contrasts": 16,
+  "minContrast": 7.52,
+  "targets": 3,
+  "texts": 16
+ },
+ {
+  "id": "R04-dark",
+  "name": "Desktop · R04 · Richiesta timbro · approvata con timbri · scuro",
+  "fail": [],
+  "contrasts": 16,
+  "minContrast": 7.66,
+  "targets": 3,
+  "texts": 16
+ },
+ {
+  "id": "R05-light",
+  "name": "Desktop · R05 · Richiesta timbro · approvata, dialog del premio (modale) · chiaro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7
+ },
+ {
+  "id": "R05-dark",
+  "name": "Desktop · R05 · Richiesta timbro · approvata, dialog del premio (modale) · scuro",
+  "fail": [],
+  "contrasts": 7,
+  "minContrast": 6.14,
+  "targets": 1,
+  "texts": 7
+ },
+ {
+  "id": "P01-light",
+  "name": "Desktop · P01 · Profilo · default · chiaro",
+  "fail": [],
+  "contrasts": 24,
+  "minContrast": 5.61,
+  "targets": 7,
+  "texts": 24
+ },
+ {
+  "id": "P01-dark",
+  "name": "Desktop · P01 · Profilo · default · scuro",
+  "fail": [],
+  "contrasts": 24,
+  "minContrast": 6.36,
+  "targets": 7,
+  "texts": 24
+ },
+ {
+  "id": "H01-light",
+  "name": "Desktop · H01 · Storico richieste · default (righe per giorno) · chiaro",
+  "fail": [],
+  "contrasts": 38,
+  "minContrast": 5.85,
+  "targets": 9,
+  "texts": 38
+ },
+ {
+  "id": "H01-dark",
+  "name": "Desktop · H01 · Storico richieste · default (righe per giorno) · scuro",
+  "fail": [],
+  "contrasts": 38,
+  "minContrast": 6.14,
+  "targets": 9,
+  "texts": 38
+ },
+ {
+  "id": "V02-light",
+  "name": "Desktop · V02 · Visita locale · card pronta (passi 1·2) · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 14
+ },
+ {
+  "id": "V02-dark",
+  "name": "Desktop · V02 · Visita locale · card pronta (passi 1·2) · scuro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 14
+ },
+ {
+  "id": "V03-light",
+  "name": "Desktop · V03 · Visita locale · dopo il tap su Wallet · chiaro",
+  "fail": [],
+  "contrasts": 16,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 16
+ },
+ {
+  "id": "V03-dark",
+  "name": "Desktop · V03 · Visita locale · dopo il tap su Wallet · scuro",
+  "fail": [],
+  "contrasts": 16,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 16
+ },
+ {
+  "id": "V04-light",
+  "name": "Desktop · V04 · Visita locale · tavola: link non valido / nessuna offerta · chiaro",
+  "fail": [],
+  "contrasts": 12,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 12
+ },
+ {
+  "id": "V04-dark",
+  "name": "Desktop · V04 · Visita locale · tavola: link non valido / nessuna offerta · scuro",
+  "fail": [],
+  "contrasts": 12,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 12
+ },
+ {
+  "id": "R01-light",
+  "name": "Desktop · R01 · Richiesta timbro · in attesa (3 su 10) · chiaro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 7.52,
+  "targets": 3,
+  "texts": 14
+ },
+ {
+  "id": "R01-dark",
+  "name": "Desktop · R01 · Richiesta timbro · in attesa (3 su 10) · scuro",
+  "fail": [],
+  "contrasts": 14,
+  "minContrast": 7.66,
+  "targets": 3,
+  "texts": 14
+ },
+ {
+  "id": "R02-light",
+  "name": "Desktop · R02 · Richiesta timbro · in attesa, card piena (premio disponibile) · chiaro",
+  "fail": [],
+  "contrasts": 17,
+  "minContrast": 6.14,
+  "targets": 3,
+  "texts": 17
+ },
+ {
+  "id": "R02-dark",
+  "name": "Desktop · R02 · Richiesta timbro · in attesa, card piena (premio disponibile) · scuro",
+  "fail": [],
+  "contrasts": 17,
+  "minContrast": 6.14,
+  "targets": 3,
+  "texts": 17
+ },
+ {
+  "id": "R08-light",
+  "name": "Desktop · R08 · Richiesta timbro · tavola: rifiutata / scaduta · chiaro",
+  "fail": [],
+  "contrasts": 16,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 16
+ },
+ {
+  "id": "R08-dark",
+  "name": "Desktop · R08 · Richiesta timbro · tavola: rifiutata / scaduta · scuro",
+  "fail": [],
+  "contrasts": 16,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 16
+ },
+ {
+  "id": "P02-light",
+  "name": "Desktop · P02 · Profilo · modifica nome aperto · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 7,
+  "texts": 10
+ },
+ {
+  "id": "P02-dark",
+  "name": "Desktop · P02 · Profilo · modifica nome aperto · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 7,
+  "texts": 10
+ },
+ {
+  "id": "H02-light",
+  "name": "Desktop · H02 · Storico richieste · filtri attivi + chip · chiaro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 5.05,
+  "targets": 12,
+  "texts": 32
+ },
+ {
+  "id": "H02-dark",
+  "name": "Desktop · H02 · Storico richieste · filtri attivi + chip · scuro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 7,
+  "targets": 12,
+  "texts": 32
+ },
+ {
+  "id": "E01-light",
+  "name": "Desktop · E01 · Elimina account · intro · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 11
+ },
+ {
+  "id": "E01-dark",
+  "name": "Desktop · E01 · Elimina account · intro · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 11
+ },
+ {
+  "id": "E02-light",
+  "name": "Desktop · E02 · Elimina account · passo del codice · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.61,
+  "targets": 7,
+  "texts": 13
+ },
+ {
+  "id": "E02-dark",
+  "name": "Desktop · E02 · Elimina account · passo del codice · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 6.36,
+  "targets": 7,
+  "texts": 13
+ }
+]

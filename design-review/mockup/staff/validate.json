@@ -1,0 +1,290 @@
+[
+ {
+  "id": "L01-light",
+  "name": "L01 · I tuoi locali · elenco (3 locali) · chiaro",
+  "fail": [],
+  "contrasts": 5,
+  "minContrast": 13.71,
+  "targets": 4,
+  "texts": 5
+ },
+ {
+  "id": "L01-dark",
+  "name": "L01 · I tuoi locali · elenco (3 locali) · scuro",
+  "fail": [],
+  "contrasts": 5,
+  "minContrast": 13.84,
+  "targets": 4,
+  "texts": 5
+ },
+ {
+  "id": "L02-light",
+  "name": "L02 · I tuoi locali · tavola: caricamento / errore · chiaro",
+  "fail": [],
+  "contrasts": 8,
+  "minContrast": 5.56,
+  "targets": 2,
+  "texts": 8
+ },
+ {
+  "id": "L02-dark",
+  "name": "L02 · I tuoi locali · tavola: caricamento / errore · scuro",
+  "fail": [],
+  "contrasts": 8,
+  "minContrast": 5.71,
+  "targets": 2,
+  "texts": 8
+ },
+ {
+  "id": "Q01-light",
+  "name": "Q01 · Coda richieste · default (3 richieste) · chiaro",
+  "fail": [],
+  "contrasts": 41,
+  "minContrast": 5.56,
+  "targets": 26,
+  "texts": 41
+ },
+ {
+  "id": "Q01-dark",
+  "name": "Q01 · Coda richieste · default (3 richieste) · scuro",
+  "fail": [],
+  "contrasts": 41,
+  "minContrast": 5.71,
+  "targets": 26,
+  "texts": 41
+ },
+ {
+  "id": "Q02-light",
+  "name": "Q02 · Coda richieste · vuota (in ascolto) · chiaro",
+  "fail": [],
+  "contrasts": 5,
+  "minContrast": 7.52,
+  "targets": 2,
+  "texts": 5
+ },
+ {
+  "id": "Q02-dark",
+  "name": "Q02 · Coda richieste · vuota (in ascolto) · scuro",
+  "fail": [],
+  "contrasts": 5,
+  "minContrast": 7.66,
+  "targets": 2,
+  "texts": 5
+ },
+ {
+  "id": "Q03-light",
+  "name": "Q03 · Coda richieste · richiesta nuova (chip e «↓ 1 nuova») · chiaro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 5.56,
+  "targets": 19,
+  "texts": 32
+ },
+ {
+  "id": "Q03-dark",
+  "name": "Q03 · Coda richieste · richiesta nuova (chip e «↓ 1 nuova») · scuro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 5.71,
+  "targets": 19,
+  "texts": 32
+ },
+ {
+  "id": "Q04-light",
+  "name": "Q04 · Coda richieste · esito in loco con Annulla (4 s) · chiaro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 5.56,
+  "targets": 19,
+  "texts": 32
+ },
+ {
+  "id": "Q04-dark",
+  "name": "Q04 · Coda richieste · esito in loco con Annulla (4 s) · scuro",
+  "fail": [],
+  "contrasts": 32,
+  "minContrast": 5.71,
+  "targets": 19,
+  "texts": 32
+ },
+ {
+  "id": "Q05-light",
+  "name": "Q05 · Coda richieste · tavola: esiti (premio, rifiutata, riga quieta) · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.05,
+  "targets": 6,
+  "texts": 13
+ },
+ {
+  "id": "Q05-dark",
+  "name": "Q05 · Coda richieste · tavola: esiti (premio, rifiutata, riga quieta) · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 6.55,
+  "targets": 6,
+  "texts": 13
+ },
+ {
+  "id": "Q06-light",
+  "name": "Q06 · Coda richieste · tavola: quantità non valida / alta · chiaro",
+  "fail": [],
+  "contrasts": 25,
+  "minContrast": 5.56,
+  "targets": 23,
+  "texts": 25
+ },
+ {
+  "id": "Q06-dark",
+  "name": "Q06 · Coda richieste · tavola: quantità non valida / alta · scuro",
+  "fail": [],
+  "contrasts": 25,
+  "minContrast": 5.71,
+  "targets": 23,
+  "texts": 25
+ },
+ {
+  "id": "Q07-light",
+  "name": "Q07 · Coda richieste · tavola: Scaduta / Già gestita (la card resta) · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 6.77,
+  "targets": 4,
+  "texts": 13
+ },
+ {
+  "id": "Q07-dark",
+  "name": "Q07 · Coda richieste · tavola: Scaduta / Già gestita (la card resta) · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 7.66,
+  "targets": 4,
+  "texts": 13
+ },
+ {
+  "id": "Q08-light",
+  "name": "Q08 · Coda richieste · errori: connessione e richiesta non più valida · chiaro",
+  "fail": [],
+  "contrasts": 31,
+  "minContrast": 5.56,
+  "targets": 18,
+  "texts": 31
+ },
+ {
+  "id": "Q08-dark",
+  "name": "Q08 · Coda richieste · errori: connessione e richiesta non più valida · scuro",
+  "fail": [],
+  "contrasts": 31,
+  "minContrast": 5.71,
+  "targets": 18,
+  "texts": 31
+ },
+ {
+  "id": "Q09-light",
+  "name": "Q09 · Coda richieste · caricamento (scheletro) · chiaro",
+  "fail": [],
+  "contrasts": 2,
+  "minContrast": 13.71,
+  "targets": 2,
+  "texts": 2
+ },
+ {
+  "id": "Q09-dark",
+  "name": "Q09 · Coda richieste · caricamento (scheletro) · scuro",
+  "fail": [],
+  "contrasts": 2,
+  "minContrast": 15.23,
+  "targets": 2,
+  "texts": 2
+ },
+ {
+  "id": "Q10-light",
+  "name": "Q10 · Coda richieste · menu aperto (più locali) · chiaro",
+  "fail": [],
+  "contrasts": 34,
+  "minContrast": 5.56,
+  "targets": 22,
+  "texts": 34
+ },
+ {
+  "id": "Q10-dark",
+  "name": "Q10 · Coda richieste · menu aperto (più locali) · scuro",
+  "fail": [],
+  "contrasts": 34,
+  "minContrast": 5.71,
+  "targets": 22,
+  "texts": 34
+ },
+ {
+  "id": "Q11-light",
+  "name": "Q11 · Coda richieste · non autorizzato (404 identico) · chiaro",
+  "fail": [],
+  "contrasts": 4,
+  "minContrast": 5.56,
+  "targets": 2,
+  "texts": 4
+ },
+ {
+  "id": "Q11-dark",
+  "name": "Q11 · Coda richieste · non autorizzato (404 identico) · scuro",
+  "fail": [],
+  "contrasts": 4,
+  "minContrast": 5.71,
+  "targets": 2,
+  "texts": 4
+ },
+ {
+  "id": "SH01-light",
+  "name": "SH01 · Storico del locale · default · chiaro",
+  "fail": [],
+  "contrasts": 27,
+  "minContrast": 5.85,
+  "targets": 4,
+  "texts": 27
+ },
+ {
+  "id": "SH01-dark",
+  "name": "SH01 · Storico del locale · default · scuro",
+  "fail": [],
+  "contrasts": 27,
+  "minContrast": 6.14,
+  "targets": 4,
+  "texts": 27
+ },
+ {
+  "id": "SH02-light",
+  "name": "SH02 · Storico del locale · filtri aperti · chiaro",
+  "fail": [],
+  "contrasts": 18,
+  "minContrast": 5.05,
+  "targets": 12,
+  "texts": 18
+ },
+ {
+  "id": "SH02-dark",
+  "name": "SH02 · Storico del locale · filtri aperti · scuro",
+  "fail": [],
+  "contrasts": 18,
+  "minContrast": 7,
+  "targets": 12,
+  "texts": 18
+ },
+ {
+  "id": "SH03-light",
+  "name": "SH03 · Storico del locale · vuoto con filtri · chiaro",
+  "fail": [],
+  "contrasts": 15,
+  "minContrast": 5.05,
+  "targets": 9,
+  "texts": 15
+ },
+ {
+  "id": "SH03-dark",
+  "name": "SH03 · Storico del locale · vuoto con filtri · scuro",
+  "fail": [],
+  "contrasts": 15,
+  "minContrast": 7,
+  "targets": 9,
+  "texts": 15
+ }
+]

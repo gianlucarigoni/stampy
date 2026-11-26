@@ -1,0 +1,5 @@
+hover primario chiaro 6.50 scuro 6.80
+danger outline hover chiaro testo su tint 5.41 scuro 7.15
+secondario hover testo su surface2 chiaro 12.45 scuro 12.29
+link su surface2 (voce nav hover) chiaro 12.45
+bordo hover primario chiaro bg pagina 2.33

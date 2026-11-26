@@ -1,0 +1,1196 @@
+[
+ {
+  "id": "s-cliente-timbri-light",
+  "contrasts": [
+   {
+    "t": "Stampy",
+    "fs": 18,
+    "r": 13.71,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Richiesta approvata",
+    "fs": 15,
+    "r": 9.69,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "+2",
+    "fs": 28,
+    "r": 9.69,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "timbri aggiunti",
+    "fs": 15,
+    "r": 9.69,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Nome del locale",
+    "fs": 15,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "richiede backend",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "7",
+    "fs": 38,
+    "r": 15.24,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "su 10",
+    "fs": 19,
+    "r": 7.52,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "ne mancano 3",
+    "fs": 17,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Codice card:",
+    "fs": 15,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "44EE7A5B",
+    "fs": 15,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   }
+  ],
+  "small": [],
+  "targets": [
+   {
+    "t": "Menu",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   }
+  ],
+  "cards": [
+   {
+    "cls": "card",
+    "top": 173,
+    "bottom": 489
+   }
+  ]
+ },
+ {
+  "id": "s-cliente-timbri-dark",
+  "contrasts": [
+   {
+    "t": "Stampy",
+    "fs": 18,
+    "r": 15.23,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Richiesta approvata",
+    "fs": 15,
+    "r": 11.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "+2",
+    "fs": 28,
+    "r": 11.66,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "timbri aggiunti",
+    "fs": 15,
+    "r": 11.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Nome del locale",
+    "fs": 15,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "richiede backend",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "7",
+    "fs": 38,
+    "r": 13.84,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "su 10",
+    "fs": 19,
+    "r": 7.66,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "ne mancano 3",
+    "fs": 17,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Codice card:",
+    "fs": 15,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "44EE7A5B",
+    "fs": 15,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   }
+  ],
+  "small": [],
+  "targets": [
+   {
+    "t": "Menu",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   }
+  ],
+  "cards": [
+   {
+    "cls": "card",
+    "top": 173,
+    "bottom": 489
+   }
+  ]
+ },
+ {
+  "id": "s-cliente-premio-light",
+  "contrasts": [
+   {
+    "t": "Premio riscattato",
+    "fs": 13,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "PREMIO!",
+    "fs": 38,
+    "r": 6.14,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "Caffè gratis",
+    "fs": 28,
+    "r": 6.14,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "Nome del locale",
+    "fs": 15,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "richiede backend",
+    "fs": 13,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Lo staff lo sa già: ti conse",
+    "fs": 16,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Perfetto",
+    "fs": 17,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   }
+  ],
+  "small": [],
+  "targets": [
+   {
+    "t": "Perfetto",
+    "w": 326,
+    "h": 58,
+    "need": 58
+   }
+  ],
+  "dlg": {
+   "w": 366,
+   "top": 200,
+   "bottom": 254.1
+  },
+  "cards": [
+   {
+    "cls": "card",
+    "top": 76,
+    "bottom": 476
+   }
+  ]
+ },
+ {
+  "id": "s-cliente-premio-dark",
+  "contrasts": [
+   {
+    "t": "Premio riscattato",
+    "fs": 13,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "PREMIO!",
+    "fs": 38,
+    "r": 6.14,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "Caffè gratis",
+    "fs": 28,
+    "r": 6.14,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "Nome del locale",
+    "fs": 15,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "richiede backend",
+    "fs": 13,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Lo staff lo sa già: ti conse",
+    "fs": 16,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Perfetto",
+    "fs": 17,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   }
+  ],
+  "small": [],
+  "targets": [
+   {
+    "t": "Perfetto",
+    "w": 326,
+    "h": 58,
+    "need": 58
+   }
+  ],
+  "dlg": {
+   "w": 366,
+   "top": 200,
+   "bottom": 254.1
+  },
+  "cards": [
+   {
+    "cls": "card",
+    "top": 76,
+    "bottom": 476
+   }
+  ]
+ },
+ {
+  "id": "s-staff-coda-light",
+  "contrasts": [
+   {
+    "t": "Stampy",
+    "fs": 18,
+    "r": 13.71,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Bar Pasticceria Rossi",
+    "fs": 19,
+    "r": 13.71,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "3 in coda",
+    "fs": 13,
+    "r": 12.45,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "la più vecchia da 2 min",
+    "fs": 14,
+    "r": 6.77,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "1°",
+    "fs": 13,
+    "r": 12.45,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "da 2 min",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "scade tra 1 min",
+    "fs": 13,
+    "r": 9.11,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "44EE-7A5B",
+    "fs": 22,
+    "r": 15.24,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "1 / 10 timbri",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 22,
+    "r": 15.24,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 14,
+    "r": 12.45,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "2",
+    "fs": 14,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "5",
+    "fs": 14,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Conferma 1 timbro",
+    "fs": 16,
+    "r": 5.56,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Rifiuta",
+    "fs": 16,
+    "r": 6.2,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "da 1 min",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "scade tra 4 min",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "YG4G-2QN2",
+    "fs": 22,
+    "r": 15.24,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "Premio",
+    "fs": 13,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Consegna: Caffè gratis",
+    "fs": 15,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "richiede backend",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "10 / 10 timbri",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "2",
+    "fs": 22,
+    "r": 15.24,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 14,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "2",
+    "fs": 14,
+    "r": 12.45,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "5",
+    "fs": 14,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Conferma 2 timbri",
+    "fs": 16,
+    "r": 5.56,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Rifiuta",
+    "fs": 16,
+    "r": 6.2,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "da 30 s",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "scade tra 5 min",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "9Q23-TSZG",
+    "fs": 22,
+    "r": 15.24,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "5 / 10 timbri",
+    "fs": 13,
+    "r": 7.52,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 22,
+    "r": 15.24,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 14,
+    "r": 12.45,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "2",
+    "fs": 14,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "5",
+    "fs": 14,
+    "r": 15.24,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Conferma 1 timbro",
+    "fs": 16,
+    "r": 5.56,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Rifiuta",
+    "fs": 16,
+    "r": 6.2,
+    "need": 4.5,
+    "ok": true
+   }
+  ],
+  "small": [],
+  "targets": [
+   {
+    "t": "Menu",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Meno",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Più",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "1",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "2",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "5",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Conferma 1 timbro",
+    "w": 330,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Rifiuta",
+    "w": 330,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Meno",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Più",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "1",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "2",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "5",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Conferma 2 timbri",
+    "w": 332,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Rifiuta",
+    "w": 332,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Meno",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Più",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "1",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "2",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "5",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Conferma 1 timbro",
+    "w": 332,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Rifiuta",
+    "w": 332,
+    "h": 48,
+    "need": 48
+   }
+  ],
+  "gap": 16,
+  "cards": [
+   {
+    "cls": "req first",
+    "top": 146,
+    "bottom": 435
+   },
+   {
+    "cls": "req ",
+    "top": 451,
+    "bottom": 812
+   },
+   {
+    "cls": "req ",
+    "top": 828,
+    "bottom": 1115
+   }
+  ]
+ },
+ {
+  "id": "s-staff-coda-dark",
+  "contrasts": [
+   {
+    "t": "Stampy",
+    "fs": 18,
+    "r": 15.23,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Bar Pasticceria Rossi",
+    "fs": 19,
+    "r": 15.23,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "3 in coda",
+    "fs": 13,
+    "r": 12.29,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "la più vecchia da 2 min",
+    "fs": 14,
+    "r": 8.42,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "1°",
+    "fs": 13,
+    "r": 12.29,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "da 2 min",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "scade tra 1 min",
+    "fs": 13,
+    "r": 10.5,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "44EE-7A5B",
+    "fs": 22,
+    "r": 13.84,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "1 / 10 timbri",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 22,
+    "r": 13.84,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 14,
+    "r": 12.29,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "2",
+    "fs": 14,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "5",
+    "fs": 14,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Conferma 1 timbro",
+    "fs": 16,
+    "r": 5.71,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Rifiuta",
+    "fs": 16,
+    "r": 7.41,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "da 1 min",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "scade tra 4 min",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "YG4G-2QN2",
+    "fs": 22,
+    "r": 13.84,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "Premio",
+    "fs": 13,
+    "r": 6.14,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Consegna: Caffè gratis",
+    "fs": 15,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "richiede backend",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "10 / 10 timbri",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "2",
+    "fs": 22,
+    "r": 13.84,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 14,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "2",
+    "fs": 14,
+    "r": 12.29,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "5",
+    "fs": 14,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Conferma 2 timbri",
+    "fs": 16,
+    "r": 5.71,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Rifiuta",
+    "fs": 16,
+    "r": 7.41,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "da 30 s",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "scade tra 5 min",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "9Q23-TSZG",
+    "fs": 22,
+    "r": 13.84,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "5 / 10 timbri",
+    "fs": 13,
+    "r": 7.66,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 22,
+    "r": 13.84,
+    "need": 3,
+    "ok": true
+   },
+   {
+    "t": "1",
+    "fs": 14,
+    "r": 12.29,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "2",
+    "fs": 14,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "5",
+    "fs": 14,
+    "r": 13.84,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Conferma 1 timbro",
+    "fs": 16,
+    "r": 5.71,
+    "need": 4.5,
+    "ok": true
+   },
+   {
+    "t": "Rifiuta",
+    "fs": 16,
+    "r": 7.41,
+    "need": 4.5,
+    "ok": true
+   }
+  ],
+  "small": [],
+  "targets": [
+   {
+    "t": "Menu",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Meno",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Più",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "1",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "2",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "5",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Conferma 1 timbro",
+    "w": 330,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Rifiuta",
+    "w": 330,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Meno",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Più",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "1",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "2",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "5",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Conferma 2 timbri",
+    "w": 332,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Rifiuta",
+    "w": 332,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Meno",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Più",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "1",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "2",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "5",
+    "w": 44,
+    "h": 44,
+    "need": 44
+   },
+   {
+    "t": "Conferma 1 timbro",
+    "w": 332,
+    "h": 48,
+    "need": 48
+   },
+   {
+    "t": "Rifiuta",
+    "w": 332,
+    "h": 48,
+    "need": 48
+   }
+  ],
+  "gap": 16,
+  "cards": [
+   {
+    "cls": "req first",
+    "top": 146,
+    "bottom": 435
+   },
+   {
+    "cls": "req ",
+    "top": 451,
+    "bottom": 812
+   },
+   {
+    "cls": "req ",
+    "top": 828,
+    "bottom": 1115
+   }
+  ]
+ }
+]

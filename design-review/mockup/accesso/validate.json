@@ -1,0 +1,218 @@
+[
+ {
+  "id": "A01-light",
+  "name": "A01 · Login email · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A01-dark",
+  "name": "A01 · Login email · vuoto · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A02-light",
+  "name": "A02 · Login email · invio in corso · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A02-dark",
+  "name": "A02 · Login email · invio in corso · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A03-light",
+  "name": "A03 · Login email · errore: email non valida · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A03-dark",
+  "name": "A03 · Login email · errore: email non valida · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A04-light",
+  "name": "A04 · Login email · tavola: errori di sistema (429, rete, generico) · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A04-dark",
+  "name": "A04 · Login email · tavola: errori di sistema (429, rete, generico) · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 11
+ },
+ {
+  "id": "A05-light",
+  "name": "A05 · Login email · account eliminato · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.56,
+  "targets": 3,
+  "texts": 13
+ },
+ {
+  "id": "A05-dark",
+  "name": "A05 · Login email · account eliminato · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.71,
+  "targets": 3,
+  "texts": 13
+ },
+ {
+  "id": "A06-light",
+  "name": "A06 · Login email · tavola: focus e premuto · chiaro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 4.64,
+  "targets": 4,
+  "texts": 11
+ },
+ {
+  "id": "A06-dark",
+  "name": "A06 · Login email · tavola: focus e premuto · scuro",
+  "fail": [],
+  "contrasts": 11,
+  "minContrast": 4.76,
+  "targets": 4,
+  "texts": 11
+ },
+ {
+  "id": "A07-light",
+  "name": "A07 · Codice · vuoto · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A07-dark",
+  "name": "A07 · Codice · vuoto · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A08-light",
+  "name": "A08 · Codice · errore: codice non valido · chiaro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.56,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A08-dark",
+  "name": "A08 · Codice · errore: codice non valido · scuro",
+  "fail": [],
+  "contrasts": 10,
+  "minContrast": 5.71,
+  "targets": 4,
+  "texts": 10
+ },
+ {
+  "id": "A09-light",
+  "name": "A09 · Codice · tavola: codice scaduto / tentativi finiti · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.56,
+  "targets": 6,
+  "texts": 13
+ },
+ {
+  "id": "A09-dark",
+  "name": "A09 · Codice · tavola: codice scaduto / tentativi finiti · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.71,
+  "targets": 6,
+  "texts": 13
+ },
+ {
+  "id": "A10-light",
+  "name": "A10 · Codice · tavola: verifica, reinvio, 429 · chiaro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.56,
+  "targets": 5,
+  "texts": 13
+ },
+ {
+  "id": "A10-dark",
+  "name": "A10 · Codice · tavola: verifica, reinvio, 429 · scuro",
+  "fail": [],
+  "contrasts": 13,
+  "minContrast": 5.71,
+  "targets": 5,
+  "texts": 13
+ },
+ {
+  "id": "A11-light",
+  "name": "A11 · Errore di sessione · default · chiaro",
+  "fail": [],
+  "contrasts": 5,
+  "minContrast": 5.56,
+  "targets": 2,
+  "texts": 5
+ },
+ {
+  "id": "A11-dark",
+  "name": "A11 · Errore di sessione · default · scuro",
+  "fail": [],
+  "contrasts": 5,
+  "minContrast": 5.71,
+  "targets": 2,
+  "texts": 5
+ },
+ {
+  "id": "A12-light",
+  "name": "A12 · Pagina non trovata (404) · default · chiaro",
+  "fail": [],
+  "contrasts": 4,
+  "minContrast": 5.56,
+  "targets": 1,
+  "texts": 4
+ },
+ {
+  "id": "A12-dark",
+  "name": "A12 · Pagina non trovata (404) · default · scuro",
+  "fail": [],
+  "contrasts": 4,
+  "minContrast": 5.71,
+  "targets": 1,
+  "texts": 4
+ }
+]
