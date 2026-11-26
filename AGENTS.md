@@ -138,8 +138,10 @@ Regole:
 - I test e `npm run dev` usano il tuo database `stampy_wt_<id>`. Mai il database principale, mai quello di altri agenti.
 - Se qualcosa non parte o le porte sono occupate, non cambiare a mano: rilancia lo script o fermati.
 - Gli script e2e del frontend (`npm run e2e`) puntano a `E2E_APP_URL`: impostalo alla porta del tuo frontend.
-  Su un worktree appena creato il DB è **vuoto** e le fixture cercano un locale con branding
-  ("No venue with branding in the DB"): gli e2e non partono finché non ne crei uno (`scripts/create-venue.ts`).
+  Le fixture usano il DB di `DATABASE_URL` in `stampy-backend/.env` del worktree (o `E2E_DB`), rifiutano
+  `stampy_dev` (salvo `E2E_ALLOW_MAIN_DB=1`, che un agente non imposta) e, se il DB è vuoto, creano un locale
+  con branding di ripiego: su un worktree appena creato gli e2e partono senza altro. Alcuni script
+  (`feedback`, `history`, `t6d`) oggi falliscono per i testi cambiati da F4 (T8, #69): riportali come tali.
   Se non puoi eseguirli, dillo nel report invece di darli per verdi. Il tema scuro e la resa a schermo
   non si verificano da terminale: annotali nel report come "non verificato a vista".
 - **Prima di `worktree-finish.sh` nessun processo deve restare acceso nel worktree** (`npm run dev`, vite,
