@@ -104,6 +104,14 @@ soglia 10, card 0, quantità 15
 - Il terminale dedicato (e il vero "POS a tocco", Apple VAS / Google Smart Tap) resta un
   obiettivo dichiarato per più avanti: richiede hardware certificato ed è un secondo prodotto.
 - L'hardware si progetta **dopo** aver osservato lo staff vero con la web app.
+- **Storici delle richieste** (deciso il 2026-11-26, F5): **due route distinte**, con service e filtri
+  condivisi e un solo componente frontend. Il **cliente** (`GET /requests/mine`) vede di default tutte le
+  proprie richieste con il nome del locale e può filtrare per esito, locale, numero di timbri e data; i locali
+  del filtro sono quelli in cui ha una card. **Staff e owner**
+  (`GET /venues/:venueId/requests/history`) vedono solo il locale in cui sono, col codice card e mai l'email;
+  il frontend passa il `venueId` del locale scelto, ma l'autorizzazione resta il ruolo letto da
+  `venue_members`. Nessun storico cross-locale per lo staff e nessun blocco backend di `/requests/mine` ai
+  membri (lo scope è già `cards.user_id` in SQL).
 
 ### 4.6 Wallet
 
@@ -281,6 +289,8 @@ Il dettaglio tecnico è in `CODEBASE.md` §6; qui ci sono le regole che non si p
 - Non aggiornare lo stato di una richiesta senza il filtro `status = 'pending'`.
 - Non usare `new Date()` per le scadenze: sempre il `now()` del DB.
 - Non usare `drizzle-kit push`.
+- Non unire lo storico del cliente e quello dello staff in una route sola con un selettore di ruolo,
+  né costruire uno storico cross-locale per lo staff (vedi §4.5).
 
 ## 8. Domande di prodotto aperte
 
