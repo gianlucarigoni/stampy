@@ -10,6 +10,8 @@ import StampProgress from '@/components/StampProgress.vue'
 import { usePolling } from '@/composables/usePolling'
 import { isRewardSeen, markRewardSeen } from '@/utils/seenStorage'
 import { readTab } from '@/utils/tabStorage'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppButton from '@/components/ui/AppButton.vue'
 
 const props = defineProps<{ requestId: string }>()
 
@@ -101,7 +103,7 @@ onMounted(load)
       :required="screen.result.stampsRequired"
     />
     <template v-if="screen.result.status === 'approved'">
-      <div class="alert alert-success">
+      <AppAlert type="success">
         <h1 class="h5 mb-1">Richiesta approvata!</h1>
         <p v-if="(screen.result.stampsAdded ?? 0) > 0" class="mb-0">
           {{ stampsText(screen.result.stampsAdded ?? 0) }}
@@ -109,7 +111,7 @@ onMounted(load)
         <p v-else-if="(screen.result.rewardsRedeemed ?? 0) > 0" class="mb-0">
           Nessun nuovo timbro: questo prodotto era il premio.
         </p>
-      </div>
+      </AppAlert>
       <StampProgress :count="screen.result.stampsCount" :required="screen.result.stampsRequired" />
       <p class="text-body-secondary mt-3 mb-0">Codice card: <strong>{{ screen.result.publicCode }}</strong></p>
       <RewardDialog
@@ -125,9 +127,7 @@ onMounted(load)
       </h1>
       <p>Nessun timbro aggiunto.</p>
       <p class="text-body-secondary">Codice card: <strong>{{ screen.result.publicCode }}</strong></p>
-      <button v-if="venueId" type="button" class="btn btn-primary" @click="askAgain">
-        Richiedi di nuovo
-      </button>
+      <AppButton v-if="venueId" @click="askAgain">Richiedi di nuovo</AppButton>
       <p v-else class="text-body-secondary mb-0">
         Avvicina di nuovo il telefono al tag del locale per fare una nuova richiesta.
       </p>
@@ -142,7 +142,7 @@ onMounted(load)
   </section>
 
   <section v-else class="card card-body">
-    <p class="alert alert-danger" role="alert">{{ screen.message }}</p>
-    <button type="button" class="btn btn-primary" @click="load">Riprova</button>
+    <AppAlert type="error">{{ screen.message }}</AppAlert>
+    <AppButton @click="load">Riprova</AppButton>
   </section>
 </template>

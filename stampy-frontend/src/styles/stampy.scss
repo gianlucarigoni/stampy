@@ -300,20 +300,6 @@ label {
   --bs-btn-disabled-bg: var(--app-action);
   --bs-btn-disabled-border-color: var(--app-action-bd);
 }
-// Outline buttons (header icons, wallet, stepper): text in `link`, hover and pressed on `surface-2`.
-.btn-outline-primary {
-  --bs-btn-color: var(--app-link);
-  --bs-btn-border-color: var(--app-link);
-  --bs-btn-bg: transparent;
-  --bs-btn-hover-color: var(--app-text);
-  --bs-btn-hover-bg: var(--app-surface-2);
-  --bs-btn-hover-border-color: var(--app-link);
-  --bs-btn-active-color: var(--app-text);
-  --bs-btn-active-bg: var(--app-surface-2);
-  --bs-btn-active-border-color: var(--app-link);
-  --bs-btn-disabled-color: var(--app-text-2);
-  --bs-btn-disabled-border-color: var(--app-field);
-}
 .btn-outline-secondary {
   --bs-btn-color: var(--app-text);
   --bs-btn-border-color: var(--app-field);
@@ -391,14 +377,6 @@ main:focus {
 }
 
 // --- Existing views (not redesigned here: only kept legible on the new tokens) ------------------------------------------
-.form-control-code {
-  font-family: "Unbounded", monospace;
-  font-size: 1.5rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.1em;
-  text-align: center;
-}
-
 .wordmark {
   font-family: "Unbounded", system-ui, sans-serif;
   color: var(--app-link); // the pure brand orange is 2.73:1 on the page in light; `link` passes AA in both themes
@@ -412,17 +390,13 @@ main:focus {
   max-width: 28rem;
 }
 
-// History "Filtri" toggle and its panel: outline normally, orange fill (dark text) when open.
+// History "Filtri" toggle and its panel: secondary button; open = `surface-2` + 2 px border in the text color
+// (not the orange fill: orange is the primary action, 21 §4.1).
 .filter-toggle {
-  --bs-btn-active-color: var(--app-action-fg);
-  --bs-btn-active-bg: var(--app-action);
-  --bs-btn-active-border-color: var(--app-action-bd);
-
   &.active,
   &[aria-expanded="true"] {
-    color: var(--app-action-fg);
-    background-color: var(--app-action);
-    border-color: var(--app-action-bd);
+    background-color: var(--app-surface-2);
+    border: 2px solid var(--app-text);
   }
 }
 .filter-panel {
@@ -470,7 +444,7 @@ main:focus {
   }
 }
 
-// Profile page: initial in a brand circle, and a whole-card tappable row.
+// Profile page: initial in a brand circle.
 .profile-avatar {
   flex: none;
   display: flex;
@@ -485,17 +459,6 @@ main:focus {
   font-weight: 800;
   font-size: 1.125rem;
 }
-.profile-row {
-  min-height: 3.5rem;
-  color: inherit;
-  text-decoration: none;
-  border-radius: inherit;
-
-  &:hover {
-    background-color: var(--app-surface-2);
-  }
-}
-
 // Danger zone: one red per theme (`--app-danger`), tinted card.
 .danger-zone {
   border-color: var(--app-danger);
@@ -514,6 +477,8 @@ main:focus {
   --bs-btn-active-bg: var(--app-danger-tint);
   --bs-btn-active-border-color: var(--app-danger);
 }
+
+@import "components";
 
 // --- Motion: only CSS, and off when the user asks for less ---------------------------------------------------------------
 @media (prefers-reduced-motion: reduce) {

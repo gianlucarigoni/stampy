@@ -5,6 +5,10 @@ import { ApiError } from '@/api/client'
 import { googleLogin, requestCode, verifyCode } from '@/api/endpoints'
 import AppHeader from '@/components/AppHeader.vue'
 import GoogleSignInButton from '@/components/GoogleSignInButton.vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppField from '@/components/ui/AppField.vue'
+import AppStatusLine from '@/components/ui/AppStatusLine.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useCountdown } from '@/composables/useCountdown'
 import { formatWait } from '@/utils/format'
@@ -28,12 +32,23 @@ const saved = readTab<SavedLogin>(STORAGE_KEY)
 const email = ref(saved?.email ?? '')
 const challengeId = ref(saved?.challengeId ?? '')
 const code = ref('')
-const codeInput = ref<HTMLInputElement | null>(null)
+const emailField = ref<InstanceType<typeof AppField> | null>(null)
+const codeField = ref<InstanceType<typeof AppField> | null>(null)
+const resendButton = ref<InstanceType<typeof AppButton> | null>(null)
 const busy = ref(false)
+// Which request is running, so the label that says "Invio…" / "Verifica…" is on the right button (21 §5.3).
+const busyAction = ref<'send' | 'verify' | ''>('')
+const sending = computed(() => busy.value && busyAction.value === 'send')
+const verifying = computed(() => busy.value && busyAction.value === 'verify')
 // Google sign-in in progress (the popup closed, the app is finishing the login): the e-mail form
 // stays disabled but must not say it is sending anything, so this is separate from `busy`.
 const googleBusy = ref(false)
+// Two kinds of error (pattern 5.1): the value is wrong -> `fieldError`, under the field, which becomes invalid;
+// the system failed (network, 5xx, Google) -> `error`, an alert on top of the card, and the field stays neutral.
 const error = ref('')
+const fieldError = ref('')
+// "Wait N min" asked by the server: a tap before it expires says so in a status line instead of a dead button (21 §5.1, 429).
+const waitHint = ref(false)
 // After deleting the account the app lands here: say it worked.
 const notice = ref(route.query.deleted === '1' ? 'Account eliminato. Puoi sempre rientrare con la tua email.' : '')
 // The current code can no longer be used (expired, or out of attempts): only "new code" is left.
@@ -50,9 +65,26 @@ const waitAnnouncement = computed(() =>
     ? `Riprova tra ${Math.ceil(waitSeconds.value / 60)} minuti`
     : 'Riprova tra meno di un minuto',
 )
+const waitHintText = computed(() =>
+  waitSeconds.value > 60 ? `Aspetta ancora ${Math.ceil(waitSeconds.value / 60)} min` : 'Aspetta ancora meno di un minuto',
+)
+watch(waiting, (on) => {
+  if (!on) waitHint.value = false
+})
+// What the field asks for is checked on the tap, not while typing; the error goes away once the value is valid.
+const EMAIL_RE = /^\S+@\S+\.\S+$/
+const EMAIL_PROBLEM = "Controlla l'indirizzo: manca la @ o il dominio."
 watch(email, (value) => {
   if (waitSeconds.value > 0 && value.trim().toLowerCase() !== waitEmail) resetWait()
+  if (fieldError.value && EMAIL_RE.test(value.trim())) fieldError.value = ''
 })
+
+/** Shows the message under the field and puts the focus on it (pattern 5.2). */
+async function fieldFail(message: string, target: typeof emailField) {
+  fieldError.value = message
+  await nextTick()
+  target.value?.focus()
+}
 
 function showError(err: unknown, fallback: string) {
   if (err instanceof ApiError && err.status === 429) {
@@ -72,27 +104,34 @@ function showCodeError(err: unknown) {
     if (left <= 0) {
       codeDead.value = true
       resetWait() // a pending "wait before a new code" no longer applies: the backend lets a dead code be replaced at once
-      error.value = 'Codice non valido. Hai finito i tentativi: richiedi un nuovo codice.'
+      fieldError.value = 'Codice non valido. Hai finito i tentativi: richiedi un nuovo codice.'
     } else {
-      error.value = `Codice non valido. ${left === 1 ? 'Ti resta 1 tentativo' : `Ti restano ${left} tentativi`}.`
+      fieldError.value = `Codice non valido. ${left === 1 ? 'Ti resta 1 tentativo' : `Ti restano ${left} tentativi`}.`
     }
     return
   }
   if (err instanceof ApiError && err.code === 'CodeExpired') {
     codeDead.value = true
     resetWait()
-    error.value = 'Codice scaduto. Richiedi un nuovo codice.'
+    fieldError.value = 'Codice scaduto. Richiedi un nuovo codice.'
     return
   }
   showError(err, 'Impossibile verificare il codice, riprova')
 }
 
 async function sendCode() {
-  if (busy.value || googleBusy.value || waiting.value) return
-  busy.value = true
-  error.value = ''
-  notice.value = ''
+  if (busy.value || googleBusy.value) return
+  if (waiting.value) {
+    waitHint.value = true
+    return
+  }
   const resend = challengeId.value !== ''
+  if (!resend && !EMAIL_RE.test(email.value.trim())) return fieldFail(EMAIL_PROBLEM, emailField)
+  busy.value = true
+  busyAction.value = 'send'
+  error.value = ''
+  fieldError.value = ''
+  notice.value = ''
   try {
     const result = await requestCode(email.value.trim())
     challengeId.value = result.challengeId
@@ -102,19 +141,28 @@ async function sendCode() {
     // First send: the "Abbiamo scritto a…" text already says it. Only a resend needs feedback.
     if (resend) notice.value = `Codice inviato a ${email.value.trim()}`
     await nextTick()
-    codeInput.value?.focus() // the code field replaces the email one: keep the keyboard flow going
+    codeField.value?.focus() // the code field replaces the email one: keep the keyboard flow going
   } catch (err) {
-    if (err instanceof ApiError && err.status === 400) error.value = 'Email non valida'
+    if (err instanceof ApiError && err.status === 400) await fieldFail(EMAIL_PROBLEM, emailField)
     else showError(err, 'Impossibile inviare il codice, riprova')
   } finally {
     busy.value = false
+    busyAction.value = ''
   }
 }
 
 async function submitCode() {
-  if (busy.value || code.value.length !== 6) return
+  if (busy.value) return
+  if (codeDead.value) {
+    // The code can no longer be used: the field already says why, the way forward is the new-code button.
+    ;(resendButton.value?.$el as HTMLElement | undefined)?.focus()
+    return
+  }
+  if (code.value.length !== 6) return fieldFail('Scrivi le 6 cifre.', codeField)
   busy.value = true
+  busyAction.value = 'verify'
   error.value = ''
+  fieldError.value = ''
   notice.value = ''
   try {
     const result = await verifyCode(challengeId.value, code.value)
@@ -126,6 +174,7 @@ async function submitCode() {
     code.value = ''
   } finally {
     busy.value = false
+    busyAction.value = ''
   }
 }
 
@@ -135,6 +184,7 @@ async function signInWithGoogle(idToken: string) {
   if (busy.value || googleBusy.value) return
   googleBusy.value = true
   error.value = ''
+  fieldError.value = ''
   notice.value = ''
   try {
     const result = await googleLogin(idToken)
@@ -153,12 +203,14 @@ async function signInWithGoogle(idToken: string) {
 }
 
 function changeEmail() {
+  if (busy.value) return
   resetWait()
   removeTab(STORAGE_KEY)
   challengeId.value = ''
   codeDead.value = false
   code.value = ''
   error.value = ''
+  fieldError.value = ''
   notice.value = ''
 }
 
@@ -169,6 +221,7 @@ watch(code, (value) => {
     code.value = digits
     return
   }
+  if (digits && !codeDead.value) fieldError.value = ''
   if (digits.length === 6) void submitCode()
 })
 </script>
@@ -182,40 +235,30 @@ watch(code, (value) => {
         <h1 class="h4">Accedi</h1>
         <p class="text-body-secondary">Ti mandiamo un codice via email. Niente password.</p>
 
-        <p v-if="notice" class="alert alert-success" role="status">{{ notice }}</p>
+        <AppAlert v-if="notice" type="success">{{ notice }}</AppAlert>
+        <AppAlert v-if="error" type="error">{{ error }}</AppAlert>
+        <AppAlert v-if="waiting" type="warning" :announce="false">
+          <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
+          <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
+        </AppAlert>
 
-        <form @submit.prevent="sendCode">
-          <div class="mb-3">
-            <label for="email" class="form-label fw-semibold">Email</label>
-            <input
-              id="email"
-              v-model="email"
-              class="form-control"
-              type="email"
-              name="email"
-              autocomplete="email"
-              inputmode="email"
-              autocapitalize="none"
-              spellcheck="false"
-              required
-              :aria-invalid="error ? 'true' : undefined"
-              :aria-describedby="error ? 'login-error' : undefined"
-            />
-          </div>
-
-          <p v-if="error" id="login-error" class="alert alert-danger" role="alert">{{ error }}</p>
-          <p v-if="waiting" class="alert alert-warning">
-            <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
-            <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
-          </p>
-
-          <button
-            class="btn btn-primary w-100"
-            type="submit"
-            :disabled="busy || googleBusy || waiting || !email.trim()"
-          >
-            {{ busy ? 'Invio…' : 'Invia il codice' }}
-          </button>
+        <form novalidate @submit.prevent="sendCode">
+          <AppField
+            id="email"
+            ref="emailField"
+            v-model="email"
+            label="Email"
+            :error="fieldError"
+            type="email"
+            name="email"
+            autocomplete="email"
+            inputmode="email"
+            autocapitalize="none"
+            spellcheck="false"
+            required
+          />
+          <AppButton type="submit" :busy="sending" busy-label="Invio…">Invia il codice</AppButton>
+          <AppStatusLine v-if="waitHint" icon="clock">{{ waitHintText }}</AppStatusLine>
         </form>
 
         <GoogleSignInButton @credential="signInWithGoogle" />
@@ -228,54 +271,45 @@ watch(code, (value) => {
           >. Il codice vale 5 minuti.
         </p>
 
-        <form @submit.prevent="submitCode">
-          <div class="mb-3">
-            <label for="code" class="form-label fw-semibold">Codice a 6 cifre</label>
-            <input
-              id="code"
-              v-model="code"
-              class="form-control form-control-code"
-              type="text"
-              name="code"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              :disabled="codeDead"
-              required
-              ref="codeInput"
-              :aria-invalid="error ? 'true' : undefined"
-              :aria-describedby="error ? 'login-error' : undefined"
-            />
-          </div>
+        <AppAlert v-if="notice" type="success">{{ notice }}</AppAlert>
+        <AppAlert v-if="error" type="error">{{ error }}</AppAlert>
+        <AppAlert v-if="waiting" type="warning" :announce="false">
+          <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
+          <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
+        </AppAlert>
 
-          <p v-if="notice" class="alert alert-success" role="status">{{ notice }}</p>
-          <p v-if="error" id="login-error" class="alert alert-danger" role="alert">{{ error }}</p>
-          <p v-if="waiting" class="alert alert-warning">
-            <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
-            <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
-          </p>
-
-          <button
-            class="btn btn-primary w-100"
-            type="submit"
-            :disabled="busy || waiting || codeDead || code.length !== 6"
-          >
-            {{ busy ? 'Verifica…' : 'Accedi' }}
-          </button>
+        <form novalidate @submit.prevent="submitCode">
+          <AppField
+            id="code"
+            ref="codeField"
+            v-model="code"
+            label="Codice a 6 cifre"
+            :error="fieldError"
+            :dead="codeDead"
+            code
+            type="text"
+            name="code"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            required
+          />
+          <AppButton type="submit" :busy="verifying" busy-label="Verifica…">Accedi</AppButton>
         </form>
 
         <div class="d-flex flex-wrap justify-content-between column-gap-3 mt-2">
-          <button
-            type="button"
-            :class="codeDead ? 'btn btn-primary' : 'btn btn-link px-0'"
-            :disabled="busy || waiting"
+          <AppButton
+            ref="resendButton"
+            :variant="codeDead ? 'primary' : 'link'"
+            :block="codeDead"
+            :busy="sending"
+            busy-label="Invio…"
             @click="sendCode"
           >
             Invia un nuovo codice
-          </button>
-          <button type="button" class="btn btn-link px-0" :disabled="busy" @click="changeEmail">
-            Cambia email
-          </button>
+          </AppButton>
+          <AppButton variant="link" :block="false" @click="changeEmail">Cambia email</AppButton>
         </div>
+        <AppStatusLine v-if="waitHint" icon="clock">{{ waitHintText }}</AppStatusLine>
       </template>
     </section>
     </main>

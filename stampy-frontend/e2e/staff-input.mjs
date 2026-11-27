@@ -33,7 +33,11 @@ try {
   await page.waitForTimeout(3500)
   check('60 stays visible after a poll', (await input.inputValue()) === '60')
   check('error text is shown', await page.getByText('Quantità non valida').isVisible())
-  check('Confirm is disabled', await page.getByRole('button', { name: /^Conferma/ }).isDisabled())
+  // F8: primary buttons are never disabled. The tap sends nothing and puts the focus on the quantity field.
+  const confirmBtn = page.getByRole('button', { name: /^Conferma/ })
+  check('Confirm is not disabled (never-disabled primary)', !(await confirmBtn.isDisabled()))
+  await confirmBtn.click()
+  check('tapping Confirm with a bad quantity focuses the field', await input.evaluate((el) => el === document.activeElement))
 
   section('Confirm sends the typed value')
   await input.press('Control+A')

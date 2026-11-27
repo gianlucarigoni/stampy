@@ -82,6 +82,11 @@ const router = createRouter({
         },
       ],
     },
+    // Development only: every base component in every state (used to check F9–F12 screens). `import.meta.env.DEV` is
+    // replaced by `false` in the production build, so the page and its import are dropped from the bundle.
+    ...(import.meta.env.DEV
+      ? [{ path: '/dev/components', name: 'dev-components', component: () => import('@/views/dev/ComponentsDemo.vue') }]
+      : []),
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',

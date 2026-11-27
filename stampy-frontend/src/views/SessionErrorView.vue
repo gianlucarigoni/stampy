@@ -2,6 +2,8 @@
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { safeNext } from '@/utils/redirect'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppButton from '@/components/ui/AppButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,8 +16,8 @@ const retry = () => router.replace(safeNext(route.query.next) ?? '/')
     <AppHeader />
     <main id="main" tabindex="-1">
       <div class="card card-body">
-        <p class="alert alert-danger" role="alert">Connessione non riuscita, riprova</p>
-        <button type="button" class="btn btn-primary" @click="retry">Riprova</button>
+        <AppAlert type="error">Connessione non riuscita, riprova</AppAlert>
+        <AppButton @click="retry">Riprova</AppButton>
       </div>
     </main>
   </div>

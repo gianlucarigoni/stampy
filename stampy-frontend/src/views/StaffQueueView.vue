@@ -11,6 +11,10 @@ import {
   type QueueItem,
 } from '@/api/endpoints'
 import PromotionNotice from '@/components/PromotionNotice.vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppIconButton from '@/components/ui/AppIconButton.vue'
+import AppSkeleton from '@/components/ui/AppSkeleton.vue'
 import { usePolling } from '@/composables/usePolling'
 import { formatTime } from '@/utils/format'
 
@@ -45,6 +49,8 @@ const timers = new Set<ReturnType<typeof setTimeout>>()
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
 const busyId = ref('')
+// Which action is running on that card, so the spinner and "Invio…" are on the button that was tapped.
+const busyKind = ref<'confirm' | 'reject' | ''>('')
 
 // Kept per request so a queue refresh never resets what staff is counting.
 // `products` is the last valid quantity; `drafts` is the raw text while staff types. The input
@@ -80,7 +86,7 @@ function typeProducts(requestId: string, input: HTMLInputElement) {
 }
 
 // Leaving the field: a valid text is normalized ("07" -> 7); an invalid one stays visible with
-// its message, and Confirm stays disabled, so a wrong quantity is never sent silently.
+// its message, and a tap on Confirm only moves the focus there, so a wrong quantity is never sent silently.
 function commitProducts(requestId: string) {
   if (requestId in drafts && parseProducts(drafts[requestId]!) !== null) delete drafts[requestId]
 }
@@ -163,9 +169,10 @@ const rows = computed<Row[]>(() => {
   return list
 })
 
-async function act(requestId: string, action: () => Promise<void>) {
+async function act(requestId: string, kind: 'confirm' | 'reject', action: () => Promise<void>) {
   if (busyId.value) return
   busyId.value = requestId
+  busyKind.value = kind
   error.value = ''
   try {
     await action()
@@ -176,6 +183,7 @@ async function act(requestId: string, action: () => Promise<void>) {
     error.value = actionErrorText(err)
   } finally {
     busyId.value = ''
+    busyKind.value = ''
     await refresh()
   }
 }
@@ -202,8 +210,12 @@ function onApproved(item: QueueItem, index: number, result: ConfirmResult) {
 
 function confirm(item: QueueItem) {
   const count = quantityOf(item.requestId)
-  if (count === null) return // the button is disabled; never send a guessed quantity
-  return act(item.requestId, async () => {
+  if (count === null) {
+    // Confirm is never disabled (21 §4.1): the tap sends nothing and takes the staff to the field that says why.
+    document.getElementById(`qty-${item.requestId}`)?.focus()
+    return // never send a guessed quantity
+  }
+  return act(item.requestId, 'confirm', async () => {
     const index = indexOf(item)
     const result = await confirmRequest(props.venueId, item.requestId, count)
     onApproved(item, index, result)
@@ -212,7 +224,7 @@ function confirm(item: QueueItem) {
 
 // A rejection that went through is a success of the operation, not an error.
 const reject = (item: QueueItem) =>
-  act(item.requestId, async () => {
+  act(item.requestId, 'reject', async () => {
     const index = indexOf(item)
     await rejectRequest(props.venueId, item.requestId)
     settle({ requestId: item.requestId, publicCode: item.publicCode, index, outcome: { kind: 'rejected' } })
@@ -244,7 +256,7 @@ onMounted(async () => {
 
 <template>
   <section v-if="forbidden" class="card card-body">
-    <p class="alert alert-danger" role="alert">Non sei autorizzato a gestire questo locale.</p>
+    <AppAlert type="error">Non sei autorizzato a gestire questo locale.</AppAlert>
     <RouterLink :to="{ name: 'staff-venues' }">I tuoi locali</RouterLink>
   </section>
 
@@ -255,12 +267,12 @@ onMounted(async () => {
 
     <!-- Sticky: with several cards the outcome of the last one must stay in view (UX-02). -->
     <div class="feedback">
-      <p v-if="error" class="alert alert-danger mb-2" role="alert">{{ error }}</p>
+      <AppAlert v-if="error" type="error" class="mb-2">{{ error }}</AppAlert>
     </div>
     <p class="visually-hidden" role="status">{{ announcement }}</p>
-    <p v-if="pollError" class="alert alert-warning" role="status">{{ pollError }}</p>
+    <AppAlert v-if="pollError" type="warning">{{ pollError }}</AppAlert>
 
-    <p v-if="!requests" class="text-body-secondary" role="status">Caricamento…</p>
+    <AppSkeleton v-if="!requests" card :lines="3" height="2rem" />
 
     <p v-else-if="rows.length === 0" class="card card-body text-body-secondary">Nessuna richiesta in attesa.</p>
 
@@ -318,17 +330,15 @@ onMounted(async () => {
       </p>
 
       <div class="stepper mb-3" role="group" :aria-label="`Prodotti consumati per ${item.publicCode}, premio compreso`">
-        <button
-          type="button"
-          class="btn btn-outline-primary fs-4"
-          :aria-label="`Un prodotto in meno per ${item.publicCode}`"
-          :disabled="(quantityOf(item.requestId) ?? MAX_PRODUCTS) <= MIN_PRODUCTS"
+        <AppIconButton
+          icon="minus"
+          :label="`Un prodotto in meno per ${item.publicCode}`"
+          :limited="(quantityOf(item.requestId) ?? MAX_PRODUCTS) <= MIN_PRODUCTS"
           @click="changeProducts(item.requestId, -1)"
-        >
-          −
-        </button>
+        />
         <div class="quantity">
           <input
+            :id="`qty-${item.requestId}`"
             class="form-control quantity-input"
             type="number"
             inputmode="numeric"
@@ -344,15 +354,12 @@ onMounted(async () => {
           />
           <span class="text-body-secondary">{{ quantityOf(item.requestId) === 1 ? 'prodotto' : 'prodotti' }}</span>
         </div>
-        <button
-          type="button"
-          class="btn btn-outline-primary fs-4"
-          :aria-label="`Un prodotto in più per ${item.publicCode}`"
-          :disabled="(quantityOf(item.requestId) ?? MIN_PRODUCTS) >= MAX_PRODUCTS"
+        <AppIconButton
+          icon="plus"
+          :label="`Un prodotto in più per ${item.publicCode}`"
+          :limited="(quantityOf(item.requestId) ?? MIN_PRODUCTS) >= MAX_PRODUCTS"
           @click="changeProducts(item.requestId, 1)"
-        >
-          +
-        </button>
+        />
       </div>
       <p
         v-if="quantityOf(item.requestId) === null"
@@ -363,24 +370,23 @@ onMounted(async () => {
       </p>
 
       <div class="d-grid gap-3" style="grid-template-columns: 1fr 1fr">
-        <button
-          type="button"
-          class="btn btn-outline-danger"
+        <AppButton
+          variant="danger-outline"
           :aria-label="`Rifiuta ${item.publicCode}`"
-          :disabled="busyId !== ''"
+          :busy="busyId === item.requestId && busyKind === 'reject'"
+          busy-label="Invio…"
           @click="reject(item)"
         >
           Rifiuta
-        </button>
-        <button
-          type="button"
-          class="btn btn-primary"
+        </AppButton>
+        <AppButton
           :aria-label="`Conferma ${item.publicCode}`"
-          :disabled="busyId !== '' || quantityOf(item.requestId) === null"
+          :busy="busyId === item.requestId && busyKind === 'confirm'"
+          busy-label="Invio…"
           @click="confirm(item)"
         >
-          {{ busyId === item.requestId ? 'Invio…' : 'Conferma' }}
-        </button>
+          Conferma
+        </AppButton>
       </div>
     </article>
     </template>
@@ -391,7 +397,7 @@ onMounted(async () => {
 <style scoped>
 .stepper {
   display: grid;
-  grid-template-columns: 3.5rem 1fr 3.5rem;
+  grid-template-columns: 2.75rem 1fr 2.75rem;
   align-items: center;
   gap: 0.5rem;
 }

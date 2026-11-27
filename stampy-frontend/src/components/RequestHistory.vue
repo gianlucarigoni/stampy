@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue
 import { useRoute, useRouter, type LocationQuery } from 'vue-router'
 import { ApiError } from '@/api/client'
 import type { HistoryFilters, HistoryItem, RequestStatus } from '@/api/endpoints'
+import AppAlert from '@/components/ui/AppAlert.vue'
 
 // One history screen for staff (a venue's requests) and customers (their own, all venues): the
 // page that mounts it only says where the rows come from. A 403 is reported, not rendered here.
@@ -200,7 +201,7 @@ function detail(item: HistoryItem) {
     <div class="d-flex gap-2 mb-2">
       <button
         type="button"
-        class="btn btn-outline-primary filter-toggle flex-grow-1 text-start"
+        class="btn btn-outline-secondary filter-toggle flex-grow-1 text-start"
         :class="{ active: open }"
         style="min-height: 44px"
         aria-controls="h-panel"
@@ -262,8 +263,8 @@ function detail(item: HistoryItem) {
       </div>
     </form>
 
-    <p v-if="formError" class="text-danger fw-semibold mb-2" role="alert">⚠ {{ formError }}</p>
-    <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
+    <AppAlert v-if="formError" type="error" class="mb-2">{{ formError }}</AppAlert>
+    <AppAlert v-if="error" type="error">{{ error }}</AppAlert>
     <p class="small text-body-secondary mb-2" role="status">
       <template v-if="!loaded">{{ loading ? 'Caricamento…' : '' }}</template>
       <template v-else-if="items.length > 0">{{ countText }}</template>
