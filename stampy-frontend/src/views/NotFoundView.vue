@@ -11,7 +11,7 @@ import AppEmptyState from '@/components/ui/AppEmptyState.vue'
       <AppEmptyState icon="compass" title="Pagina non trovata">
         <p>Controlla il link, oppure avvicina di nuovo il telefono al tag.</p>
         <template #actions>
-          <AppButton variant="secondary" :to="{ path: '/' }">Vai alla pagina iniziale</AppButton>
+          <AppButton :to="{ path: '/' }">Vai alla pagina iniziale</AppButton>
         </template>
       </AppEmptyState>
     </main>
