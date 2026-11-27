@@ -5,6 +5,7 @@ import { DbOrTx } from "../../../db/tx";
 import { RequestStatus } from "../../../db/types";
 import { GenericError } from "../../../errors/generic";
 import { RequestNotFoundError } from "../../../errors/request-not-found.error";
+import { RequestNotValidError, RequestNotValidReason } from "../../../errors/request-not-valid.error";
 import { promotionConfigSchema } from "../../../utils/schemas/promotion-config.schema";
 import { splitStamps } from "../../../utils/stamps";
 
@@ -61,13 +62,15 @@ export class ResolveService {
    */
   private async throwNotFoundOrConflict(conn: DbOrTx, venueId: string, requestId: string): Promise<never> {
     const [row] = await conn
-      .select({ id: stampRequests.id })
+      .select({ status: stampRequests.status })
       .from(stampRequests)
       .where(and(eq(stampRequests.id, requestId), eq(stampRequests.venueId, venueId)))
       .limit(1);
 
     if (!row) throw new RequestNotFoundError();
-    throw new GenericError("Richiesta non più valida", 409);
+    // pending qui = scaduta ma non ancora marcata (orologio al limite): per il chiamante è `expired`
+    const reason: RequestNotValidReason = row.status === RequestStatus.pending ? "expired" : row.status;
+    throw new RequestNotValidError(reason);
   }
 
   async confirm(venueId: string, requestId: string, operatorId: string, stamps: number): Promise<ConfirmResult> {

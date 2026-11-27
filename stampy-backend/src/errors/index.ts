@@ -8,6 +8,7 @@ import { invalidGoogleTokenHandler } from "./invalid-google-token.error";
 import { originNotAllowedHandler } from "./origin-not-allowed.error";
 import { promotionNotFoundHandler } from "./promotion-not-found.error";
 import { RequestNotFoundError, requestNotFoundHandler } from "./request-not-found.error";
+import { requestNotValidHandler } from "./request-not-valid.error";
 import { routeNotFoundHandler } from "./route-not-found.error";
 import { tryLaterHandler } from "./try-later.error";
 import { unauthorizedHandler } from "./unauthorized.error";
@@ -20,6 +21,7 @@ export const errorHandlers = [
   venueNotFoundHandler,
   promotionNotFoundHandler,
   requestNotFoundHandler,
+  requestNotValidHandler,
   routeNotFoundHandler,
   tryLaterHandler,
   invalidCodeHandler,
