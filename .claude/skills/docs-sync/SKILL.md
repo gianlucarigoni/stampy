@@ -23,6 +23,10 @@ commit messages are in **Italian**, with the terminology of the existing docs (s
      `DECIDED`, `TODO`, `TO-DECIDE`, `TO-VERIFY`, `BLOCKED`.
    - `docs/CONTEXT.md` is for decisions that **changed**. Never edit it on your own: if a report
      proposes a change, show the exact text to the owner and ask.
+   - `docs/agents/` and `AGENTS.md` (instructions for agents) are **never edited by this skill on its own**.
+     If a report reveals a workflow problem that would be fixed there (permissions, commands, wrong or
+     ambiguous instructions), do not write: report it (see "Report back"), explain the problem and the
+     proposed fix, and write to them only after an explicit command from the owner.
    - Do not touch `docs/archive/`.
 5. **Test baseline.** Run `.claude/skills/verify/scripts/verify.sh`. Set `BASELINE` in `verify.sh`
    to the real total, and update the number in `docs/CODEBASE.md` §7 and in the `description` of
@@ -39,4 +43,6 @@ commit messages are in **Italian**, with the terminology of the existing docs (s
 In Italian: which reports were integrated and deleted, which were left (and why), the new test
 baseline, decisions that need the owner (CONTEXT.md proposals), and what `worktree-clean.sh` found.
 Also collect each report's "Problemi di ambiente" and "Cosa ho capito e cosa no" sections and show them to
-the owner as a list: they are feedback on the workflow itself (AGENTS.md, scripts, hook), not project documentation.
+the owner as a list: they are feedback on the workflow itself (AGENTS.md, `docs/agents/`, scripts, hook), not project documentation.
+For each problem that touches `docs/agents/` or `AGENTS.md`, explain what went wrong and the fix you would make, then wait for the
+owner's explicit command before writing anything there.
