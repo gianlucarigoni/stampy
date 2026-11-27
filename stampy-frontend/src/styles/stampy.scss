@@ -1,23 +1,107 @@
-// Bootstrap 5.3, Sass only (no Bootstrap JS). Variables first, then only the parts we use.
+// Design system dir-i (F7): tokens on Bootstrap 5.3 Sass (no Bootstrap JS).
+// Sources: design-review/context/21-design-system.md (tokens) and 21b-bootstrap-mapping.md (mapping).
+// Rule: Sass variables below feed Bootstrap; roles Bootstrap does not have live as `--app-*` custom properties,
+// defined once per theme in the blocks further down. Components read only `--app-*`.
 
-// Brand orange is also $primary. White on it is ~3.2:1, so lower Bootstrap's contrast threshold (default 4.5):
-// otherwise color-contrast() picks black text on every orange background (btn-primary, text-bg-primary, ...).
-// Light backgrounds such as warning yellow stay below 3 and keep dark text. success/danger stay at defaults.
-$min-contrast-ratio: 3;
+// Product name (D5): «Stampy» is a placeholder. Change it here; `--app-product-name` exposes it to CSS.
+$product-name: "Stampy";
+
+// --- Contrast (D1-a: dark text on the orange; resolves B28) -----------------------------------------------------------
+// With 4.5, color-contrast() picks #1f1612 on $primary by itself (5.56:1), so no white-text hack is needed.
+$min-contrast-ratio: 4.5;
+$color-contrast-dark: #1f1612;
+
+// --- Color (light; the *-dark variables are the dark theme) -----------------------------------------------------------
 $brand: #f16417;
 $primary: #f16417;
-$body-bg-dark: #171310;
-$body-secondary-bg-dark: #221c18;
-$link-color-dark: #f4813f; // $primary is too dark for links on the dark background
-$link-hover-color-dark: #f89a63;
+$danger: #b3261e;
+$success: #14633b;
 
-// 16px+ inputs (iOS does not zoom on focus) and 48px touch targets.
-$font-size-base: 1rem;
-$input-font-size: 1.0625rem;
-$input-padding-y: 0.625rem;
-$btn-padding-y: 0.625rem;
-$btn-font-weight: 600;
-$input-btn-focus-width: 0.2rem;
+$body-bg: #f1ede0;                 $body-bg-dark: #1a1410;               // bg
+$body-secondary-bg: #fbf9f1;       $body-secondary-bg-dark: #251d17;     // surface (card, field, menu)
+$body-tertiary-bg: #dfe5d2;        $body-tertiary-bg-dark: #31261e;      // surface-2
+$body-color: #2a1f18;              $body-color-dark: #f4e9dc;            // text
+$body-secondary-color: #5f4e40;    $body-secondary-color-dark: #c0ad9c;  // text-2
+$headings-color: inherit;
+$border-color: #d6dac8;            $border-color-dark: #4a3b30;          // decorative border
+$link-color: #b43a0a;              $link-color-dark: #f4813f;
+$link-hover-color: #8f2d07;        $link-hover-color-dark: #f89a63;
+
+// Alerts: tint + text color per type; the 3px border is the color of the type.
+$danger-bg-subtle: #fbe5e1;        $danger-bg-subtle-dark: #3a1714;
+$danger-text-emphasis: #7a1610;    $danger-text-emphasis-dark: #ffc9c3;
+$danger-border-subtle: #b3261e;    $danger-border-subtle-dark: #ff8d82;
+$success-bg-subtle: #d3ead9;       $success-bg-subtle-dark: #14301c;
+$success-text-emphasis: #0b3d24;   $success-text-emphasis-dark: #c8f2d6;
+$success-border-subtle: #14633b;   $success-border-subtle-dark: #86dca0;
+$warning-bg-subtle: #f2e1a3;       $warning-bg-subtle-dark: #3a2f0a;
+$warning-text-emphasis: #4a3300;   $warning-text-emphasis-dark: #ffe39a;
+$warning-border-subtle: #4a3300;   $warning-border-subtle-dark: #ffe39a;
+$info-bg-subtle: #e9eef9;          $info-bg-subtle-dark: #1b2540;
+$info-text-emphasis: #1d2f66;      $info-text-emphasis-dark: #c6d4ff;
+$info-border-subtle: #1d2f66;      $info-border-subtle-dark: #c6d4ff;
+
+// --- Typography -------------------------------------------------------------------------------------------------------
+$font-family-sans-serif: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$headings-font-family: "Unbounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+$btn-font-family: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+$font-size-base: 1.0625rem;        // 17px
+$line-height-base: 1.5;
+$headings-font-weight: 800;
+$headings-line-height: 1.15;
+$h1-font-size: 1.75rem;            // 28px: t-title
+$h2-font-size: 1.1875rem;          // 19px: t-section
+$h3-font-size: 1.0625rem;
+$h4-font-size: 1.0625rem;
+$h5-font-size: 1rem;
+$h6-font-size: 1rem;
+$btn-font-weight: 700;
+$form-label-font-weight: 700;
+$input-font-size: 1.0625rem;       // >= 17px: iOS does not zoom on focus
+$input-font-weight: 500;
+
+// --- Radii, borders, controls -----------------------------------------------------------------------------------------
+$border-radius: 0.75rem;           // r-sm 12
+$border-radius-sm: 0.75rem;
+$border-radius-lg: 1.125rem;       // r-card 18
+$border-radius-xl: 1.75rem;        // r-dialog 28
+$btn-border-radius: 0.875rem;      // r-btn 14
+$btn-border-radius-sm: 0.875rem;
+$btn-border-radius-lg: 0.875rem;
+$input-border-radius: 0.875rem;
+$input-border-radius-sm: 0.875rem;
+$input-border-radius-lg: 0.875rem;
+$card-border-radius: 1.125rem;
+$alert-border-radius: 0.75rem;
+$dropdown-border-radius: 0.875rem;
+$border-width: 1.5px;
+$btn-border-width: 1.5px;
+$input-border-width: 2px;
+$alert-border-width: 3px;
+$grid-gutter-width: 1rem;          // page padding 16px
+
+$input-padding-y: 0.6875rem;       // 52px controls (min-height below)
+$btn-padding-y: 0.6875rem;
+
+// Card, field and menu sit on `surface`, the page on `bg` (Bootstrap's default makes them the same color).
+$card-bg: var(--bs-secondary-bg);
+$input-bg: var(--bs-secondary-bg);
+$dropdown-bg: var(--bs-secondary-bg);
+$input-border-color: var(--app-field);       // field: >= 3:1 on card, page and surface-2
+$input-focus-border-color: var(--app-field); // focus is the ring, not the border color
+$dropdown-border-color: var(--app-field);
+$dropdown-border-width: 1.5px;
+$dropdown-min-width: 13.75rem;
+$dropdown-item-padding-y: 0.75rem;
+$dropdown-box-shadow: 0 8px 24px rgba(10, 6, 3, 0.25);
+
+$enable-rfs: false;                // the type scale is fixed (28 / 19 / 17), no fluid sizes
+
+// One focus ring (see below): switch Bootstrap's glow off.
+$input-btn-focus-width: 0;
+$input-btn-focus-box-shadow: none;
+$btn-focus-box-shadow: none;
+$input-focus-box-shadow: none;
 
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
@@ -38,52 +122,331 @@ $input-btn-focus-width: 0.2rem;
 @import "bootstrap/scss/helpers";
 @import "bootstrap/scss/utilities/api";
 
-// Brand color as a CSS variable: the same orange reads well on both themes.
+
+// --- Fonts: self-hosted variable woff2 (latin subset), no CDN. Licenses (OFL-1.1) next to the files. ------------------
+$latin: "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD";
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("/fonts/unbounded-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: #{$latin};
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/instrument-sans-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: #{$latin};
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/figtree-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: #{$latin};
+}
+
+// --- Roles Bootstrap does not have: `--app-*`, one block per theme (same roles in both) ---------------------------------
+:root,
+[data-bs-theme="light"] {
+  --app-product-name: #{inspect($product-name)};
+  --app-bg: #f1ede0;
+  --app-surface: #fbf9f1;
+  --app-surface-2: #dfe5d2;
+  --app-border: #d6dac8;
+  --app-field: #7d6a58;
+  --app-text: #2a1f18;
+  --app-text-2: #5f4e40;
+  --app-link: #b43a0a;
+  --app-brand: #{$brand};
+  --app-brand-deep: #c2410c;
+  --app-action: #f16417;
+  --app-action-fg: #1f1612;
+  --app-action-bd: #9a3412;
+  --app-action-hover: #f7782f;
+  --app-action-pressed: #db5a11;
+  --app-danger: #b3261e;
+  --app-danger-fg: #fff;
+  --app-danger-hover: #9d2019;
+  --app-danger-pressed: #8f1d17;
+  --app-danger-tint: #fbe5e1;
+  --app-danger-tt: #7a1610;
+  --app-ok: #14633b;
+  --app-ok-tint: #d3ead9;
+  --app-ok-tt: #0b3d24;
+  --app-warn-tint: #f2e1a3;
+  --app-warn-tt: #4a3300;
+  --app-info-tint: #e9eef9;
+  --app-info-tt: #1d2f66;
+  --app-prize: #ff5fa2;
+  --app-prize-fg: #2b1408;
+  --app-prize-bd: #2b1408;
+  --app-prize-tint: #ffd1e5;
+  --app-prize-tt: #6b0c37;
+  --app-prize-pressed: #e34a8f;
+  --app-stamp: #f16417;
+  --app-stamp-ink: #2b1408;
+  --app-ring: #1d4ed8;
+  --app-ring-on-prize: #2b1408;
+  --app-scrim: rgba(10, 6, 3, 0.72);
+}
+[data-bs-theme="dark"] {
+  --app-bg: #1a1410;
+  --app-surface: #251d17;
+  --app-surface-2: #31261e;
+  --app-border: #4a3b30;
+  --app-field: #9a8878;
+  --app-text: #f4e9dc;
+  --app-text-2: #c0ad9c;
+  --app-link: #f4813f;
+  --app-action-fg: #1a1410;
+  --app-action-bd: transparent;
+  --app-action-hover: #f87a35;
+  --app-danger: #ff8d82;
+  --app-danger-fg: #2a0a07;
+  --app-danger-hover: #ff9f96;
+  --app-danger-pressed: #f06f63;
+  --app-danger-tint: #3a1714;
+  --app-danger-tt: #ffc9c3;
+  --app-ok: #86dca0;
+  --app-ok-tint: #14301c;
+  --app-ok-tt: #c8f2d6;
+  --app-warn-tint: #3a2f0a;
+  --app-warn-tt: #ffe39a;
+  --app-info-tint: #1b2540;
+  --app-info-tt: #c6d4ff;
+  --app-prize-bd: transparent;
+  --app-prize-tint: #4d1634;
+  --app-prize-tt: #ffc7e0;
+  --app-prize-pressed: #f0488f;
+  --app-stamp-ink: #1a1410;
+  --app-ring: #8fb0ff;
+}
 :root {
-  --stampy-brand: #{$brand};
+  // Motion tokens (CSS only). Reduced-motion zeroes the durations below.
+  --app-dur-press: 80ms;
+  --app-dur-state: 180ms;
+  --app-dur-dialog: 300ms;
+  --app-dur-new: 900ms;
+  --app-dur-confetti: 1.5s;
+  --app-ease-state: cubic-bezier(0.2, 0, 0, 1);
+  --app-ease-confetti: cubic-bezier(0.2, 1.4, 0.4, 1);
+  // Kept so existing components keep working; same value as --app-brand.
+  --stampy-brand: var(--app-brand);
 }
 
-// Bootstrap picks the hover text color with color-contrast($primary), which can resolve to dark.
-// Force white (burger menu and back buttons use this class), in both themes.
+// Bootstrap's own variables that the Sass map cannot express per theme.
+[data-bs-theme="dark"] {
+  --bs-border-color-translucent: var(--app-border);
+}
+
+// --- Type -------------------------------------------------------------------------------------------------------------
+h1,
+.h1 {
+  letter-spacing: -0.03em;
+}
+h2,
+.h2 {
+  font-weight: 700;
+}
+.form-label,
+label {
+  font-family: $btn-font-family;
+}
+@media (max-width: 359.98px) {
+  h1,
+  .h1 {
+    font-size: 1.5rem; // Unbounded is wide: smaller on very narrow phones
+  }
+}
+
+// --- Controls ---------------------------------------------------------------------------------------------------------
+.btn {
+  min-height: 3.25rem; // 52px
+  line-height: 1.25;
+  transition: background-color var(--app-dur-state) var(--app-ease-state), transform var(--app-dur-press) ease-out;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+.btn-link {
+  min-height: 2.75rem;
+  &:active {
+    transform: none;
+  }
+}
+.form-control,
+.form-select {
+  min-height: 3.25rem;
+}
+
+// Primary: dark text on the orange, border only in light (the fill against the page is 2.73:1).
+.btn-primary {
+  --bs-btn-color: var(--app-action-fg);
+  --bs-btn-bg: var(--app-action);
+  --bs-btn-border-color: var(--app-action-bd);
+  --bs-btn-hover-color: var(--app-action-fg);
+  --bs-btn-hover-bg: var(--app-action-hover);
+  --bs-btn-hover-border-color: var(--app-action-bd);
+  --bs-btn-active-color: var(--app-action-fg);
+  --bs-btn-active-bg: var(--app-action-pressed);
+  --bs-btn-active-border-color: var(--app-action-bd);
+  --bs-btn-disabled-color: var(--app-action-fg);
+  --bs-btn-disabled-bg: var(--app-action);
+  --bs-btn-disabled-border-color: var(--app-action-bd);
+}
+// Outline buttons (header icons, wallet, stepper): text in `link`, hover and pressed on `surface-2`.
 .btn-outline-primary {
-  --bs-btn-hover-color: #fff;
-  --bs-btn-active-color: #fff;
+  --bs-btn-color: var(--app-link);
+  --bs-btn-border-color: var(--app-link);
+  --bs-btn-bg: transparent;
+  --bs-btn-hover-color: var(--app-text);
+  --bs-btn-hover-bg: var(--app-surface-2);
+  --bs-btn-hover-border-color: var(--app-link);
+  --bs-btn-active-color: var(--app-text);
+  --bs-btn-active-bg: var(--app-surface-2);
+  --bs-btn-active-border-color: var(--app-link);
+  --bs-btn-disabled-color: var(--app-text-2);
+  --bs-btn-disabled-border-color: var(--app-field);
+}
+.btn-outline-secondary {
+  --bs-btn-color: var(--app-text);
+  --bs-btn-border-color: var(--app-field);
+  --bs-btn-hover-color: var(--app-text);
+  --bs-btn-hover-bg: var(--app-surface-2);
+  --bs-btn-hover-border-color: var(--app-field);
+  --bs-btn-active-color: var(--app-text);
+  --bs-btn-active-bg: var(--app-surface-2);
+  --bs-btn-active-border-color: var(--app-field);
+}
+// One danger per theme; in dark the fill is light, so the text is dark.
+.btn-danger {
+  --bs-btn-color: var(--app-danger-fg);
+  --bs-btn-bg: var(--app-danger);
+  --bs-btn-border-color: var(--app-danger);
+  --bs-btn-hover-color: var(--app-danger-fg);
+  --bs-btn-hover-bg: var(--app-danger-hover);
+  --bs-btn-hover-border-color: var(--app-danger-hover);
+  --bs-btn-active-color: var(--app-danger-fg);
+  --bs-btn-active-bg: var(--app-danger-pressed);
+  --bs-btn-active-border-color: var(--app-danger-pressed);
+}
+.btn-outline-danger {
+  --bs-btn-color: var(--app-danger);
+  --bs-btn-border-color: var(--app-danger);
+  --bs-btn-hover-color: var(--app-danger);
+  --bs-btn-hover-bg: var(--app-danger-tint);
+  --bs-btn-hover-border-color: var(--app-danger);
+  --bs-btn-active-color: var(--app-danger);
+  --bs-btn-active-bg: var(--app-danger-tint);
+  --bs-btn-active-border-color: var(--app-danger);
+}
+.text-danger {
+  color: var(--app-danger) !important;
+}
+.text-success {
+  color: var(--app-ok) !important;
 }
 
-// History "Filtri" toggle and its panel (same as the header buttons, both themes):
-// normal = outline primary; hover = outline with the primary fill at 75%; open/clicked = primary fill.
-// The fill is --bs-btn-hover-bg (= $primary); light and dark share the same values.
-.filter-toggle {
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: var(--bs-btn-hover-bg);
-  --bs-btn-active-border-color: var(--bs-btn-hover-border-color);
+// Hover only for a precise pointer: on touch it would stay "stuck" after a tap. Bootstrap applies :hover everywhere,
+// so on touch devices put the resting colors back (pressed state keeps winning thanks to :not(:active)).
+@media (hover: none), (pointer: coarse) {
+  .btn:hover:not(:active):not(.active):not(.show) {
+    color: var(--bs-btn-color);
+    background-color: var(--bs-btn-bg);
+    border-color: var(--bs-btn-border-color);
+  }
+}
 
-  &:hover:not(.active) {
-    background-color: color-mix(in srgb, var(--bs-btn-hover-bg) 75%, transparent);
+// --- The single focus ring ----------------------------------------------------------------------------------------------
+// Bootstrap sets `outline: 0` plus a glow on .btn/.form-control, and gives .btn:focus-visible the hover colors.
+// The ring is rewritten for those selectors (same specificity, later in the file) and focus keeps the resting colors.
+:focus-visible,
+.btn:focus-visible,
+.btn-check:focus-visible + .btn,
+.form-control:focus,
+.form-select:focus,
+.dropdown-item:focus-visible {
+  outline: 3px solid var(--app-ring);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+.btn:focus-visible:not(:active):not(.active):not(.show) {
+  color: var(--bs-btn-color);
+  background-color: var(--bs-btn-bg);
+  border-color: var(--bs-btn-border-color);
+}
+// The route change moves focus to <main> (A11Y-01): it is not a control, so no ring.
+main:focus {
+  outline: none;
+}
+.form-control::placeholder {
+  color: var(--app-text-2);
+  opacity: 1;
+}
+
+// --- Existing views (not redesigned here: only kept legible on the new tokens) ------------------------------------------
+.form-control-code {
+  font-family: "Unbounded", monospace;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+.wordmark {
+  font-family: "Unbounded", system-ui, sans-serif;
+  color: var(--app-link); // the pure brand orange is 2.73:1 on the page in light; `link` passes AA in both themes
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+// Phone-first column used by every page.
+.narrow {
+  max-width: 28rem;
+}
+
+// History "Filtri" toggle and its panel: outline normally, orange fill (dark text) when open.
+.filter-toggle {
+  --bs-btn-active-color: var(--app-action-fg);
+  --bs-btn-active-bg: var(--app-action);
+  --bs-btn-active-border-color: var(--app-action-bd);
+
+  &.active,
+  &[aria-expanded="true"] {
+    color: var(--app-action-fg);
+    background-color: var(--app-action);
+    border-color: var(--app-action-bd);
   }
 }
 .filter-panel {
-  border-color: var(--stampy-brand);
+  border-color: var(--app-field);
 }
-// "Azzera": orange only while it can be used (there are filters to clear); disabled keeps the gray outline.
+// "Azzera": orange only while it can be used; disabled keeps the gray outline.
 .filter-reset:not(:disabled) {
-  --bs-btn-color: #fff;
-  --bs-btn-bg: var(--stampy-brand);
-  --bs-btn-border-color: var(--stampy-brand);
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: var(--stampy-brand);
-  --bs-btn-hover-border-color: var(--stampy-brand);
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: #c2410c; // pressed: the darker $primary, white text has ~5:1 on it
-  --bs-btn-active-border-color: #c2410c;
+  --bs-btn-color: var(--app-action-fg);
+  --bs-btn-bg: var(--app-action);
+  --bs-btn-border-color: var(--app-action-bd);
+  --bs-btn-hover-color: var(--app-action-fg);
+  --bs-btn-hover-bg: var(--app-action-hover);
+  --bs-btn-hover-border-color: var(--app-action-bd);
+  --bs-btn-active-color: var(--app-action-fg);
+  --bs-btn-active-bg: var(--app-action-pressed);
+  --bs-btn-active-border-color: var(--app-action-bd);
 }
 
-// Burger menu: items are flush (no gaps), the selected one is orange, hover is a faded orange.
+// Burger menu: flush items, the current one marked by a bar (no orange fill), hover on surface-2.
 #app-menu {
   overflow: hidden; // flush items follow the rounded corners
-  --bs-dropdown-link-hover-bg: rgba(var(--bs-primary-rgb), 0.15);
-  --bs-dropdown-link-active-bg: var(--bs-primary);
-  --bs-dropdown-link-active-color: #fff;
+  --bs-dropdown-link-hover-bg: var(--app-surface-2);
+  --bs-dropdown-link-active-bg: var(--app-surface-2);
+  --bs-dropdown-link-active-color: var(--app-text);
 
   .dropdown-divider {
     margin: 0; // Bootstrap adds 0.5rem above and below
@@ -91,58 +454,20 @@ $input-btn-focus-width: 0.2rem;
 
   .dropdown-item {
     border-radius: 0;
-    padding-top: 0.625rem;
-    padding-bottom: 0.625rem;
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
 
     &.active,
     &.active:hover,
     &.active:focus {
-      background-color: var(--stampy-brand);
-      color: #fff;
+      background-color: var(--app-surface-2);
+      box-shadow: inset 4px 0 0 var(--app-link);
+      color: var(--app-text);
+      font-weight: 700;
       cursor: default;
     }
   }
-}
-
-.btn {
-  min-height: 3rem;
-}
-
-.btn-link {
-  min-height: 2.75rem;
-}
-
-.form-control {
-  min-height: 3rem;
-}
-
-.form-control-code {
-  font-size: 1.75rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.3em;
-  text-align: center;
-}
-
-.wordmark {
-  color: var(--stampy-brand);
-  font-size: 1.375rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-// The route change moves focus to <main> (A11Y-01): it is not a control, so no ring.
-main:focus {
-  outline: none;
-}
-
-:focus-visible {
-  outline: 3px solid var(--stampy-brand);
-  outline-offset: 2px;
-}
-
-// Phone-first column used by every page.
-.narrow {
-  max-width: 28rem;
 }
 
 // Profile page: initial in a brand circle, and a whole-card tappable row.
@@ -154,10 +479,11 @@ main:focus {
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background: var(--stampy-brand);
-  color: #fff;
-  font-weight: 700;
-  font-size: 1.25rem;
+  background: var(--app-brand);
+  color: var(--app-action-fg);
+  font-family: "Unbounded", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.125rem;
 }
 .profile-row {
   min-height: 3.5rem;
@@ -166,36 +492,45 @@ main:focus {
   border-radius: inherit;
 
   &:hover {
-    background-color: rgba(var(--bs-primary-rgb), 0.15);
+    background-color: var(--app-surface-2);
   }
 }
 
-// Danger zone: one red per theme, defined once. Light keeps the classic Bootstrap-like red; dark uses a lighter,
-// less saturated red (the pure #dc3545 vibrates on the dark brown background). Border and fill are the same red at low
-// alpha, so the card reads as "tinted" in both themes instead of a hard outline.
-:root {
-  --stampy-danger: #c92a3a; // 5.6:1 on white, 5.1:1 on the tinted card
-  --stampy-danger-rgb: 201, 42, 58;
-}
-[data-bs-theme="dark"] {
-  --stampy-danger: #f0808b; // ~7:1 on the dark card
-  --stampy-danger-rgb: 240, 128, 139;
-}
+// Danger zone: one red per theme (`--app-danger`), tinted card.
 .danger-zone {
-  border-color: rgba(var(--stampy-danger-rgb), 0.55);
-  background-color: rgba(var(--stampy-danger-rgb), 0.06);
+  border-color: var(--app-danger);
+  background-color: var(--app-danger-tint);
 }
 .danger-zone-title {
-  color: var(--stampy-danger);
+  color: var(--app-danger);
 }
 .btn-danger-soft {
-  --bs-btn-color: var(--stampy-danger);
-  --bs-btn-border-color: rgba(var(--stampy-danger-rgb), 0.7);
-  --bs-btn-hover-color: var(--stampy-danger);
-  --bs-btn-hover-bg: rgba(var(--stampy-danger-rgb), 0.14);
-  --bs-btn-hover-border-color: var(--stampy-danger);
-  --bs-btn-active-color: var(--stampy-danger);
-  --bs-btn-active-bg: rgba(var(--stampy-danger-rgb), 0.22);
-  --bs-btn-active-border-color: var(--stampy-danger);
-  --bs-btn-focus-shadow-rgb: var(--stampy-danger-rgb);
+  --bs-btn-color: var(--app-danger);
+  --bs-btn-border-color: var(--app-danger);
+  --bs-btn-hover-color: var(--app-danger);
+  --bs-btn-hover-bg: var(--app-danger-tint);
+  --bs-btn-hover-border-color: var(--app-danger);
+  --bs-btn-active-color: var(--app-danger);
+  --bs-btn-active-bg: var(--app-danger-tint);
+  --bs-btn-active-border-color: var(--app-danger);
+}
+
+// --- Motion: only CSS, and off when the user asks for less ---------------------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --app-dur-press: 0ms;
+    --app-dur-state: 0ms;
+    --app-dur-dialog: 0ms;
+    --app-dur-new: 0ms;
+    --app-dur-confetti: 0ms;
+  }
+  .spin,
+  .pulse,
+  .newring,
+  .conf i {
+    animation: none !important;
+  }
+  .btn:active {
+    transform: none;
+  }
 }

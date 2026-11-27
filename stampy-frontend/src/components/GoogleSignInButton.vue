@@ -67,7 +67,7 @@ onMounted(async () => {
 .google-signin-face {
   --bs-btn-color: var(--bs-body-color);
   --bs-btn-bg: var(--bs-body-bg);
-  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-border-color: var(--app-field);
   --bs-btn-hover-color: var(--bs-body-color);
   --bs-btn-hover-bg: var(--bs-tertiary-bg);
   --bs-btn-hover-border-color: var(--bs-border-color);
@@ -75,7 +75,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  min-height: 3rem;
+  min-height: 3.25rem;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
@@ -94,7 +94,7 @@ onMounted(async () => {
 }
 
 .google-signin:focus-within .google-signin-face {
-  outline: 2px solid var(--stampy-brand, #f16417);
+  outline: 3px solid var(--app-ring);
   outline-offset: 2px;
 }
 
