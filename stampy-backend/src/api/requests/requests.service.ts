@@ -1,6 +1,6 @@
 import { SQL, and, asc, desc, eq, exists, lte, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { cards, promotions, stampEvents, stampRequests, venues } from "../../db/schema";
+import { cards, promotions, stampEvents, stampRequests, users, venues } from "../../db/schema";
 import { RequestStatus, StampRequest } from "../../db/types";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
 import venueSrv from "../venues/venues.service";
@@ -16,6 +16,8 @@ export const MAX_VISIT_REQUESTS_PER_HOUR = 10;
 export type QueueItem = {
   requestId: string;
   publicCode: string;
+  // nome del cliente (mai l'email); null se anonimizzato o mai impostato
+  displayName: string | null;
   stampsCount: number;
   stampsRequired: number;
   // la card è ferma su una promozione che non è più quella attiva: alla conferma riparte da 0
@@ -39,6 +41,8 @@ export type HistoryItem = {
   requestId: string;
   publicCode: string;
   venueName: string;
+  // nome del cliente (mai l'email); null se anonimizzato o mai impostato
+  displayName: string | null;
   status: RequestStatus;
   createdAt: Date;
   resolvedAt: Date | null;
@@ -277,6 +281,7 @@ export class RequestsService {
         requestId: stampRequests.id,
         publicCode: cards.publicCode,
         venueName: venues.name,
+        displayName: users.displayName,
         status: stampRequests.status,
         createdAt: stampRequests.createdAt,
         resolvedAt: stampRequests.resolvedAt,
@@ -289,6 +294,7 @@ export class RequestsService {
       .from(stampRequests)
       .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
       .innerJoin(venues, eq(venues.id, stampRequests.venueId))
+      .innerJoin(users, eq(users.id, cards.userId))
       .where(and(...conds))
       .orderBy(desc(stampRequests.createdAt), desc(stampRequests.id));
 
@@ -297,6 +303,7 @@ export class RequestsService {
       requestId: r.requestId,
       publicCode: r.publicCode,
       venueName: r.venueName,
+      displayName: r.displayName,
       status: r.status,
       createdAt: r.createdAt,
       resolvedAt: r.resolvedAt,
@@ -319,6 +326,7 @@ export class RequestsService {
       .select({
         requestId: stampRequests.id,
         publicCode: cards.publicCode,
+        displayName: users.displayName,
         stampsCount: cards.stampsCount,
         cardPromotionId: cards.promotionId,
         config: promotions.config,
@@ -328,6 +336,7 @@ export class RequestsService {
       .from(stampRequests)
       .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
       .innerJoin(promotions, and(eq(promotions.id, cards.promotionId), eq(promotions.venueId, cards.venueId)))
+      .innerJoin(users, eq(users.id, cards.userId))
       .where(and(eq(stampRequests.venueId, venueId), eq(stampRequests.status, RequestStatus.pending)))
       .orderBy(asc(stampRequests.createdAt))
       .limit(limit);
@@ -337,10 +346,11 @@ export class RequestsService {
       return {
         requestId: row.requestId,
         publicCode: row.publicCode,
+        displayName: row.displayName,
         stampsCount: changed ? 0 : row.stampsCount,
         stampsRequired: promotionConfigSchema.parse(changed ? active.config : row.config).stampsRequired,
         promotionChanged: changed,
-          createdAt: row.createdAt,
+        createdAt: row.createdAt,
         expiresAt: row.expiresAt,
       };
     });
