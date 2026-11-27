@@ -1,7 +1,7 @@
 import { NextFunction, Response } from "express";
 import { requireAuth } from "../../utils/auth-context";
 import { TypedAuthRequest } from "../../utils/typed-request";
-import { historyQueryDTO } from "../venues/staff/staff.dto";
+import { mineQueryDTO } from "../venues/staff/staff.dto";
 import { historyRow } from "./history.mapper";
 import { requestIdDTO } from "./requests.dto";
 import requestsSrv from "./requests.service";
@@ -40,7 +40,7 @@ export const find = async (
 };
 
 /** Storico del cliente loggato: le sue richieste in tutti i locali (stessi filtri dello staff). */
-export const mine = async (req: TypedAuthRequest<unknown, historyQueryDTO>, res: Response, next: NextFunction) => {
+export const mine = async (req: TypedAuthRequest<unknown, mineQueryDTO>, res: Response, next: NextFunction) => {
   try {
     const items = await requestsSrv.getHistory({ userId: requireAuth(req).user.id }, req.query);
     res.status(200).json({ requests: items.map((r) => historyRow(r, { withVenueName: true })) });
