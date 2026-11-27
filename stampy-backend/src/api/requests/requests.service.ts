@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { cards, promotions, stampEvents, stampRequests, users, venues } from "../../db/schema";
 import { RequestStatus, StampRequest } from "../../db/types";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
+import { VenueNotFoundError } from "../../errors/venue-not-found.error";
 import venueSrv from "../venues/venues.service";
 
 /**
@@ -35,6 +36,8 @@ export type HistoryFilters = {
   maxStamps?: number;
   from?: string;
   to?: string;
+  // solo cliente (B34): un locale in cui ha una card; altrimenti `VenueNotFoundError`
+  venueId?: string;
 };
 
 export type HistoryItem = {
@@ -258,6 +261,17 @@ export class RequestsService {
    * Mai l'email: solo il codice pubblico. Nessuna paginazione: restituisce tutte le righe che combaciano.
    */
   async getHistory(scope: HistoryScope, f: HistoryFilters): Promise<HistoryItem[]> {
+    // Filtro per locale (solo cliente): il locale deve avere una card sua, in SQL. Un locale altrui,
+    // senza card o inesistente dà lo stesso 404 (un 403 rivelerebbe che esiste).
+    if (f.venueId && "userId" in scope) {
+      const [card] = await db
+        .select({ id: cards.id })
+        .from(cards)
+        .where(and(eq(cards.userId, scope.userId), eq(cards.venueId, f.venueId)))
+        .limit(1);
+      if (!card) throw new VenueNotFoundError();
+    }
+
     await this.expirePending(scope); // una pendente scaduta va mostrata come `expired`
 
     const stamps = sql<number | null>`(select sum(e.quantity)::int from ${stampEvents} e
@@ -266,6 +280,7 @@ export class RequestsService {
     const conds: (SQL | undefined)[] = [
       "venueId" in scope ? eq(stampRequests.venueId, scope.venueId) : eq(cards.userId, scope.userId),
     ];
+    if (f.venueId && "userId" in scope) conds.push(eq(stampRequests.venueId, f.venueId));
     if (f.status) conds.push(eq(stampRequests.status, f.status));
     if (f.minStamps !== undefined) conds.push(sql`${stamps} >= ${f.minStamps}`);
     if (f.maxStamps !== undefined) conds.push(sql`${stamps} <= ${f.maxStamps}`);

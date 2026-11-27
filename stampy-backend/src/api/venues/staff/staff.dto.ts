@@ -94,3 +94,11 @@ export class historyQueryDTO {
   @Validate(FromNotAfterTo)
   to?: string;
 }
+
+// Storico del cliente (`GET /requests/mine`): gli stessi filtri dello staff più il locale (B34).
+// Solo il cliente lo ha: la route dello staff usa `historyQueryDTO` e rifiuta `venueId` con 400.
+export class mineQueryDTO extends historyQueryDTO {
+  @IsOptional()
+  @IsUUID()
+  venueId?: string;
+}
