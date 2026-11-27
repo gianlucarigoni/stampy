@@ -3,6 +3,7 @@ import { onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { markWalletAdded, visitVenue } from '@/api/endpoints'
+import VenueReward from '@/components/VenueReward.vue'
 import { formatWait } from '@/utils/format'
 import { writeTab } from '@/utils/tabStorage'
 
@@ -11,6 +12,8 @@ const props = defineProps<{ venueId: string }>()
 interface NewCard {
   saveUrl: string
   publicCode: string
+  venueName?: string
+  rewardName?: string
 }
 
 type Screen =
@@ -50,7 +53,13 @@ async function runVisit(requestStamp = false) {
   try {
     const result = await visitVenue(props.venueId, requestStamp)
     if (result.state === 'card_created' || result.state === 'card_not_added') {
-      screen.value = { kind: 'card', saveUrl: result.saveUrl, publicCode: result.publicCode }
+      screen.value = {
+        kind: 'card',
+        saveUrl: result.saveUrl,
+        publicCode: result.publicCode,
+        venueName: result.venueName,
+        rewardName: result.rewardName,
+      }
     } else {
       // GET /requests/:id does not return the venue (BACKLOG B15): the request page needs it
       // to offer "try again", so it is kept for this tab.
@@ -76,6 +85,7 @@ onMounted(() => void runVisit())
   <p v-if="screen.kind === 'loading'" class="text-body-secondary" role="status">Un momento…</p>
 
   <section v-else-if="screen.kind === 'card'" class="card card-body d-grid gap-3">
+    <VenueReward :venue-name="screen.venueName" :reward-name="screen.rewardName" class="mb-0" />
     <h1 class="h4 mb-0">La tua card è pronta</h1>
     <p class="mb-0">Salvala in Google Wallet: è qui che vedrai i tuoi timbri.</p>
     <a

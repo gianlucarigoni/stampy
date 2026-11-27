@@ -54,6 +54,9 @@ export type CardStateOfRequest = {
   expiresAt: Date;
   stampsCount: number;
   stampsRequired: number;
+  venueName: string;
+  // nome del premio della promozione mostrata (quella attiva se `promotionChanged`)
+  rewardName: string;
   // la card è ferma su una promozione non più attiva (mai per `approved`): stampsCount/stampsRequired sono già quelli della nuova
   promotionChanged: boolean;
   // solo per `approved`: cosa ha registrato la conferma (null negli altri stati)
@@ -115,9 +118,11 @@ export class RequestsService {
         publicCode: cards.publicCode,
         cardPromotionId: cards.promotionId,
         config: promotions.config,
+        venueName: venues.name,
       })
       .from(stampRequests)
       .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
+      .innerJoin(venues, eq(venues.id, cards.venueId))
       .innerJoin(promotions, and(eq(promotions.id, cards.promotionId), eq(promotions.venueId, cards.venueId)))
       .where(and(eq(stampRequests.id, id), eq(cards.userId, userId)))
       .limit(1);
@@ -154,6 +159,8 @@ export class RequestsService {
       expiresAt: row.request.expiresAt,
       stampsCount: promotionChanged ? 0 : row.stampsCount,
       stampsRequired: config.stampsRequired,
+      venueName: row.venueName,
+      rewardName: config.reward,
       promotionChanged,
       outcome,
     };
