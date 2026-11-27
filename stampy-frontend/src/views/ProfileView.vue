@@ -2,9 +2,10 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
-import { getMyVenues } from '@/api/endpoints'
+import { getMyCards, getMyVenues, type MyCard } from '@/api/endpoints'
 import DisplayNameForm from '@/components/DisplayNameForm.vue'
 import { useAuth } from '@/composables/useAuth'
+import { textColorOn } from '@/utils/color'
 
 const router = useRouter()
 const { user, logout } = useAuth()
@@ -29,8 +30,13 @@ async function stopEditingName() {
 // anyway: this only avoids offering a button that cannot work.
 const isMember = ref<boolean | null>(null) // null = not known yet
 const blocked = computed(() => isMember.value === true)
+const cards = ref<MyCard[] | null>(null) // null = loading or failed
+const cardsError = ref(false)
 
 onMounted(async () => {
+  getMyCards()
+    .then((r) => (cards.value = r.cards))
+    .catch(() => (cardsError.value = true))
   try {
     isMember.value = (await getMyVenues()).venues.length > 0
   } catch {
@@ -73,36 +79,34 @@ async function signOut() {
       </RouterLink>
     </section>
 
-    <!-- STATIC MODEL of a venue card with the official Google button inside (BACKLOG B30: real cards and
-         the button wiring come later). Branding of the venue: backgroundColor (--brand) + logo.
-         The coloured top is the venue; the bottom is the app surface, where Google's black button reads in both themes. -->
-    <section class="card bg-body-tertiary rounded-4 overflow-hidden shadow-sm" style="--brand: #1e3a5f" aria-labelledby="wallet-card-title">
-      <div class="p-3 pb-4 text-white" style="background: linear-gradient(155deg, color-mix(in srgb, var(--brand) 78%, #fff) 0%, var(--brand) 70%)">
+    <!-- One card per venue, with the venue's real branding (BACKLOG B30). Empty state for who has no card
+         (owners and staff included): no button. The official button is a link, always visible, also for a card
+         already saved (Google shows the existing card, it does not duplicate it). -->
+    <p v-if="cards && cards.length === 0" class="card card-body text-body-secondary mb-0">Non hai ancora nessuna card. Si crea la prima volta che tocchi il tag di un locale.</p>
+    <p v-else-if="cardsError" class="text-body-secondary mb-0" role="alert">Impossibile caricare le tue card.</p>
+    <section
+      v-for="c in cards ?? []"
+      :key="c.venueId"
+      class="card bg-body-tertiary rounded-4 overflow-hidden shadow-sm"
+      :aria-labelledby="`wallet-card-${c.venueId}`"
+    >
+      <div class="p-3 pb-4" :style="{ background: c.branding.backgroundColor, color: textColorOn(c.branding.backgroundColor) }">
         <div class="d-flex align-items-center gap-3">
-          <span class="rounded-circle bg-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 2.5rem; height: 2.5rem; color: var(--brand)" aria-hidden="true">BA</span>
+          <img :src="c.branding.logoUrl" alt="" class="rounded-circle bg-white flex-shrink-0 object-fit-cover" style="width: 2.5rem; height: 2.5rem" />
           <div class="min-w-0 me-auto">
-            <h2 id="wallet-card-title" class="h6 fw-semibold mb-0 text-break">Bar Aurora</h2>
+            <h2 :id="`wallet-card-${c.venueId}`" class="h6 fw-semibold mb-0 text-break">{{ c.venueName }}</h2>
             <p class="small mb-0" style="opacity: 0.75">Carta fedeltà</p>
           </div>
-          <span class="rounded-pill px-3 py-1 small fw-semibold" style="background: rgba(255, 255, 255, 0.16)">3/10</span>
-        </div>
-        <div class="d-grid gap-2 mt-4 mx-auto" style="grid-template-columns: repeat(5, 1fr); max-width: 16.5rem" role="img" aria-label="3 timbri su 10">
-          <span v-for="n in 10" :key="n" class="rounded-circle d-flex align-items-center justify-content-center" style="aspect-ratio: 1" :style="{ background: n <= 3 ? '#fff' : 'rgba(255, 255, 255, 0.14)' }">
-            <svg v-if="n <= 3" width="45%" height="45%" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-          </span>
+          <span v-if="c.stampsRequired > 0" class="rounded-pill px-3 py-1 small fw-semibold" style="background: rgba(128, 128, 128, 0.3)">{{ c.stampsCount }}/{{ c.stampsRequired }}</span>
         </div>
       </div>
-      <div class="card-body d-flex flex-column gap-3">
-        <div>
-          <p class="fw-semibold mb-0">Ancora 7 timbri</p>
-          <p class="text-body-secondary mb-0">Al decimo, un caffè in regalo.</p>
-        </div>
-        <button type="button" class="d-block mx-auto p-0 border-0 bg-transparent" aria-label="Aggiungi a Google Wallet">
+      <div v-if="c.saveUrl" class="card-body">
+        <a class="wallet-button d-block mx-auto" :href="c.saveUrl" target="_blank" rel="noopener" aria-label="Aggiungi a Google Wallet">
           <picture>
             <source media="(min-width: 380px)" srcset="/google-wallet/add-to-google-wallet-it.svg" />
             <img src="/google-wallet/add-to-google-wallet-it-condensed.svg" alt="" style="display: block; height: 48px; width: auto" />
           </picture>
-        </button>
+        </a>
       </div>
     </section>
 
@@ -117,3 +121,13 @@ async function signOut() {
     </section>
   </div>
 </template>
+
+<style scoped>
+/* Dark theme: the official button sits on a light plate so its black body keeps contrast. */
+[data-bs-theme='dark'] .wallet-button {
+  background: #fff;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  width: fit-content;
+}
+</style>

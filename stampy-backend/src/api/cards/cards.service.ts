@@ -1,10 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { randomUUID } from "node:crypto";
 import { db } from "../../db";
-import { cards } from "../../db/schema";
-import { Card } from "../../db/types";
+import { cards, promotions, venues } from "../../db/schema";
+import { Card, Promotion, Venue } from "../../db/types";
 import { GenericError } from "../../errors/generic";
+import { brandingSchema } from "../../utils/schemas/branding.schema";
 import googleWalletSrv from "../wallet/wallet.service";
 
 const PUBLIC_CODE_ATTEMPTS = 3;
@@ -36,6 +37,33 @@ export class CardsService {
       .where(and(eq(cards.userId, userId), eq(cards.venueId, venueId)))
       .limit(1);
     return !!card;
+  }
+
+  /**
+   * Le card dell'utente (una per locale), dalla più recente, con il locale e la promozione attiva
+   * (`now()` del DB; null se il locale non ne ha). Scope `cards.user_id` in SQL; locali archiviati esclusi.
+   */
+  async getUserCards(userId: string): Promise<{ card: Card; venue: Venue; promotion: Promotion | null }[]> {
+    const rows = await db
+      .select({ card: cards, venue: venues, promotion: promotions })
+      .from(cards)
+      .innerJoin(venues, and(eq(venues.id, cards.venueId), isNull(venues.archivedAt)))
+      .leftJoin(
+        promotions,
+        and(
+          eq(promotions.venueId, cards.venueId),
+          lte(promotions.startsAt, sql`now()`),
+          or(isNull(promotions.endsAt), gt(promotions.endsAt, sql`now()`)),
+        ),
+      )
+      .where(eq(cards.userId, userId))
+      .orderBy(desc(cards.createdAt));
+
+    return rows.map((r) => ({
+      card: r.card,
+      venue: { ...r.venue, branding: brandingSchema.parse(r.venue.branding) },
+      promotion: r.promotion,
+    }));
   }
 
   async addOrGetCard(userId: string, venueId: string, promotionId: string): Promise<{ card: Card; created: boolean }> {
