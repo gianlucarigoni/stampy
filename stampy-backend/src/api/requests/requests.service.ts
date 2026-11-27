@@ -50,6 +50,8 @@ export type HistoryItem = {
   stamps: number | null;
   stampsAdded: number | null;
   rewardsRedeemed: number | null;
+  // nome del premio consumato (promozione dell'evento `redeem`); null se non `approved` o senza premio
+  reward: string | null;
 };
 
 export type CardStateOfRequest = {
@@ -290,6 +292,11 @@ export class RequestsService {
           where e.request_id = ${stampRequests.id} and e.venue_id = ${stampRequests.venueId} and e.type = 'stamp')`,
         rewardsRedeemed: sql<number | null>`(select count(*)::int from ${stampEvents} e
           where e.request_id = ${stampRequests.id} and e.venue_id = ${stampRequests.venueId} and e.type = 'redeem')`,
+        // il premio è quello della promozione con cui la conferma ha scritto l'evento `redeem`
+        reward: sql<string | null>`(select p.config->>'reward' from ${stampEvents} e
+          join ${promotions} p on p.id = e.promotion_id and p.venue_id = e.venue_id
+          where e.request_id = ${stampRequests.id} and e.venue_id = ${stampRequests.venueId} and e.type = 'redeem'
+          order by e.idempotency_key limit 1)`,
       })
       .from(stampRequests)
       .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
@@ -310,6 +317,7 @@ export class RequestsService {
       stamps: approved(r) ? r.stamps : null,
       stampsAdded: approved(r) ? (r.stampsAdded ?? 0) : null,
       rewardsRedeemed: approved(r) ? (r.rewardsRedeemed ?? 0) : null,
+      reward: approved(r) ? r.reward : null,
     }));
   }
 

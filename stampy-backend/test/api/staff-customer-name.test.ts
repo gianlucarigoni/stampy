@@ -150,7 +150,7 @@ describe("GET /api/venues/:venueId/requests/history: nome del cliente", () => {
   it("la riga ha esattamente i campi attesi (displayName compreso, nessun id utente)", async () => {
     const r = await history(venueA, staffA.token);
     expect(Object.keys(rowOf(r, hist.approved)).sort()).toEqual(
-      ["createdAt", "displayName", "publicCode", "requestId", "resolvedAt", "stamps", "stampsAdded", "rewardsRedeemed", "status"].sort(),
+      ["createdAt", "displayName", "publicCode", "requestId", "resolvedAt", "stamps", "stampsAdded", "reward", "rewardsRedeemed", "status"].sort(),
     );
   });
 });

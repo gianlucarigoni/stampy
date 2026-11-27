@@ -86,7 +86,7 @@ describe("GET /api/venues/:venueId/requests/history", () => {
       const r = await history(venueA, "", staff.token);
       const row = r.body.requests[0];
       expect(r.status).toBe(200);
-      expect(Object.keys(row).sort()).toEqual(["createdAt", "displayName", "publicCode", "requestId", "resolvedAt", "rewardsRedeemed", "stamps", "stampsAdded", "status"]);
+      expect(Object.keys(row).sort()).toEqual(["createdAt", "displayName", "publicCode", "requestId", "resolvedAt", "reward", "rewardsRedeemed", "stamps", "stampsAdded", "status"]);
       expect(JSON.stringify(r.body)).not.toMatch(/@test\.it|email/i);
       expect(Object.keys(r.body)).toEqual(["requests"]);
       expect(r.body.requests.every((x: any, i: number, a: any[]) => i === 0 || a[i - 1].createdAt >= x.createdAt)).toBe(true);
@@ -213,7 +213,7 @@ describe("GET /api/requests/mine (storico del cliente)", () => {
 
     expect(r.status).toBe(200);
     expect(r.body.requests).toHaveLength(1);
-    expect(Object.keys(row).sort()).toEqual(["createdAt", "displayName", "publicCode", "requestId", "resolvedAt", "rewardsRedeemed", "stamps", "stampsAdded", "status", "venueName"]);
+    expect(Object.keys(row).sort()).toEqual(["createdAt", "displayName", "publicCode", "requestId", "resolvedAt", "reward", "rewardsRedeemed", "stamps", "stampsAdded", "status", "venueName"]);
     expect(row).toMatchObject({ venueName: nameA, publicCode: codeOf(0), status: "approved", stamps: 3 });
     expect(JSON.stringify(r.body)).not.toMatch(/@test\.it|email/i);
     expect(Object.keys(r.body)).toEqual(["requests"]);

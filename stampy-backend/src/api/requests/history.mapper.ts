@@ -17,5 +17,6 @@ export function historyRow(r: HistoryItem, opts: { withVenueName?: boolean } = {
     stamps: r.stamps,
     stampsAdded: r.stampsAdded,
     rewardsRedeemed: r.rewardsRedeemed,
+    reward: r.reward,
   };
 }

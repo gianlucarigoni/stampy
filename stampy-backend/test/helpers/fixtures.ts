@@ -105,6 +105,21 @@ export function makeFixtures(prefix: string) {
     return p.rows[0].id as string;
   }
 
+  /** Il locale cambia promozione adesso: chiude quella attiva e ne apre una nuova col premio dato. */
+  async function replaceActivePromotion(venueId: string, reward: string, stampsRequired = 10) {
+    await pool.query(
+      `UPDATE promotions SET ends_at = now() - interval '1 second' WHERE venue_id = $1 AND ends_at IS NULL`,
+      [venueId],
+    );
+    const p = await pool.query(
+      `INSERT INTO promotions (venue_id, type, name, config, starts_at)
+       VALUES ($1, 'stamps', 'Nuova promozione', $2::jsonb, now() - interval '1 second') RETURNING id`,
+      [venueId, JSON.stringify({ v: 1, stampsRequired, reward })],
+    );
+    promotionIds.push(p.rows[0].id);
+    return p.rows[0].id as string;
+  }
+
   async function cleanup() {
     if (venueIds.length) {
       await pool.query(`DELETE FROM stamp_events WHERE venue_id = ANY($1)`, [venueIds]);
@@ -133,5 +148,5 @@ export function makeFixtures(prefix: string) {
     if (venueIds.length) await pool.query(`DELETE FROM venues WHERE id = ANY($1)`, [venueIds]);
   }
 
-  return { email, emails, newUser, newSession, newUserWithSession, addMember, newVenue, newOldPromotion, cleanup };
+  return { email, emails, newUser, newSession, newUserWithSession, addMember, newVenue, newOldPromotion, replaceActivePromotion, cleanup };
 }
