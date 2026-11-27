@@ -105,6 +105,7 @@ npm run dev                # dalla radice: backend + frontend (porte dal .env de
 npm run typecheck:all      # tsc su src + scripts + test: pulito prima di finire
 npm test                   # Vitest: test/unit (niente DB) + test/api (DB del worktree, app in-process)
 npm run test:unit          # solo i test puri
+npm run test:watch         # Vitest in modalità watch
 npx vitest run -t "nome"   # un solo test per nome
 # da stampy-frontend/
 npm run type-check         # vue-tsc
