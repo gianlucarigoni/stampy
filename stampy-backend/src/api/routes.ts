@@ -4,12 +4,16 @@ import venuesRouter from "./venues/venues.router";
 import requestsRouter from "./requests/requests.router";
 import cardsRouter from "./cards/cards.router";
 import authRouter from "./auth/auth.router";
+import publicRouter from "./public/public.router";
 
 const router = Router();
 
 router.use("/health", healthRouter);
 
 router.use("/auth", authRouter);
+
+// non autenticato: solo dati pubblici (nome del locale per il login)
+router.use("/public", publicRouter);
 
 router.use("/venues", venuesRouter);
 router.use("/requests", requestsRouter);

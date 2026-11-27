@@ -23,18 +23,29 @@ export const ipRateLimitEnabled = env.IP_RATE_LIMIT
   ? env.IP_RATE_LIMIT === "on"
   : env.NODE_ENV === "production";
 
-export const ipAuthRateLimit = ipRateLimitEnabled
-  ? rateLimit({
-      windowMs: IP_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000,
-      limit: IP_RATE_LIMIT_MAX,
-      standardHeaders: "draft-7",
-      legacyHeaders: false,
-      // Stesso 429 delle altre rotte (TryLaterError). resetTime è l'orologio in memoria
-      // del limiter, non una scadenza nel DB.
-      handler: (req, _res, next) => {
-        const resetTime = (req as Request & { rateLimit?: RateLimitInfo }).rateLimit?.resetTime;
-        const resetMs = resetTime ? resetTime.getTime() - Date.now() : IP_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
-        next(new TryLaterError(Math.max(1, Math.ceil(resetMs / 1000))));
-      },
-    })
-  : (_req: Request, _res: Response, next: NextFunction) => next();
+/** Costruisce un limiter per IP con secchio proprio; stesso 429 (TryLaterError) delle altre rotte. */
+function buildIpRateLimit(windowMinutes: number, max: number) {
+  return ipRateLimitEnabled
+    ? rateLimit({
+        windowMs: windowMinutes * 60 * 1000,
+        limit: max,
+        standardHeaders: "draft-7",
+        legacyHeaders: false,
+        // resetTime è l'orologio in memoria del limiter, non una scadenza nel DB.
+        handler: (req, _res, next) => {
+          const resetTime = (req as Request & { rateLimit?: RateLimitInfo }).rateLimit?.resetTime;
+          const resetMs = resetTime ? resetTime.getTime() - Date.now() : windowMinutes * 60 * 1000;
+          next(new TryLaterError(Math.max(1, Math.ceil(resetMs / 1000))));
+        },
+      })
+    : (_req: Request, _res: Response, next: NextFunction) => next();
+}
+
+export const ipAuthRateLimit = buildIpRateLimit(IP_RATE_LIMIT_WINDOW_MINUTES, IP_RATE_LIMIT_MAX);
+
+/**
+ * Endpoint pubblico del nome del locale (B32): secchio separato da quello di `/auth/email/*`,
+ * così caricare la pagina di login non consuma la quota dei codici. Limite da validare in staging.
+ */
+export const IP_PUBLIC_RATE_LIMIT_MAX = 60;
+export const ipPublicRateLimit = buildIpRateLimit(IP_RATE_LIMIT_WINDOW_MINUTES, IP_PUBLIC_RATE_LIMIT_MAX);
