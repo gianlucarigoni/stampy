@@ -141,12 +141,24 @@ export interface HistoryItem {
   requestId: string
   publicCode: string
   venueName?: string // only in the customer's history (several venues)
+  displayName: string | null // staff history: the customer's name (B39); in the customer's own history it is their own name
   status: RequestStatus
   createdAt: string
   resolvedAt: string | null
   stamps: number | null // confirmed quantity (reward included); only `approved`
   stampsAdded: number | null
   rewardsRedeemed: number | null
+  reward: string | null // name of the reward redeemed (B33); null when none, and unless `approved`
+}
+
+/** One page of the history (B19): cursor pagination, `total` counts every row matching the filters. */
+export interface HistoryPage {
+  requests: HistoryItem[]
+  total: number
+  pageStart: number
+  pageEnd: number
+  prevCursor: string | null
+  nextCursor: string | null
 }
 
 /** Every filter is optional; absent means "not filtered" (see `GET /venues/:venueId/requests/history`). */
@@ -156,6 +168,9 @@ export interface HistoryFilters {
   maxStamps?: number
   from?: string // ISO instant or YYYY-MM-DD
   to?: string // ISO instant or YYYY-MM-DD, inclusive
+  venueId?: string // customer history only (B34): the staff route answers 400
+  limit?: number
+  cursor?: string // `nextCursor` of the previous page, with the same filters
 }
 
 const queryString = (filters: HistoryFilters) => {
@@ -166,8 +181,8 @@ const queryString = (filters: HistoryFilters) => {
 
 /** Staff: every request of the venue. */
 export const getHistory = (venueId: string, filters: HistoryFilters) =>
-  api<{ requests: HistoryItem[] }>(`/venues/${encodeURIComponent(venueId)}/requests/history${queryString(filters)}`)
+  api<HistoryPage>(`/venues/${encodeURIComponent(venueId)}/requests/history${queryString(filters)}`)
 
 /** Customer: the logged-in user's own requests, all venues (`GET /requests/mine`). */
 export const getMyHistory = (filters: HistoryFilters) =>
-  api<{ requests: HistoryItem[] }>(`/requests/mine${queryString(filters)}`)
+  api<HistoryPage>(`/requests/mine${queryString(filters)}`)

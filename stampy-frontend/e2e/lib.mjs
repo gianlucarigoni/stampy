@@ -63,6 +63,48 @@ export function createFixtures(customers = 1) {
   return { venueId, staff, customers: Array.from({ length: customers }, (_, i) => newUser(`c${i}`)) }
 }
 
+/** A second venue (own 5-stamp promotion with reward "Caffè E2E"), cleaned up with the rest. */
+export function createVenue(name) {
+  const branding = psql(`SELECT branding FROM venues WHERE branding <> '{}'::jsonb LIMIT 1`) || DEFAULT_BRANDING
+  const venueId = psql(
+    `INSERT INTO venues (name, slug, branding) VALUES ('${name} ${RUN}','e2e-${RUN}-${ids.venues.length}','${branding}'::jsonb) RETURNING id`,
+  )
+  ids.venues.push(venueId)
+  psql(`INSERT INTO promotions (venue_id, type, name, config, starts_at)
+        VALUES ('${venueId}','stamps','E2E','{"v":1,"stampsRequired":5,"reward":"Caffè E2E"}', now() - interval '1 day')`)
+  return venueId
+}
+
+/**
+ * Writes finished requests straight into the DB (the API only makes them one at a time, "now").
+ * rows: `{ ago: "3 days 2 hours", status, added?, reward? }`; `reward` adds a `redeem` event (the venue's reward name).
+ */
+export function seedRequests(venueId, customer, operator, rows) {
+  const code = 'E2E' + crypto.randomBytes(4).toString('hex').toUpperCase()
+  const sql = [
+    `INSERT INTO cards (user_id, venue_id, promotion_id, public_code, wallet_provider, wallet_object_id)
+     SELECT '${customer.id}','${venueId}', p.id, '${code}', 'google', 'e2e-obj-${crypto.randomBytes(6).toString('hex')}'
+     FROM promotions p WHERE p.venue_id='${venueId}' ON CONFLICT (user_id, venue_id) DO NOTHING;`,
+  ]
+  for (const r of rows) {
+    const id = crypto.randomUUID()
+    const resolved = r.status === 'pending' ? 'NULL' : `now() - interval '${r.ago}' + interval '1 minute'`
+    const exp = `now() - interval '${r.ago}' + interval '5 minutes'`
+    const card = `(SELECT id FROM cards WHERE user_id='${customer.id}' AND venue_id='${venueId}')`
+    sql.push(`INSERT INTO stamp_requests (id, card_id, venue_id, status, created_at, expires_at, resolved_at, resolved_by)
+      VALUES ('${id}', ${card}, '${venueId}', '${r.status}', now() - interval '${r.ago}', ${exp}, ${resolved}, ${r.status === 'pending' ? 'NULL' : `'${operator.id}'`});`)
+    const ev = (type, qty) =>
+      sql.push(`INSERT INTO stamp_events (card_id, venue_id, promotion_id, operator_id, request_id, type, quantity, idempotency_key, created_at)
+        SELECT ${card}, '${venueId}', p.id, '${operator.id}', '${id}', '${type}', ${qty}, 'e2e-${crypto.randomUUID()}', now() - interval '${r.ago}' + interval '1 minute'
+        FROM promotions p WHERE p.venue_id='${venueId}';`)
+    if (r.status === 'approved') {
+      if ((r.added ?? 0) > 0) ev('stamp', r.added)
+      if (r.reward) ev('redeem', 1)
+    }
+  }
+  psql(sql.join('\n'))
+}
+
 export function cleanup() {
   if (ids.users.length === 0 && ids.venues.length === 0) return
   const u = ids.users.map((i) => `'${i}'`).join(',') || "'00000000-0000-0000-0000-000000000000'" // no users: keep the IN list valid
