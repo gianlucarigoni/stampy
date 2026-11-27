@@ -1,4 +1,4 @@
-// Feedback flows: staff in-card approval / rejection, reward toast; customer approval text and
+// Feedback flows: staff in-card approval / rejection / reward; customer approval text and
 // reward modal (persistence, focus trap, keyboard, reload); mobile width.
 //   npm run dev, then from stampy-frontend/:   node e2e/feedback.mjs
 import { APP, cardCount, check, cleanup, createFixtures, eventsOf, finish, openBrowser, openRequest, pageFor, section, setCard } from './lib.mjs'
@@ -18,61 +18,48 @@ try {
   browser = await openBrowser()
 
   // ---------------- staff ----------------
-  section('Staff: approval, rejection and reward feedback')
+  section('Staff: approval, rejection and reward feedback (F11: 4 s undo, quiet outcome rows, no toast)')
   const staff = await pageFor(browser, fx.staff.token)
   await staff.goto(`${APP}/staff/${fx.venueId}`)
   await staff.getByRole('spinbutton').first().waitFor()
-  const card = (req) => staff.locator('article', { has: staff.getByRole('button', { name: /^(Conferma|Rifiuta|Chiudi esito)/ }) })
-  const articleOf = async (code) => staff.locator('article', { hasText: code })
-
-  const codes = {}
-  for (const [name, c] of [['plain', plain], ['rejected', rejected], ['staffReward', staffReward]]) {
-    codes[name] = (await (await fetch(`${APP}/api/venues/${fx.venueId}/requests`, { headers: { Cookie: `sid=${fx.staff.token}` } })).json()).requests
-  }
-  const queue = codes.plain
+  const articleOf = (code) => staff.locator('article', { hasText: code }).first()
+  const queue = (await (await fetch(`${APP}/api/venues/${fx.venueId}/requests`, { headers: { Cookie: `sid=${fx.staff.token}` } })).json()).requests
   // Map request ids to codes through the queue API.
   const codeOf = (id) => queue.find((q) => q.requestId === id).publicCode
   const plainCode = codeOf(reqPlain)
   const rejectedCode = codeOf(reqRejected)
   const rewardCode = codeOf(reqStaffReward)
+  await staff.waitForTimeout(500) // taps right after the list changed are ignored on purpose
 
   // approval of 2 products
-  let a = await articleOf(plainCode)
+  let a = articleOf(plainCode)
   await a.getByRole('spinbutton').fill('2')
   await a.getByRole('button', { name: /^Conferma/ }).click()
-  await staff.getByText('Richiesta approvata').first().waitFor()
-  a = await articleOf(plainCode)
+  await a.getByText(/^Confermata/).waitFor({ timeout: 8000 })
   check('approval: in-card text shows +2 timbri, no balance', /\+2 timbri/.test(await a.innerText()) && !/saldo/.test(await a.innerText()), await a.innerText())
   check('approval: card is alert-success', (await a.locator('.alert-success').count()) === 1)
-  check('approval: no generic alert at the top', (await staff.locator('.feedback .alert').count()) === 0)
-  check('approval: no reward toast', (await staff.locator('.toast-stack .alert').count()) === 0)
+  check('approval: no reward chip for a plain approval', (await a.getByText('Consegna:').count()) === 0)
   check('DB: card at 2', cardCount(plain.id, fx.venueId) === 2)
 
   // rejection
   const before = cardCount(rejected.id, fx.venueId)
-  a = await articleOf(rejectedCode)
+  a = articleOf(rejectedCode)
   await a.getByRole('button', { name: /^Rifiuta/ }).click()
-  await staff.getByText('Richiesta rifiutata').first().waitFor()
-  a = await articleOf(rejectedCode)
-  check('rejection: alert-warning with text', (await a.locator('.alert-warning').count()) === 1 && /Nessun timbro aggiunto/.test(await a.innerText()))
+  await a.getByText(/^Rifiutata/).waitFor({ timeout: 8000 })
+  check('rejection: alert-warning with "nessun timbro"', (await a.locator('.alert-warning').count()) === 1 && /nessun timbro/.test(await a.innerText()))
   check('rejection: not shown as success or error', (await a.locator('.alert-success, .alert-danger').count()) === 0)
-  check('rejection: no top alert', (await staff.locator('.feedback .alert').count()) === 0)
   check('DB: rejected card unchanged', cardCount(rejected.id, fx.venueId) === before, `${before} -> ${cardCount(rejected.id, fx.venueId)}`)
 
   // reward on a full card
-  a = await articleOf(rewardCode)
+  a = articleOf(rewardCode)
   await a.getByRole('button', { name: /^Conferma/ }).click()
-  await staff.locator('.toast-stack .alert').first().waitFor()
-  const toast = await staff.locator('.toast-stack').innerText()
-  check('reward toast names the real reward', /Caffè E2E/.test(toast) && /Premio ritirato/.test(toast), toast)
-  check('toast text is generic (no instruction about the product)', !/Non far pagare/.test(toast), toast)
-  check('toast does not block the page (Rifiuta/Conferma on other cards stay clickable)', (await staff.locator('.toast-stack').evaluate((el) => getComputedStyle(el).pointerEvents)) === 'none')
-  await staff.waitForTimeout(3500) // > one poll (3 s); the toast lasts 5 s, outcome cards 8 s
-  check('exactly one toast after several polls', (await staff.locator('.toast-stack .alert').count()) === 1)
-  check('approved/rejected cards survive the polls', (await staff.locator('article .alert-success').count()) === 2 && (await staff.locator('article .alert-warning').count()) === 1, `${await staff.locator('article .alert-success').count()}/${await staff.locator('article .alert-warning').count()}`)
+  await a.getByText(/^Confermata/).waitFor({ timeout: 8000 })
+  const text = await a.innerText()
+  check('reward outcome names the real reward ("Consegna: Caffè E2E") with the prize chip', /Premio/.test(text) && /Consegna: Caffè E2E/.test(text), text)
+  check('no toast exists any more', (await staff.locator('.toast-stack').count()) === 0)
+  await staff.waitForTimeout(3500) // > one poll (3 s): the outcome rows must survive
+  check('approved/rejected rows survive the polls', (await staff.locator('article .alert-success').count()) === 2 && (await staff.locator('article .alert-warning').count()) === 1, `${await staff.locator('article .alert-success').count()}/${await staff.locator('article .alert-warning').count()}`)
   check('DB: reward consumed, card at 0', cardCount(staffReward.id, fx.venueId) === 0 && (await eventsOf(reqStaffReward)) === 'redeem:1')
-  await staff.getByRole('button', { name: 'Chiudi notifica' }).click()
-  check('toast can be dismissed', (await staff.locator('.toast-stack .alert').count()) === 0)
   check('staff page has no horizontal overflow at 390 px', !(await overflow(staff)))
 
   // ---------------- customer ----------------

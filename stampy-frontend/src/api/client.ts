@@ -13,6 +13,8 @@ export class ApiError extends Error {
     readonly attemptsRemaining?: number,
     /** Only on a 400 from the validator: `[{ property, constraints }]`. Never shown as is. */
     readonly details?: unknown,
+    /** Only on the 409 "Richiesta non più valida" of confirm/reject (B38): why the request cannot be resolved. */
+    readonly reason?: string,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -70,5 +72,6 @@ export async function api<T>(
     Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
     typeof body.attemptsRemaining === 'number' ? body.attemptsRemaining : undefined,
     body.details,
+    typeof body.reason === 'string' ? body.reason : undefined,
   )
 }
