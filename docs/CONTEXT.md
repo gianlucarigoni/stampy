@@ -47,8 +47,9 @@ Mercato iniziale: piccole/medie attività locali in Italia, spesso ancora con le
   futura fuori dal Wallet (web app), non MVP.
 - **Identificativo primario: email verificata.** Niente password. Registrazione e login sono lo
   stesso gesto (se l'email non esiste, l'utente viene creato).
-- Metodi **futuri, non confermati** (lo schema è pronto): Apple, telefono con SMS. Email e
-  telefono non vengono uniti.
+- **Apple Wallet è nell'MVP** (2026-11-27): si fa dopo la validazione di Google, nel momento deciso
+  dal proprietario. Il login con Apple è secondario e si decide a parte. Il telefono con SMS è
+  escluso per ora, non per sempre (lo schema è pronto). Email e telefono non vengono uniti.
 - Nessun fuzzy matching. Per i casi limite (cambio email), unione manuale da supporto/admin.
 - **Stesso account con metodi diversi**: chi accede con Google usando la stessa email arriva
   allo stesso account, ma solo alle condizioni del §5.3.
@@ -115,8 +116,9 @@ soglia 10, card 0, quantità 15
 
 ### 4.6 Wallet
 
-- Partire **solo con Google Wallet** (gratuito). Apple in una seconda fase, quando l'Apple
-  Developer Program da 99 $/anno diventerà sostenibile.
+- Partire **con Google Wallet** (gratuito). **Apple Wallet è nell'MVP** (2026-11-27): senza, circa
+  metà dei clienti non salva la card. Arriva dopo la validazione di Google, nel momento deciso dal
+  proprietario, e l'Apple Developer Program (99 $/anno) si paga solo allora.
 - **Nessuna interfaccia astratta "wallet provider"**: c'è un solo provider. Si estrae quando
   arriva Apple. Tutto il codice Google vive in `api/wallet/`; `cards.service` conosce solo
   `buildObjectId`.
