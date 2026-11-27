@@ -29,11 +29,12 @@ export function makeFixtures(prefix: string) {
     return e;
   };
 
-  async function newUser(tag: string, o: { displayName?: string; anonymized?: boolean } = {}) {
+  async function newUser(tag: string, o: { displayName?: string | null; anonymized?: boolean } = {}) {
     const e = email(tag);
+    const name = o.displayName === undefined ? "Test Utente" : o.displayName; // null = nome mai impostato
     const r = await pool.query(
       `INSERT INTO users (email, display_name, anonymized_at) VALUES ($1, $2, $3) RETURNING id`,
-      [e, o.displayName ?? "Test Utente", o.anonymized ? new Date() : null],
+      [e, name, o.anonymized ? new Date() : null],
     );
     return { id: r.rows[0].id as string, email: e };
   }
@@ -57,7 +58,7 @@ export function makeFixtures(prefix: string) {
   }
 
   /** Utente + sessione valida in un colpo solo. */
-  async function newUserWithSession(tag: string, o: { anonymized?: boolean } = {}) {
+  async function newUserWithSession(tag: string, o: { displayName?: string | null; anonymized?: boolean } = {}) {
     const u = await newUser(tag, o);
     const s = await newSession(u.id);
     return { ...u, token: s.token, sessionId: s.sessionId };
