@@ -65,7 +65,10 @@ try {
     await page.getByText(/Riprova tra/).first().waitFor()
     await shot(page, 'cooldown-attesa')
     check('compare "Riprova tra …"', true)
-    check('il pulsante "Invia un nuovo codice" è disabilitato', await page.getByRole('button', { name: 'Invia un nuovo codice' }).isDisabled())
+    // F8: nessun pulsante disabilitato; il tocco prima della scadenza dà una riga di stato.
+    check('il pulsante "Invia un nuovo codice" non è disabilitato', !(await page.getByRole('button', { name: 'Invia un nuovo codice' }).isDisabled()))
+    await page.getByRole('button', { name: 'Invia un nuovo codice' }).click()
+    check('il tocco durante l\'attesa dà "Aspetta ancora …"', await page.getByText(/Aspetta ancora/).isVisible())
     check('DB: ancora una sola sfida, la stessa viva', challenges(email) === 1 && live(email) === 1, `${challenges(email)}/${live(email)}`)
   }
 
@@ -159,7 +162,9 @@ try {
     await shot(page, 'tetto-orario')
     check('attesa lunga in minuti', true)
     check('DB: nessuna sesta sfida', challenges(email) === 5, String(challenges(email)))
-    check('il pulsante resta disabilitato', await page.getByRole('button', { name: 'Invia il codice' }).isDisabled())
+    check('il pulsante resta attivo (mai disabilitato)', !(await page.getByRole('button', { name: 'Invia il codice' }).isDisabled()))
+    await page.getByRole('button', { name: 'Invia il codice' }).click()
+    check('il tocco durante l\'attesa dà "Aspetta ancora …"', await page.getByText(/Aspetta ancora/).isVisible())
   }
 
   section('Schermo largo (desktop)')

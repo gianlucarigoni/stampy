@@ -3,6 +3,9 @@ import { onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { getMyVenues, type MemberVenue } from '@/api/endpoints'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppSkeleton from '@/components/ui/AppSkeleton.vue'
 
 const router = useRouter()
 
@@ -34,21 +37,21 @@ onMounted(load)
 
 <template>
   <section v-if="error" class="card card-body">
-    <p class="alert alert-danger" role="alert">{{ error }}</p>
-    <button type="button" class="btn btn-primary" @click="load">Riprova</button>
+    <AppAlert type="error">{{ error }}</AppAlert>
+    <AppButton @click="load">Riprova</AppButton>
   </section>
 
-  <p v-else-if="!venues" class="text-body-secondary" role="status">Caricamento…</p>
+  <AppSkeleton v-else-if="!venues" card :lines="3" height="3rem" />
 
   <section v-else-if="venues.length > 0" class="card card-body d-grid gap-3">
     <h1 class="h4 mb-0">I tuoi locali</h1>
-    <RouterLink
+    <AppButton
       v-for="venue in venues"
       :key="venue.venueId"
-      class="btn btn-outline-primary"
+      variant="secondary"
       :to="{ name: 'staff-queue', params: { venueId: venue.venueId } }"
     >
       {{ venue.name }}
-    </RouterLink>
+    </AppButton>
   </section>
 </template>

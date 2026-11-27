@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { getMyVenues, type MemberVenue } from '@/api/endpoints'
 import AppHeader from '@/components/AppHeader.vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppIconButton from '@/components/ui/AppIconButton.vue'
+import AppMenu, { type MenuItem } from '@/components/ui/AppMenu.vue'
 import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
@@ -11,9 +14,7 @@ const router = useRouter()
 const { logout } = useAuth()
 
 const error = ref('')
-const open = ref(false)
-const menuRoot = ref<HTMLElement | null>(null)
-const toggle = ref<HTMLButtonElement | null>(null)
+const menu = ref<InstanceType<typeof AppMenu> | null>(null)
 
 // Memberships, asked once and only on staff screens (customers never need them).
 // The backend still checks the role on every request: this only decides which links to show.
@@ -41,20 +42,15 @@ const staffVenueId = computed(() => {
 // owners have no customer history there). Inside a venue the user belongs to, "Storico richieste" (that
 // venue's requests) comes right after, and "Cambia locale" only when the user belongs to more than one
 // venue (never on the venue list itself, where it would point to the same page).
-interface MenuItem {
-  label: string
-  to: RouteLocationRaw
-  name: string
-}
 const isStaffArea = computed(() => isStaffScreen.value || route.name === 'staff-venues')
 const menuItems = computed<MenuItem[]>(() => {
-  const items: MenuItem[] = [{ label: 'Profilo', to: { name: 'profile' }, name: 'profile' }]
+  const items: MenuItem[] = [{ label: 'Profilo', to: { name: 'profile' }, name: 'profile', icon: 'user' }]
   const venueId = staffVenueId.value
   if (venueId) {
-    items.push({ label: 'Storico richieste', to: { name: 'staff-history', params: { venueId } }, name: 'staff-history' })
+    items.push({ label: 'Storico richieste', to: { name: 'staff-history', params: { venueId } }, name: 'staff-history', icon: 'clock-counter-clockwise' })
   }
   if (isStaffArea.value && route.name !== 'staff-venues' && (memberships.value?.length ?? 0) > 1) {
-    items.push({ label: 'Cambia locale', to: { name: 'staff-venues' }, name: 'staff-venues' })
+    items.push({ label: 'Cambia locale', to: { name: 'staff-venues' }, name: 'staff-venues', icon: 'storefront' })
   }
   return items
 })
@@ -79,7 +75,7 @@ function goBack() {
 }
 
 async function signOut() {
-  open.value = false
+  menu.value?.close()
   error.value = ''
   try {
     await logout()
@@ -89,74 +85,22 @@ async function signOut() {
   }
 }
 
-function close(refocus = false) {
-  if (!open.value) return
-  open.value = false
-  if (refocus) toggle.value?.focus()
-}
-const onDocClick = (e: MouseEvent) => {
-  if (open.value && !menuRoot.value?.contains(e.target as Node)) close()
-}
-const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close(true)
-onMounted(() => {
-  document.addEventListener('click', onDocClick)
-  document.addEventListener('keydown', onKey)
-})
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocClick)
-  document.removeEventListener('keydown', onKey)
-})
-watch(() => route.fullPath, () => close())
+// Roles unknown yet on a staff screen: the menu keeps a placeholder instead of jumping when the links appear (21 §5.5).
+const menuLoading = computed(() => isStaffScreen.value && memberships.value === null)
+watch(() => route.fullPath, () => menu.value?.close())
 </script>
 
 <template>
   <div class="container narrow py-3">
     <AppHeader centered>
       <template #start>
-        <button
-          v-if="showBack"
-          type="button"
-          class="btn btn-outline-primary d-flex align-items-center justify-content-center p-0"
-          style="width: 44px; height: 44px"
-          aria-label="Indietro"
-          @click="goBack"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
-        </button>
+        <AppIconButton v-if="showBack" icon="arrow-left" label="Indietro" @click="goBack" />
       </template>
-      <div ref="menuRoot" class="dropdown">
-        <button
-          ref="toggle"
-          type="button"
-          class="btn btn-outline-primary d-flex align-items-center justify-content-center p-0"
-          style="width: 44px; height: 44px"
-          aria-label="Menu"
-          aria-controls="app-menu"
-          :aria-expanded="open"
-          @click="open = !open"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-        <ul v-show="open" id="app-menu" class="dropdown-menu dropdown-menu-end show p-0 " data-bs-popper="static">
-          <li v-for="item in menuItems" :key="item.name">
-            <RouterLink class="dropdown-item d-flex align-items-center" style="min-height: 44px" :to="item.to" active-class="active">
-              {{ item.label }}
-            </RouterLink>
-            <hr class="dropdown-divider" />
-          </li>
-          <li>
-            <button type="button" class="dropdown-item d-flex align-items-center" style="min-height: 44px" @click="signOut">Esci</button>
-          </li>
-        </ul>
-      </div>
+      <AppMenu ref="menu" :items="menuItems" :loading="menuLoading" @signout="signOut" />
     </AppHeader>
 
     <main id="main" tabindex="-1">
-      <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
+      <AppAlert v-if="error" type="error">{{ error }}</AppAlert>
       <RouterView :key="route.path" />
     </main>
   </div>

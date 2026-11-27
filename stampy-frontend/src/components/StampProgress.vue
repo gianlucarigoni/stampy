@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
 
 const props = defineProps<{ count: number; required: number }>()
 
@@ -31,10 +32,10 @@ const rows = computed(() => {
       </div>
     </div>
     <p class="fw-semibold mb-3">{{ count }} / {{ required }} timbri</p>
-    <div v-if="full" class="alert alert-success mb-0">
+    <AppAlert v-if="full" type="success" class="mb-0">
       <p class="fw-semibold mb-1">Premio disponibile</p>
       <p class="mb-0">Il prossimo prodotto è gratis: mostra questa schermata al personale.</p>
-    </div>
+    </AppAlert>
   </div>
 </template>
 

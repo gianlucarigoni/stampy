@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { getMyCards, getMyVenues, type MyCard } from '@/api/endpoints'
 import DisplayNameForm from '@/components/DisplayNameForm.vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppCard from '@/components/ui/AppCard.vue'
 import { useAuth } from '@/composables/useAuth'
 import { textColorOn } from '@/utils/color'
 
@@ -13,7 +16,7 @@ const { user, logout } = useAuth()
 const error = ref('')
 const editingName = ref(false)
 const nameForm = ref<InstanceType<typeof DisplayNameForm> | null>(null)
-const editButton = ref<HTMLButtonElement | null>(null)
+const editButton = ref<InstanceType<typeof AppButton> | null>(null)
 
 // Keyboard focus follows the form: into the field when it opens, back to the button when it closes.
 async function startEditingName() {
@@ -24,7 +27,7 @@ async function startEditingName() {
 async function stopEditingName() {
   editingName.value = false
   await nextTick()
-  editButton.value?.focus()
+  ;(editButton.value?.$el as HTMLElement | undefined)?.focus()
 }
 // Owners and staff cannot delete their account from here (BACKLOG B4b). The backend answers 403
 // anyway: this only avoids offering a button that cannot work.
@@ -62,28 +65,23 @@ async function signOut() {
         <h1 id="profile-title" class="h5 mb-0 text-break">{{ user?.displayName || 'Il tuo profilo' }}</h1>
         <p class="mb-0 text-body-secondary text-break">{{ user?.email }}</p>
       </div>
-      <button v-if="!editingName" ref="editButton" class="btn btn-link ms-auto" type="button" @click="startEditingName">Modifica nome</button>
+      <AppButton v-if="!editingName" ref="editButton" variant="link" :block="false" class="ms-auto" @click="startEditingName">Modifica nome</AppButton>
     </section>
     <section v-if="editingName" class="card card-body">
       <DisplayNameForm ref="nameForm" :initial="user?.displayName" submit-label="Salva" @saved="stopEditingName" />
-      <button class="btn btn-link mt-2" type="button" @click="stopEditingName">Annulla</button>
+      <AppButton variant="link" :block="false" class="mt-2 align-self-start" @click="stopEditingName">Annulla</AppButton>
     </section>
 
     <!-- The customer history is for customers: owners and staff see their venue's history from the menu. -->
-    <section v-if="isMember === false" class="card">
-      <RouterLink class="profile-row card-body d-flex align-items-center justify-content-between" :to="{ name: 'history' }">
-        <span class="fw-semibold">Storico richieste</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M9 5l7 7-7 7" />
-        </svg>
-      </RouterLink>
-    </section>
+    <AppCard v-if="isMember === false" :to="{ name: 'history' }">
+      <span class="fw-semibold">Storico richieste</span>
+    </AppCard>
 
     <!-- One card per venue, with the venue's real branding (BACKLOG B30). Empty state for who has no card
          (owners and staff included): no button. The official button is a link, always visible, also for a card
          already saved (Google shows the existing card, it does not duplicate it). -->
     <p v-if="cards && cards.length === 0" class="card card-body text-body-secondary mb-0">Non hai ancora nessuna card. Si crea la prima volta che tocchi il tag di un locale.</p>
-    <p v-else-if="cardsError" class="text-body-secondary mb-0" role="alert">Impossibile caricare le tue card.</p>
+    <AppAlert v-else-if="cardsError" type="error">Impossibile caricare le tue card.</AppAlert>
     <section
       v-for="c in cards ?? []"
       :key="c.venueId"
@@ -114,9 +112,7 @@ async function signOut() {
       <h2 id="danger-title" class="h6 danger-zone-title">Zona pericolosa</h2>
       <p v-if="blocked" class="text-body-secondary mb-0">Questo account gestisce un locale e non può essere eliminato da qui.</p>
       <template v-else>
-        <RouterLink class="btn btn-outline-danger btn-danger-soft w-100 d-flex align-items-center justify-content-center" :to="{ name: 'delete-account' }">
-          Elimina account
-        </RouterLink>
+        <AppButton variant="danger-outline" class="btn-danger-soft" :to="{ name: 'delete-account' }">Elimina account</AppButton>
       </template>
     </section>
   </div>

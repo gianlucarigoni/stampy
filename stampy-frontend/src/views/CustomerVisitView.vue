@@ -6,6 +6,8 @@ import { markWalletAdded, visitVenue } from '@/api/endpoints'
 import VenueReward from '@/components/VenueReward.vue'
 import { formatWait } from '@/utils/format'
 import { writeTab } from '@/utils/tabStorage'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppButton from '@/components/ui/AppButton.vue'
 
 const props = defineProps<{ venueId: string }>()
 
@@ -88,31 +90,21 @@ onMounted(() => void runVisit())
     <VenueReward :venue-name="screen.venueName" :reward-name="screen.rewardName" class="mb-0" />
     <h1 class="h4 mb-0">La tua card è pronta</h1>
     <p class="mb-0">Salvala in Google Wallet: è qui che vedrai i tuoi timbri.</p>
-    <a
-      class="btn"
-      :class="walletTapped ? 'btn-outline-primary' : 'btn-primary'"
+    <AppButton
+      :variant="walletTapped ? 'secondary' : 'primary'"
       :href="screen.saveUrl"
       target="_blank"
       rel="noopener noreferrer"
       @click="onWalletTap"
     >
       Aggiungi a Google Wallet
-    </a>
-    <button
-      type="button"
-      class="btn"
-      :class="walletTapped ? 'btn-primary' : 'btn-outline-primary'"
-      @click="runVisit(true)"
-    >
-      Richiedi il timbro
-    </button>
+    </AppButton>
+    <AppButton :variant="walletTapped ? 'primary' : 'secondary'" @click="runVisit(true)">Richiedi il timbro</AppButton>
     <p class="text-body-secondary mb-0">Codice card: {{ screen.publicCode }}</p>
   </section>
 
   <section v-else class="card card-body">
-    <p class="alert alert-danger" role="alert">{{ screen.message }}</p>
-    <button v-if="screen.canRetry" type="button" class="btn btn-primary" @click="runVisit()">
-      Riprova
-    </button>
+    <AppAlert type="error">{{ screen.message }}</AppAlert>
+    <AppButton v-if="screen.canRetry" @click="runVisit()">Riprova</AppButton>
   </section>
 </template>

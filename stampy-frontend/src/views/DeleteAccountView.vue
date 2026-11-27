@@ -3,6 +3,10 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { confirmAccountDeletion, getMyVenues, requestAccountDeletion } from '@/api/endpoints'
+import AppAlert from '@/components/ui/AppAlert.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppField from '@/components/ui/AppField.vue'
+import AppStatusLine from '@/components/ui/AppStatusLine.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useCountdown } from '@/composables/useCountdown'
 import { formatWait } from '@/utils/format'
@@ -17,9 +21,17 @@ const { remaining: waitSeconds, start: startWait, reset: resetWait } = useCountd
 
 const challengeId = ref(readTab<{ challengeId: string }>(STORAGE_KEY)?.challengeId ?? '')
 const code = ref('')
-const codeInput = ref<HTMLInputElement | null>(null)
+const codeField = ref<InstanceType<typeof AppField> | null>(null)
+const resendButton = ref<InstanceType<typeof AppButton> | null>(null)
 const busy = ref(false)
+// Which request is running: "Invio…" goes on the button/link that was tapped, "Elimino…" only on the final confirm (21 §5.3).
+const busyAction = ref<'send' | 'confirm' | ''>('')
+const sending = computed(() => busy.value && busyAction.value === 'send')
+const confirming = computed(() => busy.value && busyAction.value === 'confirm')
+// Wrong code -> `fieldError` under the field; system failure -> `error`, an alert (pattern 5.1).
 const error = ref('')
+const fieldError = ref('')
+const waitHint = ref(false)
 const notice = ref('')
 const codeDead = ref(false)
 // Owners and staff cannot delete their account from here (BACKLOG B4b). The backend answers 403
@@ -30,6 +42,12 @@ const waiting = computed(() => waitSeconds.value > 0)
 const waitAnnouncement = computed(() =>
   waitSeconds.value > 60 ? `Riprova tra ${Math.ceil(waitSeconds.value / 60)} minuti` : 'Riprova tra meno di un minuto',
 )
+const waitHintText = computed(() =>
+  waitSeconds.value > 60 ? `Aspetta ancora ${Math.ceil(waitSeconds.value / 60)} min` : 'Aspetta ancora meno di un minuto',
+)
+watch(waiting, (on) => {
+  if (!on) waitHint.value = false
+})
 
 onMounted(async () => {
   try {
@@ -62,25 +80,31 @@ function showCodeError(err: unknown) {
     if (left <= 0) {
       codeDead.value = true
       resetWait()
-      error.value = 'Codice non valido. Hai finito i tentativi: richiedi un nuovo codice.'
+      fieldError.value = 'Codice non valido. Hai finito i tentativi: richiedi un nuovo codice.'
     } else {
-      error.value = `Codice non valido. ${left === 1 ? 'Ti resta 1 tentativo' : `Ti restano ${left} tentativi`}.`
+      fieldError.value = `Codice non valido. ${left === 1 ? 'Ti resta 1 tentativo' : `Ti restano ${left} tentativi`}.`
     }
     return
   }
   if (err instanceof ApiError && err.code === 'CodeExpired') {
     codeDead.value = true
     resetWait()
-    error.value = 'Codice scaduto. Richiedi un nuovo codice.'
+    fieldError.value = 'Codice scaduto. Richiedi un nuovo codice.'
     return
   }
   showError(err, 'Impossibile eliminare l’account, riprova')
 }
 
 async function sendCode() {
-  if (busy.value || waiting.value) return
+  if (busy.value) return
+  if (waiting.value) {
+    waitHint.value = true
+    return
+  }
   busy.value = true
+  busyAction.value = 'send'
   error.value = ''
+  fieldError.value = ''
   notice.value = ''
   const resend = challengeId.value !== ''
   try {
@@ -92,18 +116,33 @@ async function sendCode() {
     // First send: the "Abbiamo scritto a…" text already says it. Only a resend needs feedback.
     if (resend) notice.value = `Codice inviato a ${user.value?.email ?? 'la tua email'}`
     await nextTick()
-    codeInput.value?.focus()
+    codeField.value?.focus()
   } catch (err) {
     showError(err, 'Impossibile inviare il codice, riprova')
   } finally {
     busy.value = false
+    busyAction.value = ''
   }
 }
 
 async function confirmDeletion() {
-  if (busy.value || code.value.length !== 6) return
+  if (busy.value) return
+  if (codeDead.value) {
+    // The code can no longer be used: the field already says why, the way forward is the new-code button.
+    ;(resendButton.value?.$el as HTMLElement | undefined)?.focus()
+    return
+  }
+  // The button is never disabled: with fewer than 6 digits the tap says why and moves to the field (D20, pattern 5.2).
+  if (code.value.length !== 6) {
+    fieldError.value = 'Scrivi le 6 cifre.'
+    await nextTick()
+    codeField.value?.focus()
+    return
+  }
   busy.value = true
+  busyAction.value = 'confirm'
   error.value = ''
+  fieldError.value = ''
   notice.value = ''
   try {
     await confirmAccountDeletion(challengeId.value, code.value)
@@ -114,10 +153,12 @@ async function confirmDeletion() {
     code.value = ''
   } finally {
     busy.value = false
+    busyAction.value = ''
   }
 }
 
 function cancel() {
+  if (busy.value) return
   removeTab(STORAGE_KEY)
   void router.back()
 }
@@ -126,6 +167,7 @@ function cancel() {
 watch(code, (value) => {
   const digits = value.replace(/\D/g, '').slice(0, 6)
   if (digits !== value) code.value = digits
+  if (digits && !codeDead.value) fieldError.value = ''
 })
 </script>
 
@@ -133,23 +175,22 @@ watch(code, (value) => {
   <section class="card card-body">
     <h1 class="h4">Elimina il tuo account</h1>
 
-    <p v-if="blocked" class="alert alert-warning" role="alert">{{ blockedMessage }}</p>
+    <AppAlert v-if="blocked" type="warning" role="alert">{{ blockedMessage }}</AppAlert>
 
     <template v-else-if="!challengeId">
       <p class="text-body-emphasis">Se continui tutti i dati dell'account vengono eliminati, comprese le card dei tuoi posti preferiti</p>
       <p class="fw-semibold">Non si può annullare.</p>
       <p class="text-body-emphasis">Per motivi sicurezza dovrai confermare l'operazione tramite un codice che ti verrà inviato via email.</p>
 
-      <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
-      <p v-if="waiting" class="alert alert-warning">
+      <AppAlert v-if="error" type="error">{{ error }}</AppAlert>
+      <AppAlert v-if="waiting" type="warning" :announce="false">
         <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
         <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
-      </p>
+      </AppAlert>
 
-      <button class="btn btn-danger w-100" type="button" :disabled="busy || waiting" @click="sendCode">
-        {{ busy ? 'Invio…' : 'Invia il codice' }}
-      </button>
-      <button class="btn btn-link mt-2" type="button" :disabled="busy" @click="cancel">Annulla</button>
+      <AppButton variant="danger" :busy="sending" busy-label="Invio…" @click="sendCode">Invia il codice</AppButton>
+      <AppStatusLine v-if="waitHint" icon="clock">{{ waitHintText }}</AppStatusLine>
+      <AppButton variant="link" :block="false" class="mt-2 align-self-start" @click="cancel">Annulla</AppButton>
     </template>
 
     <template v-else>
@@ -158,48 +199,45 @@ watch(code, (value) => {
         >. Il codice vale 5 minuti.
       </p>
 
-      <form @submit.prevent="confirmDeletion">
-        <div class="mb-3">
-          <label for="code" class="form-label fw-semibold">Codice a 6 cifre</label>
-          <input
-            id="code"
-            ref="codeInput"
-            v-model="code"
-            class="form-control form-control-code"
-            type="text"
-            name="code"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            :disabled="codeDead"
-            required
-            :aria-invalid="error ? 'true' : undefined"
-            :aria-describedby="error ? 'delete-error' : undefined"
-          />
-        </div>
+      <AppAlert v-if="notice" type="success">{{ notice }}</AppAlert>
+      <AppAlert v-if="error" type="error">{{ error }}</AppAlert>
+      <AppAlert v-if="waiting" type="warning" :announce="false">
+        <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
+        <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
+      </AppAlert>
 
-        <p v-if="notice" class="alert alert-success" role="status">{{ notice }}</p>
-        <p v-if="error" id="delete-error" class="alert alert-danger" role="alert">{{ error }}</p>
-        <p v-if="waiting" class="alert alert-warning">
-          <span aria-hidden="true">Riprova tra {{ formatWait(waitSeconds) }}</span>
-          <span class="visually-hidden" role="status">{{ waitAnnouncement }}</span>
-        </p>
-
-        <button class="btn btn-danger w-100" type="submit" :disabled="busy || codeDead || code.length !== 6">
-          {{ busy ? 'Elimino…' : 'Elimina il mio account' }}
-        </button>
+      <form novalidate @submit.prevent="confirmDeletion">
+        <AppField
+          id="code"
+          ref="codeField"
+          v-model="code"
+          label="Codice a 6 cifre"
+          :error="fieldError"
+          :dead="codeDead"
+          code
+          type="text"
+          name="code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          required
+        />
+        <AppButton type="submit" variant="danger" :busy="confirming" busy-label="Elimino…">Elimina il mio account</AppButton>
       </form>
 
       <div class="d-flex flex-wrap justify-content-between column-gap-3 mt-2">
-        <button
-          type="button"
-          :class="codeDead ? 'btn btn-primary' : 'btn btn-link px-0'"
-          :disabled="busy || waiting"
+        <AppButton
+          ref="resendButton"
+          :variant="codeDead ? 'primary' : 'link'"
+          :block="codeDead"
+          :busy="sending"
+          busy-label="Invio…"
           @click="sendCode"
         >
           Invia un nuovo codice
-        </button>
-        <button type="button" class="btn btn-link px-0" :disabled="busy" @click="cancel">Annulla</button>
+        </AppButton>
+        <AppButton variant="link" :block="false" @click="cancel">Annulla</AppButton>
       </div>
+      <AppStatusLine v-if="waitHint" icon="clock">{{ waitHintText }}</AppStatusLine>
     </template>
   </section>
 </template>
