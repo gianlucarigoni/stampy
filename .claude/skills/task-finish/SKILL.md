@@ -31,6 +31,14 @@ do it unannounced.
 
 ## 3. Finish
 
+Before running the script, check that the main checkout is on `main` (the script stops with «la cartella principale non è su main» otherwise, e.g. when the owner has a docs branch open there):
+
+```bash
+git -C <main checkout> branch --show-current    # must print: main
+```
+
+If it prints something else, **stop and tell the owner** (they switch it back); do not switch the branch yourself.
+
 ```bash
 .claude/scripts/worktree-finish.sh <id> -m "messaggio in italiano"
 ```

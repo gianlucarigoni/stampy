@@ -7,7 +7,9 @@ I file in `docs/` li aggiorna **solo il proprietario**, con la skill `/docs-sync
 ## Le sezioni
 
 1. **Obiettivo** della task e riferimento alla issue.
-2. **Decisioni** prese e **motivazioni**, con le alternative scartate.
+2. **Decisioni** prese e **motivazioni**, con le alternative scartate. Se la task o l'istruzione del proprietario
+   **contraddice il testo della issue o di `BACKLOG.md`** (es. un `404` al posto di «nessuna riga»), scrivilo qui: quale
+   dei due hai seguito, perché, e la correzione proposta al testo della voce.
 3. **Assunzioni** fatte e cose **da validare**.
 4. **File toccati** e test aggiunti (con quanti: il totale della suite **prima → dopo**).
 5. **Modifiche proposte** a `CODEBASE.md` e `BACKLOG.md`: testo pronto da incollare, con le voci da spostare nel §8.
