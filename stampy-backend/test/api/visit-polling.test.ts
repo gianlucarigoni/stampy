@@ -109,7 +109,7 @@ describe("primo tocco e richiesta", () => {
 });
 
 describe("polling", () => {
-  it("il proprietario riceve 200 pending con solo {status, publicCode, expiresAt, stampsCount, stampsRequired}", async () => {
+  it("il proprietario riceve 200 pending con solo {status, publicCode, expiresAt, stampsCount, stampsRequired, venueName, rewardName}", async () => {
     const u = await fx.newUserWithSession("poll");
     await visit(u.token);
     const { body: v } = await visit(u.token);
@@ -117,7 +117,7 @@ describe("polling", () => {
 
     expect(r.status).toBe(200);
     expect(r.body.status).toBe("pending");
-    expect(Object.keys(r.body).sort()).toEqual(["expiresAt", "promotionChanged", "publicCode", "stampsCount", "stampsRequired", "status"]);
+    expect(Object.keys(r.body).sort()).toEqual(["expiresAt", "promotionChanged", "publicCode", "rewardName", "stampsCount", "stampsRequired", "status", "venueName"]);
     expect(r.body.stampsCount).toBe(0);
     expect(r.body.stampsRequired).toBe(10);
   });

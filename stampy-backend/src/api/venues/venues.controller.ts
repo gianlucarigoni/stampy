@@ -3,6 +3,7 @@ import { GenericError } from "../../errors/generic";
 import { PromotionNotFoundError } from "../../errors/promotion-not-found.error";
 import { TryLaterError } from "../../errors/try-later.error";
 import { VenueNotFoundError } from "../../errors/venue-not-found.error";
+import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
 import { requireAuth } from "../../utils/auth-context";
 import { TypedAuthRequest } from "../../utils/typed-request";
 import cardsSrv from "../cards/cards.service";
@@ -32,6 +33,9 @@ export const visit = async (req: TypedAuthRequest<unknown, visitQueryDTO, venueI
     // il locale ha cambiato promozione dopo l'ultima conferma: la card riparte da 0 alla prossima conferma
     const promotionChanged = card.promotionId !== promotion.id;
 
+    // nomi mostrati al cliente: il premio è quello della promozione attiva (coerente con promotionChanged)
+    const names = { venueName: venue.name, rewardName: promotionConfigSchema.parse(promotion.config).reward };
+
     const loyaltyClass = googleWalletSrv.buildLoyaltyClass(venue);
     // card su promozione vecchia: il pass salvato mostra già 0 timbri (come polling e coda)
     const shownCard = promotionChanged ? { ...card, stampsCount: 0 } : card;
@@ -40,7 +44,7 @@ export const visit = async (req: TypedAuthRequest<unknown, visitQueryDTO, venueI
     if (created) {
       const saveUrl = googleWalletSrv.createSaveUrl(loyaltyClass, loyaltyObject);
 
-      res.status(201).json({ state: VISIT_STATES[0], saveUrl, publicCode: card.publicCode });
+      res.status(201).json({ state: VISIT_STATES[0], saveUrl, publicCode: card.publicCode, ...names });
       return;
     }
 
@@ -50,7 +54,7 @@ export const visit = async (req: TypedAuthRequest<unknown, visitQueryDTO, venueI
     // (un ritocco mentre la pendente è viva è idempotente e non è un nuovo arrivo in coda)
     const pending = await requestSrv.getPendingRequest(card.id);
     if (pending) {
-      res.status(200).json({ state: VISIT_STATES[1], requestId: pending.id, expiresAt: pending.expiresAt, promotionChanged });
+      res.status(200).json({ state: VISIT_STATES[1], requestId: pending.id, expiresAt: pending.expiresAt, promotionChanged, ...names });
       return;
     }
 
@@ -59,7 +63,7 @@ export const visit = async (req: TypedAuthRequest<unknown, visitQueryDTO, venueI
     // regenerated on every visit.
     if (card.walletStatus === "not_added" && req.query.requestStamp !== "1") {
       const saveUrl = googleWalletSrv.createSaveUrl(loyaltyClass, loyaltyObject);
-      res.status(200).json({ state: VISIT_STATES[2], saveUrl, publicCode: card.publicCode });
+      res.status(200).json({ state: VISIT_STATES[2], saveUrl, publicCode: card.publicCode, ...names });
       return;
     }
 
@@ -75,11 +79,11 @@ export const visit = async (req: TypedAuthRequest<unknown, visitQueryDTO, venueI
       // race: un altro tocco ha creato la pendente nello stesso istante
       const raced = await requestSrv.getPendingRequest(card.id);
       if (!raced) throw new GenericError("Errore nella richiesta, riprova", 409);
-      res.status(200).json({ state: VISIT_STATES[1], requestId: raced.id, expiresAt: raced.expiresAt, promotionChanged });
+      res.status(200).json({ state: VISIT_STATES[1], requestId: raced.id, expiresAt: raced.expiresAt, promotionChanged, ...names });
       return;
     }
 
-    res.status(201).json({ state: VISIT_STATES[1], requestId: newRequest.id, expiresAt: newRequest.expiresAt, promotionChanged });
+    res.status(201).json({ state: VISIT_STATES[1], requestId: newRequest.id, expiresAt: newRequest.expiresAt, promotionChanged, ...names });
   } catch (err) {
     next(err);
   }

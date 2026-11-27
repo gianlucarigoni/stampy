@@ -28,6 +28,8 @@ export const find = async (
       expiresAt: request.expiresAt,
       stampsCount: request.stampsCount,
       stampsRequired: request.stampsRequired,
+      venueName: request.venueName,
+      rewardName: request.rewardName,
       promotionChanged: request.promotionChanged,
       // solo `approved`; negli altri stati i tre campi sono assenti
       ...(request.outcome ?? {}),

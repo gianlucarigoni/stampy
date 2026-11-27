@@ -8,9 +8,16 @@ export interface AuthUser {
 }
 
 export type VisitResult =
-  | { state: 'card_created'; saveUrl: string; publicCode: string }
-  | { state: 'card_not_added'; saveUrl: string; publicCode: string }
-  | { state: 'request_pending'; requestId: string; expiresAt: string; promotionChanged: boolean }
+  | { state: 'card_created'; saveUrl: string; publicCode: string; venueName?: string; rewardName?: string }
+  | { state: 'card_not_added'; saveUrl: string; publicCode: string; venueName?: string; rewardName?: string }
+  | {
+      state: 'request_pending'
+      requestId: string
+      expiresAt: string
+      promotionChanged: boolean
+      venueName?: string
+      rewardName?: string
+    }
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'expired'
 
@@ -20,6 +27,8 @@ export interface StampRequest {
   expiresAt: string
   stampsCount: number
   stampsRequired: number
+  venueName?: string // all statuses (B31); optional so a missing value hides the row
+  rewardName?: string // reward of the shown promotion, all statuses (`reward` is only on approved)
   // The venue changed promotion: the card restarts from 0 on confirmation (count/required are already the new ones).
   promotionChanged: boolean
   // Only on `approved`: what that confirmation recorded (backend-computed, never inferred here).

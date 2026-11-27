@@ -5,6 +5,7 @@ import { ApiError } from '@/api/client'
 import { getRequest, type StampRequest } from '@/api/endpoints'
 import PromotionNotice from '@/components/PromotionNotice.vue'
 import RewardDialog from '@/components/RewardDialog.vue'
+import VenueReward from '@/components/VenueReward.vue'
 import StampProgress from '@/components/StampProgress.vue'
 import { usePolling } from '@/composables/usePolling'
 import { isRewardSeen, markRewardSeen } from '@/utils/seenStorage'
@@ -80,6 +81,11 @@ onMounted(load)
   <p v-if="screen.kind === 'loading'" class="text-body-secondary" role="status">Un momento…</p>
 
   <section v-else-if="screen.kind === 'pending'" class="card card-body" aria-live="polite">
+    <VenueReward
+      :venue-name="screen.balance.venueName"
+      :reward-name="screen.balance.rewardName"
+      :required="screen.balance.stampsRequired"
+    />
     <h1 class="h4">Richiesta inviata</h1>
     <p>Stiamo aspettando la conferma dello staff.</p>
     <p class="text-body-secondary">La richiesta resta valida solo per pochi minuti: se scade potrai rifarla.</p>
@@ -89,6 +95,11 @@ onMounted(load)
   </section>
 
   <section v-else-if="screen.kind === 'closed'" class="card card-body" aria-live="polite">
+    <VenueReward
+      :venue-name="screen.result.venueName"
+      :reward-name="screen.result.rewardName"
+      :required="screen.result.stampsRequired"
+    />
     <template v-if="screen.result.status === 'approved'">
       <div class="alert alert-success">
         <h1 class="h5 mb-1">Richiesta approvata!</h1>
