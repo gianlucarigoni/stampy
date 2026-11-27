@@ -1,7 +1,7 @@
 import { NextFunction, Response } from "express";
 import { requireAuth } from "../../../utils/auth-context";
 import { TypedAuthRequest } from "../../../utils/typed-request";
-import { historyRow } from "../../requests/history.mapper";
+import { historyPage } from "../../requests/history.mapper";
 import requestsSrv from "../../requests/requests.service";
 import resolveSrv from "../../requests/resolve/resolve.service";
 import { confirmDTO, historyQueryDTO, staffRequestParamsDTO } from "./staff.dto";
@@ -55,8 +55,8 @@ export const history = async (
   next: NextFunction,
 ) => {
   try {
-    const items = await requestsSrv.getHistory({ venueId: req.params.venueId }, req.query);
-    res.status(200).json({ requests: items.map((r) => historyRow(r)) });
+    const page = await requestsSrv.getHistory({ venueId: req.params.venueId }, req.query);
+    res.status(200).json(historyPage(page));
   } catch (err) {
     next(err);
   }

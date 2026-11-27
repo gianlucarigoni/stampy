@@ -13,6 +13,7 @@ import {
   ValidatorConstraintInterface,
 } from "class-validator";
 import { requestStatus } from "../../../db/schema";
+import { decodeCursor } from "../../requests/history/cursor";
 
 // Tetto per singola conferma: evita che un errore di digitazione (500 invece di 50)
 // gonfi la card e sblocchi premi a raffica. 50 copre un tavolo grande.
@@ -61,11 +62,36 @@ class FromNotAfterTo implements ValidatorConstraintInterface {
   }
 }
 
-// Filtri opzionali dello storico richieste. Tutti facoltativi; senza filtri = tutto lo storico
-// (nessun limit/offset: la risposta contiene tutte le righe che combaciano).
+@ValidatorConstraint({ name: "validCursor", async: false })
+class ValidCursor implements ValidatorConstraintInterface {
+  validate(value: unknown) {
+    return decodeCursor(value) !== null;
+  }
+  defaultMessage() {
+    return "`cursor` is not valid";
+  }
+}
+
+export const HISTORY_DEFAULT_LIMIT = 25;
+export const HISTORY_MAX_LIMIT = 100;
+
+// Filtri opzionali dello storico richieste. Tutti facoltativi; senza filtri = tutto lo storico,
+// paginato a cursore (`limit`, `cursor`, B19); `offset` non esiste.
 // `from`/`to`: data (YYYY-MM-DD, interpretata in UTC; `to` incluso fino a fine giornata) oppure
 // istante ISO 8601 completo. Si filtra su `created_at` (quando il cliente ha fatto la richiesta).
 export class historyQueryDTO {
+  // pagina: da 1 a 100 righe (default 25); `cursor` è quello restituito da una pagina precedente
+  @IsOptional()
+  @Transform(({ value }) => (value === undefined ? undefined : value === "" ? NaN : Number(value)))
+  @IsInt()
+  @Min(1)
+  @Max(HISTORY_MAX_LIMIT)
+  limit?: number;
+
+  @IsOptional()
+  @Validate(ValidCursor)
+  cursor?: string;
+
   @IsOptional()
   @IsIn(requestStatus.enumValues)
   status?: (typeof requestStatus.enumValues)[number];

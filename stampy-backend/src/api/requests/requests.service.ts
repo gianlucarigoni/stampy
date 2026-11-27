@@ -4,6 +4,8 @@ import { cards, promotions, stampEvents, stampRequests, users, venues } from "..
 import { RequestStatus, StampRequest } from "../../db/types";
 import { promotionConfigSchema } from "../../utils/schemas/promotion-config.schema";
 import { VenueNotFoundError } from "../../errors/venue-not-found.error";
+import { HISTORY_DEFAULT_LIMIT } from "../venues/staff/staff.dto";
+import { Cursor, decodeCursor, encodeCursor } from "./history/cursor";
 import venueSrv from "../venues/venues.service";
 
 /**
@@ -36,6 +38,9 @@ export type HistoryFilters = {
   maxStamps?: number;
   from?: string;
   to?: string;
+  // pagina (B19): righe per pagina (default 25) e cursore opaco di una pagina precedente
+  limit?: number;
+  cursor?: string;
   // solo cliente (B34): un locale in cui ha una card; altrimenti `VenueNotFoundError`
   venueId?: string;
 };
@@ -55,6 +60,15 @@ export type HistoryItem = {
   rewardsRedeemed: number | null;
   // nome del premio consumato (promozione dell'evento `redeem`); null se non `approved` o senza premio
   reward: string | null;
+};
+
+export type HistoryPage = {
+  items: HistoryItem[];
+  total: number; // righe che soddisfano scope e filtri
+  pageStart: number; // posizione 1-based della prima riga della pagina (0 se vuota)
+  pageEnd: number;
+  prevCursor: string | null; // null sulla prima pagina
+  nextCursor: string | null; // null sull'ultima
 };
 
 export type CardStateOfRequest = {
@@ -258,9 +272,11 @@ export class RequestsService {
    * opzionali e in AND. I timbri confermati (premio compreso) sono la somma delle quantità degli eventi della
    * richiesta (letti da `stamp_events`, nessun ricalcolo della regola timbri).
    * Date: `from` incluso; `to` incluso (una data senza ora vale fino a fine giornata UTC).
-   * Mai l'email: solo il codice pubblico. Nessuna paginazione: restituisce tutte le righe che combaciano.
+   * Mai l'email: solo il codice pubblico.
+   * Paginato a cursore (B19): `limit` righe (default 25) in ordine `created_at DESC, id DESC`; `total` e le posizioni
+   * si contano in SQL con gli stessi scope e filtri. Il cursore è solo una posizione: non allarga mai lo scope.
    */
-  async getHistory(scope: HistoryScope, f: HistoryFilters): Promise<HistoryItem[]> {
+  async getHistory(scope: HistoryScope, f: HistoryFilters): Promise<HistoryPage> {
     // Filtro per locale (solo cliente): il locale deve avere una card sua, in SQL. Un locale altrui,
     // senza card o inesistente dà lo stesso 404 (un 403 rivelerebbe che esiste).
     if (f.venueId && "userId" in scope) {
@@ -293,8 +309,17 @@ export class RequestsService {
       );
     }
 
-    const rows = await db
+    const limit = f.limit ?? HISTORY_DEFAULT_LIMIT;
+    const cursor = f.cursor ? decodeCursor(f.cursor) : null;
+    const pos = sql`(${stampRequests.createdAt}, ${stampRequests.id})`;
+    const after = (c: Cursor, op: "<" | ">") => sql`${pos} ${sql.raw(op)} (${c.createdAt}::timestamptz, ${c.id}::uuid)`;
+    const backwards = cursor?.direction === "p";
+    const pageConds = cursor ? [...conds, after(cursor, backwards ? ">" : "<")] : conds;
+
+    const fetched = await db
       .select({
+        // testo UTC con microsecondi: è ciò che finisce nel cursore (un Date perderebbe i microsecondi)
+        createdAtText: sql<string>`to_char(${stampRequests.createdAt} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
         requestId: stampRequests.id,
         publicCode: cards.publicCode,
         venueName: venues.name,
@@ -317,11 +342,32 @@ export class RequestsService {
       .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
       .innerJoin(venues, eq(venues.id, stampRequests.venueId))
       .innerJoin(users, eq(users.id, cards.userId))
-      .where(and(...conds))
-      .orderBy(desc(stampRequests.createdAt), desc(stampRequests.id));
+      .where(and(...pageConds))
+      .orderBy(...(backwards ? [asc(stampRequests.createdAt), asc(stampRequests.id)] : [desc(stampRequests.createdAt), desc(stampRequests.id)]))
+      .limit(limit);
+    const rows = backwards ? fetched.reverse() : fetched;
+
+    // Totale e posizione della pagina: stessi scope e filtri, una sola query.
+    const first = rows[0];
+    const [counts] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        before: first
+          ? sql<number>`(count(*) filter (where ${pos} > (${first.createdAtText}::timestamptz, ${first.requestId}::uuid)))::int`
+          : sql<number>`0`,
+      })
+      .from(stampRequests)
+      .innerJoin(cards, and(eq(cards.id, stampRequests.cardId), eq(cards.venueId, stampRequests.venueId)))
+      .where(and(...conds));
+    const total = counts?.total ?? 0;
+    const pageStart = first ? counts.before + 1 : 0;
+    const pageEnd = first ? pageStart + rows.length - 1 : 0;
+    const last = rows[rows.length - 1];
+    const prevCursor = first && pageStart > 1 ? encodeCursor({ direction: "p", createdAt: first.createdAtText, id: first.requestId }) : null;
+    const nextCursor = last && pageEnd < total ? encodeCursor({ direction: "n", createdAt: last.createdAtText, id: last.requestId }) : null;
 
     const approved = (r: (typeof rows)[number]) => r.status === RequestStatus.approved;
-    return rows.map((r) => ({
+    const items = rows.map((r) => ({
       requestId: r.requestId,
       publicCode: r.publicCode,
       venueName: r.venueName,
@@ -334,6 +380,7 @@ export class RequestsService {
       rewardsRedeemed: approved(r) ? (r.rewardsRedeemed ?? 0) : null,
       reward: approved(r) ? r.reward : null,
     }));
+    return { items, total, pageStart, pageEnd, prevCursor, nextCursor };
   }
 
   /**
