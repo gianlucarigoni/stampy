@@ -88,7 +88,7 @@ describe("GET /api/venues/:venueId/requests/history", () => {
       expect(r.status).toBe(200);
       expect(Object.keys(row).sort()).toEqual(["createdAt", "displayName", "publicCode", "requestId", "resolvedAt", "reward", "rewardsRedeemed", "stamps", "stampsAdded", "status"]);
       expect(JSON.stringify(r.body)).not.toMatch(/@test\.it|email/i);
-      expect(Object.keys(r.body)).toEqual(["requests"]);
+      expect(Object.keys(r.body).sort()).toEqual(["nextCursor", "pageEnd", "pageStart", "prevCursor", "requests", "total"]);
       expect(r.body.requests.every((x: any, i: number, a: any[]) => i === 0 || a[i - 1].createdAt >= x.createdAt)).toBe(true);
     });
 
@@ -181,7 +181,7 @@ describe("GET /api/venues/:venueId/requests/history", () => {
     });
   });
 
-  describe("combinazione dei filtri e niente paginazione", () => {
+  describe("combinazione dei filtri", () => {
     it("approved + min 5 + febbraio → solo la numero 1", async () => {
       expect(idx(await history(venueA, "status=approved&minStamps=5&from=2020-02-01&to=2020-02-28", staff.token))).toBe("1");
     });
@@ -192,7 +192,7 @@ describe("GET /api/venues/:venueId/requests/history", () => {
       expect(all.body.requests).toHaveLength(total);
     });
 
-    it.each([["limit=2"], ["offset=0"], ["minProducts=1"], ["maxProducts=1"], ["foo=1"]])(
+    it.each([["offset=0"], ["minProducts=1"], ["maxProducts=1"], ["foo=1"]])(
       "parametro non ammesso (%s) → 400",
       async (qs) => {
         expect((await history(venueA, qs, staff.token)).status).toBe(400);
@@ -216,7 +216,7 @@ describe("GET /api/requests/mine (storico del cliente)", () => {
     expect(Object.keys(row).sort()).toEqual(["createdAt", "displayName", "publicCode", "requestId", "resolvedAt", "reward", "rewardsRedeemed", "stamps", "stampsAdded", "status", "venueName"]);
     expect(row).toMatchObject({ venueName: nameA, publicCode: codeOf(0), status: "approved", stamps: 3 });
     expect(JSON.stringify(r.body)).not.toMatch(/@test\.it|email/i);
-    expect(Object.keys(r.body)).toEqual(["requests"]);
+    expect(Object.keys(r.body).sort()).toEqual(["nextCursor", "pageEnd", "pageStart", "prevCursor", "requests", "total"]);
   });
 
   it("isolamento: il cliente 2 non vede mai la richiesta del cliente 1", async () => {
@@ -247,7 +247,7 @@ describe("GET /api/requests/mine (storico del cliente)", () => {
     expect(names.has(nameB)).toBe(true);
   });
 
-  it.each([["status=bogus"], ["limit=2"], ["foo=1"]])("parametro non ammesso (%s) → 400", async (qs) => {
+  it.each([["status=bogus"], ["offset=2"], ["foo=1"]])("parametro non ammesso (%s) → 400", async (qs) => {
     expect((await mineOf(customers[0], qs)).status).toBe(400);
   });
 

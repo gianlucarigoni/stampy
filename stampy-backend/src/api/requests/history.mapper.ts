@@ -1,4 +1,4 @@
-import { HistoryItem } from "./requests.service";
+import { HistoryItem, HistoryPage } from "./requests.service";
 
 /**
  * Riga dello storico come esce dall'API: sempre mappata a mano, mai la riga del DB, mai l'email (solo il nome del cliente, `displayName`, B39).
@@ -18,5 +18,17 @@ export function historyRow(r: HistoryItem, opts: { withVenueName?: boolean } = {
     stampsAdded: r.stampsAdded,
     rewardsRedeemed: r.rewardsRedeemed,
     reward: r.reward,
+  };
+}
+
+/** Pagina dello storico: righe mappate più totale, posizione («1–50 su 122») e cursori (null agli estremi). */
+export function historyPage(p: HistoryPage, opts: { withVenueName?: boolean } = {}) {
+  return {
+    requests: p.items.map((r) => historyRow(r, opts)),
+    total: p.total,
+    pageStart: p.pageStart,
+    pageEnd: p.pageEnd,
+    prevCursor: p.prevCursor,
+    nextCursor: p.nextCursor,
   };
 }
