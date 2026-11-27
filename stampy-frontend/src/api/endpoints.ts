@@ -106,6 +106,19 @@ export const markWalletAdded = (venueId: string) =>
 export const getRequest = (requestId: string) =>
   api<StampRequest>(`/requests/${encodeURIComponent(requestId)}`)
 
+/** One card per venue of the connected user (`GET /cards/mine`). `saveUrl` is null when the venue has no active promotion. */
+export interface MyCard {
+  venueId: string
+  venueName: string
+  branding: { logoUrl: string; backgroundColor: string; bannerUrl?: string }
+  stampsCount: number
+  stampsRequired: number
+  walletStatus: 'not_added' | 'active'
+  saveUrl: string | null
+}
+
+export const getMyCards = () => api<{ cards: MyCard[] }>('/cards/mine')
+
 export const getMyVenues = () => api<{ venues: MemberVenue[] }>('/venues/mine')
 
 export const getQueue = (venueId: string) =>
