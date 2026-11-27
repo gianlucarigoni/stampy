@@ -75,8 +75,10 @@ always explicit.
 
 ## 7. Wrap up
 
-1. Tests: add checks to the domain's script in `scripts/` (same `✔`/`✘` format) or create
-   `scripts/<name>.ts` copying the structure of an existing one, with data cleanup.
-2. Run the `verify` skill. If the count changes, update the expected total.
-3. Update `docs/CODEBASE.md` (endpoints table). If it closes an item in `docs/BACKLOG.md`,
-   move it to "Recently closed". No new files in `docs/`.
+1. Tests (TDD, see `docs/agents/tdd.md`): they come **first**: propose them and wait for the owner's approval
+   before writing production code. Vitest files in `stampy-backend/test/`: `api/<name>.test.ts` for the
+   endpoint (the in-process app and the worktree's DB, helpers in `test/helpers/`, data cleaned in `afterAll`),
+   `unit/` only for pure code without DB. Copy the structure of an existing `api/` test.
+2. Run `/verify`. If the total grows, write "before -> after" in the report: the baseline is realigned by `/docs-sync`.
+3. Do not edit `docs/`: in the task report (`docs/agents/report.md`) put the ready-to-paste text for the endpoints
+   table in `CODEBASE.md` and, if the endpoint closes a `BACKLOG.md` item, the entry for §8.
