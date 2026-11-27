@@ -22,11 +22,12 @@ A running `npm run dev`, vite or nodemon keeps the folder open: cleanup then fai
 
 ```bash
 lsof -ti:<backend port>,<frontend port>     # ports from your .env / stampy-frontend/.env.local
-lsof -ti:<port> | xargs kill                # only your ports, only servers you started
+lsof -ti:<port> | xargs -r kill            # only your ports, only servers you started
 ```
 
-Never `pkill -f` with a broad pattern (it can kill the tool's own shell, exit 144). If the owner started the
-server, ask them to stop it; do not do it unannounced.
+Stop servers **by port only**, as above. Never `pkill -f` (any pattern, not even one with your worktree path: it
+matches the tool's own shell and kills it, exit 144). If the owner started the server, ask them to stop it; do not
+do it unannounced.
 
 ## 3. Finish
 
@@ -44,7 +45,7 @@ the owner deletes it.
 | 0 | merged and cleaned | report (step 4) |
 | 3 | merge conflicts; `main` untouched, worktree/database/issue unchanged | **stop**, tell the owner |
 | 4 | verification red on the updated base | **stop**, report the output |
-| 5 | suspicious diff (`.env`, `secrets`, keys, or an added line containing the word for the Wallet save link) | **stop**; remove the cause. In texts write «link di salvataggio»; if the word is a real code identifier, ask the owner |
+| 5 | suspicious diff: an `.env`/`secrets`/key file, or an added line with a real value (a Wallet save URL with its token, a JWT, a PEM private key). Identifier names such as the save-link field no longer trigger it | **stop**; remove the cause (never commit the value; in texts write «link di salvataggio») |
 
 ## If cleanup fails after a successful merge
 
