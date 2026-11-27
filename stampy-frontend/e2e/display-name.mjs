@@ -19,6 +19,11 @@ try {
   check('/history redirects to /name', path(page) === '/name', page.url())
   check('no way to skip it', (await page.getByRole('button', { name: /salta/i }).count()) === 0)
 
+  await page.getByRole('button', { name: 'Menu' }).click()
+  check('B28 (4): the menu on /name offers only "Esci"',
+    (await page.locator('#app-menu .dropdown-item').allTextContents()).map((t) => t.trim()).join() === 'Esci')
+  await page.keyboard.press('Escape')
+
   section('Validation')
   await page.getByLabel('Il tuo nome').fill('Al')
   await page.getByRole('button', { name: 'Continua' }).click()

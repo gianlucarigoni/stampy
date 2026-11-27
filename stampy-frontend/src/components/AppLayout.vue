@@ -44,6 +44,8 @@ const staffVenueId = computed(() => {
 // venue (never on the venue list itself, where it would point to the same page).
 const isStaffArea = computed(() => isStaffScreen.value || route.name === 'staff-venues')
 const menuItems = computed<MenuItem[]>(() => {
+  // On /name (B28 4) every link would only bounce back here until the name is saved: the menu offers just "Esci".
+  if (route.name === 'display-name') return []
   const items: MenuItem[] = [{ label: 'Profilo', to: { name: 'profile' }, name: 'profile', icon: 'user' }]
   const venueId = staffVenueId.value
   if (venueId) {
@@ -60,7 +62,11 @@ const menuItems = computed<MenuItem[]>(() => {
 // from the profile, to the page they opened it from (not `router.back()`: every filter change is
 // a history entry, back would only undo a filter).
 const showBack = computed(
-  () => route.name === 'history' || route.name === 'profile' || (route.name === 'staff-history' && !!staffVenueId.value),
+  () =>
+    route.name === 'history' ||
+    route.name === 'profile' ||
+    route.name === 'delete-account' ||
+    (route.name === 'staff-history' && !!staffVenueId.value),
 )
 let profileOrigin: string | null = null
 const stopOrigin = router.afterEach((to, from) => {
@@ -70,7 +76,7 @@ const stopOrigin = router.afterEach((to, from) => {
 onBeforeUnmount(stopOrigin)
 function goBack() {
   if (route.name === 'staff-history') router.push({ name: 'staff-queue', params: { venueId: staffVenueId.value! } })
-  else if (route.name === 'history') router.push({ name: 'profile' })
+  else if (route.name === 'history' || route.name === 'delete-account') router.push({ name: 'profile' })
   else router.push(profileOrigin ?? { name: 'no-venue' })
 }
 

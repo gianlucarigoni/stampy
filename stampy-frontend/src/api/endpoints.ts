@@ -186,3 +186,8 @@ export const getHistory = (venueId: string, filters: HistoryFilters) =>
 /** Customer: the logged-in user's own requests, all venues (`GET /requests/mine`). */
 export const getMyHistory = (filters: HistoryFilters) =>
   api<HistoryPage>(`/requests/mine${queryString(filters)}`)
+
+
+/** Public (no session): the venue's name for the login page (B32). 404 for unknown or malformed ids. */
+export const getPublicVenue = (venueId: string) =>
+  api<{ name: string }>(`/public/venues/${encodeURIComponent(venueId)}`, { timeoutMs: 4000 })

@@ -51,7 +51,7 @@ export async function renderGoogleButton(
   parent: HTMLElement,
   clientId: string,
   handler: (idToken: string) => void,
-  width: number,
+  look: { width: number; theme: 'outline' | 'filled_black' },
 ): Promise<void> {
   loading ??= loadScript().catch((err) => {
     loading = null // a later visit to the login page may succeed
@@ -73,12 +73,12 @@ export async function renderGoogleButton(
   parent.replaceChildren()
   google.accounts.id.renderButton(parent, {
     type: 'standard',
-    theme: 'outline',
+    theme: look.theme,
     size: 'large',
     text: 'continue_with',
     shape: 'rectangular',
     logo_alignment: 'left',
     locale: 'it',
-    width, // Google accepts 200–400 px
+    width: look.width, // Google accepts up to 400 px
   })
 }

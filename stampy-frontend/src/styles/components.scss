@@ -617,3 +617,9 @@
     animation: none;
   }
 }
+
+// --- F9: taller final danger button (its label is long and may wrap on 360 px) ----------------------------------------
+.app-btn-tall {
+  min-height: 4rem; // 64: the irreversible step is the biggest target
+  text-wrap: balance;
+}

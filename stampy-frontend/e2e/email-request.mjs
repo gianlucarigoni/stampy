@@ -158,12 +158,15 @@ try {
     const page = await fresh()
     await page.getByLabel('Email').fill(email)
     await page.getByRole('button', { name: 'Invia il codice' }).click()
-    await page.getByText(/Riprova tra \d+ min$/).waitFor()
+    // F9 (21 §5.1): il primario resta pieno e la sua etichetta dice l'attesa: «Riprova tra N min».
+    const waitButton = page.getByRole('button', { name: /^Riprova tra \d+ min$/ })
+    await waitButton.waitFor()
+    await page.getByText(/Riprova tra \d+ min\./).waitFor()
     await shot(page, 'tetto-orario')
-    check('attesa lunga in minuti', true)
+    check('attesa lunga in minuti (avviso e etichetta del pulsante)', true)
     check('DB: nessuna sesta sfida', challenges(email) === 5, String(challenges(email)))
-    check('il pulsante resta attivo (mai disabilitato)', !(await page.getByRole('button', { name: 'Invia il codice' }).isDisabled()))
-    await page.getByRole('button', { name: 'Invia il codice' }).click()
+    check('il pulsante resta attivo (mai disabilitato)', !(await waitButton.isDisabled()))
+    await waitButton.click()
     check('il tocco durante l\'attesa dà "Aspetta ancora …"', await page.getByText(/Aspetta ancora/).isVisible())
   }
 
