@@ -4,6 +4,9 @@
 # Nella cartella principale (il checkout del proprietario) non fa nulla.
 # Override per una singola sessione, deciso dal proprietario quando la task lo richiede:
 #   STAMPY_TASK_ALLOW="docs/BACKLOG.md,docs/CODEBASE.md" claude …
+# Ogni voce è un file esatto oppure una cartella con la barra finale (es. "docs/agents/" consente
+# tutto ciò che sta sotto, anche nelle sottocartelle). Non accetta altri prefissi né wildcard.
+# La variabile si legge all'avvio della sessione: dopo averla cambiata serve riavviare.
 # Limite noto: non intercetta la scrittura via Bash (sed -i, redirect); è una rete di sicurezza
 # contro gli errori, non una barriera contro un agente che aggira apposta la regola.
 set -u
@@ -43,7 +46,7 @@ if not abs_path.startswith(top + os.sep):
 rel = os.path.relpath(abs_path, top).replace(os.sep, "/")
 
 allow = {p.strip() for p in os.environ.get("STAMPY_TASK_ALLOW", "").split(",") if p.strip()}
-if rel in allow:
+if rel in allow or any(a.endswith("/") and a != "/" and rel.startswith(a) for a in allow):
     sys.exit(0)
 
 is_report = rel.startswith("docs/reports/") and rel.endswith(".md") and rel.count("/") == 2
