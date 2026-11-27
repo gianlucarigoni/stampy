@@ -12,6 +12,8 @@ const props = defineProps<{
   hint?: string
   /** Message for an invalid value. Replaces the hint. */
   error?: string
+  /** Invalid look and aria-invalid without a message of its own (the message sits under a group of fields). */
+  invalid?: boolean
   /** Read only while working (grey fill, text not faded). */
   busy?: boolean
   /** Dead code: dashed border, grey fill (not opacity). */
@@ -28,6 +30,7 @@ const autoId = useId()
 const inputId = computed(() => props.id ?? `f-${autoId}`)
 const messageId = computed(() => `${inputId.value}-msg`)
 const hasMessage = computed(() => !!props.error || !!props.hint)
+const isInvalid = computed(() => !!props.error || !!props.invalid)
 
 const input = ref<HTMLInputElement | null>(null)
 defineExpose({ focus: () => input.value?.focus(), el: input })
@@ -36,19 +39,19 @@ defineExpose({ focus: () => input.value?.focus(), el: input })
 <template>
   <div class="app-field">
     <label :for="inputId" class="form-label">{{ label }}</label>
-    <div class="app-field-control" :class="{ 'is-invalid-field': !!error }">
+    <div class="app-field-control" :class="{ 'is-invalid-field': isInvalid }">
       <input
         v-bind="$attrs"
         :id="inputId"
         ref="input"
         v-model="model"
         class="form-control"
-        :class="{ 'form-control-code': code, 'is-busy': busy, 'is-dead': dead, 'is-invalid': !!error }"
+        :class="{ 'form-control-code': code, 'is-busy': busy, 'is-dead': dead, 'is-invalid': isInvalid }"
         :readonly="busy || dead || undefined"
-        :aria-invalid="error ? 'true' : undefined"
-        :aria-describedby="hasMessage ? messageId : undefined"
+        :aria-invalid="isInvalid ? 'true' : undefined"
+        :aria-describedby="hasMessage ? messageId : ($attrs['aria-describedby'] as string | undefined)"
       />
-      <AppIcon v-if="error" name="warning-circle-fill" :size="22" class="app-field-icon" />
+      <AppIcon v-if="isInvalid" name="warning-circle-fill" :size="22" class="app-field-icon" />
     </div>
     <div :id="messageId" class="app-field-msg" :class="{ 'is-reserved': !noReserve, 'is-error': !!error }">
       <template v-if="error">

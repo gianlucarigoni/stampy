@@ -14,5 +14,13 @@ const fetchHistory = (filters: HistoryFilters) => getHistory(props.venueId, filt
     <AppAlert type="error">Non sei autorizzato a gestire questo locale.</AppAlert>
     <RouterLink :to="{ name: 'staff-venues' }">I tuoi locali</RouterLink>
   </section>
-  <RequestHistory v-else title="Storico richieste" :fetch-history="fetchHistory" @forbidden="forbidden = true" />
+  <RequestHistory
+    v-else
+    audience="staff"
+    title="Storico richieste"
+    :fetch-history="fetchHistory"
+    :home-to="{ name: 'staff-queue', params: { venueId } }"
+    home-label="Torna alla coda"
+    @forbidden="forbidden = true"
+  />
 </template>

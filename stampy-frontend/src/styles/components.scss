@@ -367,3 +367,253 @@
     height: 0.875rem;
   }
 }
+
+// --- History (F12): filters, chips, rows grouped by day -------------------------------------------------------------
+.hist-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin-bottom: 0.5rem;
+}
+// Open = `surface-2` + 2 px border in the text color (not the orange fill: orange is the primary action, 21 §4.1).
+.hist-toggle[aria-expanded="true"] {
+  background-color: var(--app-surface-2);
+  border: 2px solid var(--app-text);
+}
+.hist-count {
+  flex: 1 0 auto;
+  min-width: 5rem;
+  min-height: 1.25rem; // reserved: the count appearing does not move the list
+  margin: 0;
+  text-align: right;
+  font-size: 0.875rem;
+  color: var(--app-text-2);
+}
+.hist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+.hist-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  max-width: 100%;
+  padding-left: 0.75rem;
+  background: var(--app-surface);
+  border: 1.5px solid var(--app-field);
+  border-radius: 99px;
+  font: 700 0.875rem/1.2 "Figtree", system-ui, sans-serif;
+}
+.hist-chip-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.hist-chip-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -1.5px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  &:active {
+    background: var(--app-surface-2);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .hist-chip-x:hover {
+    background: var(--app-surface-2);
+  }
+}
+.hist-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-color: var(--app-field);
+  fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  legend {
+    float: none;
+    width: auto;
+    margin-bottom: 0.375rem;
+    font-size: 1rem;
+  }
+  .app-field-msg {
+    margin-top: 0.5rem;
+  }
+}
+.hist-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.hist-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.hist-error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.hist-groups {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+// Reload (filters changed): a thin bar on top of the list; the list is not dimmed (no lost contrast).
+.hist-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 3;
+  background: var(--app-action);
+  animation: hist-progress 1s ease-in-out infinite alternate;
+}
+@keyframes hist-progress {
+  from {
+    transform: scaleX(0.15);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+.hist-day-title {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0.5rem 0.125rem 0.375rem;
+  background: var(--app-bg);
+  font: 700 0.875rem/1.2 "Figtree", system-ui, sans-serif;
+  color: var(--app-text-2);
+}
+.hist-list {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+.hist-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1.5px solid var(--app-border);
+  &:last-child {
+    border-bottom: 0;
+  }
+  &.is-prize {
+    background: var(--app-prize-tint);
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--app-prize);
+    }
+  }
+}
+.hist-time {
+  flex: none;
+  width: 2.75rem;
+  padding-top: 0.125rem;
+  font: 600 0.875rem/1.3 "Figtree", system-ui, sans-serif;
+  color: var(--app-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.hist-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.hist-name {
+  font: 700 1rem/1.25 "Figtree", system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+.hist-code {
+  font: 700 0.875rem/1.2 "Unbounded", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+.hist-detail {
+  font-size: 0.875rem;
+  color: var(--app-text-2);
+  overflow-wrap: anywhere;
+}
+.hist-prize-text {
+  color: var(--app-prize-tt);
+}
+.is-prize .hist-detail {
+  color: var(--app-text);
+}
+.hist-row .app-chip {
+  flex: none;
+}
+.hist-skeleton {
+  .hist-row {
+    align-items: center;
+  }
+  .hist-sk-time {
+    flex: none;
+    width: 2.75rem;
+    height: 1rem;
+  }
+  .hist-sk-name {
+    width: 60%;
+    height: 1rem;
+  }
+  .hist-sk-detail {
+    width: 35%;
+    height: 0.875rem;
+  }
+  .hist-sk-chip {
+    flex: none;
+    width: 5.25rem;
+    height: 2rem;
+    border-radius: 99px;
+  }
+}
+.hist-more {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.25rem 0 1rem;
+}
+.hist-shown {
+  margin: 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--app-text-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hist-progress {
+    animation: none;
+  }
+}

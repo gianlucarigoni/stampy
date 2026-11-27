@@ -390,31 +390,6 @@ main:focus {
   max-width: 28rem;
 }
 
-// History "Filtri" toggle and its panel: secondary button; open = `surface-2` + 2 px border in the text color
-// (not the orange fill: orange is the primary action, 21 §4.1).
-.filter-toggle {
-  &.active,
-  &[aria-expanded="true"] {
-    background-color: var(--app-surface-2);
-    border: 2px solid var(--app-text);
-  }
-}
-.filter-panel {
-  border-color: var(--app-field);
-}
-// "Azzera": orange only while it can be used; disabled keeps the gray outline.
-.filter-reset:not(:disabled) {
-  --bs-btn-color: var(--app-action-fg);
-  --bs-btn-bg: var(--app-action);
-  --bs-btn-border-color: var(--app-action-bd);
-  --bs-btn-hover-color: var(--app-action-fg);
-  --bs-btn-hover-bg: var(--app-action-hover);
-  --bs-btn-hover-border-color: var(--app-action-bd);
-  --bs-btn-active-color: var(--app-action-fg);
-  --bs-btn-active-bg: var(--app-action-pressed);
-  --bs-btn-active-border-color: var(--app-action-bd);
-}
-
 // Burger menu: flush items, the current one marked by a bar (no orange fill), hover on surface-2.
 #app-menu {
   overflow: hidden; // flush items follow the rounded corners
