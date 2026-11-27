@@ -156,6 +156,9 @@ Non iniziata.
   Runner: **Vitest** (`describe`/`it`/`expect`), nessun mock del DB: i test `api/` usano il
   DB di sviluppo con dati propri ripuliti in `afterAll`. Il frontend resta fuori da questa
   regola per ora.
+- **Istruzioni per gli agenti** (2026-11-27): sono a tre livelli: `AGENTS.md` (regole sempre
+  caricate, circa 140 righe), skill `task-start`/`task-finish` (procedure con comandi) e
+  `docs/agents/` (riferimenti letti solo quando servono). Ogni regola sta in un solo punto.
 
 ## 5. Decisioni — auth e sessioni
 
