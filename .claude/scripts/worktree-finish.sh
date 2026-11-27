@@ -23,10 +23,11 @@ if [ -n "$(git -C "$WT_DIR" status --porcelain)" ]; then
   [ -n "$MSG" ] || die "ci sono modifiche non committate: serve -m \"messaggio\""
   git -C "$WT_DIR" add -A
   BAD="$(git -C "$WT_DIR" diff --cached --name-only | grep -E '(^|/)(\.env[^/]*|secrets|secrets/.*|.*\.pem|.*-credentials\.json|service-account\.json)$' || true)"
-  SECRET="$(git -C "$WT_DIR" diff --cached -U0 | grep -E '^\+.*(saveUrl|BEGIN [A-Z ]*PRIVATE KEY|private_key)' || true)"
+  # Valori veri, non nomi di identificatori: URL di salvataggio con token, JWT, chiave privata PEM.
+  SECRET="$(git -C "$WT_DIR" diff --cached -U0 | grep -E '^\+.*(pay\.google\.com/gp/v/save/[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|BEGIN [A-Z ]*PRIVATE KEY)' || true)"
   if [ -n "$BAD$SECRET" ]; then
     git -C "$WT_DIR" reset -q
-    echo "✘ il diff contiene file o contenuti sospetti (segreti/.env/saveUrl): niente commit" >&2
+    echo "✘ il diff contiene file o contenuti sospetti (segreti, .env, token di salvataggio o chiavi private): niente commit" >&2
     [ -n "$BAD" ] && echo "$BAD" >&2
     exit 5
   fi
