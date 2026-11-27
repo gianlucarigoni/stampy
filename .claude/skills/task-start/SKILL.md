@@ -14,6 +14,16 @@ and no status change.
 `<id>` is the backlog id in lowercase (`b3`, `c21`). If the task is a new item, find the first free number
 in `docs/BACKLOG.md` **and** with `gh issue list --state all` before naming it; never reuse an existing id.
 
+## Reading the issue
+
+`gh issue view <n>` without `--json` **fails** («Projects (classic) is being deprecated»). Always read an issue as JSON:
+
+```bash
+gh issue view <n> --json number,title,body,state,comments --jq '.title,.state,.body,(.comments[]?.body)'
+```
+
+Read the whole body **and** the comments: later decisions are often in a comment, not in the body.
+
 ## 2. Check Docker yourself, before the script
 
 ```bash

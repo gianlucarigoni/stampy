@@ -25,6 +25,14 @@ La task è solo coprirlo, quindi il rosso non c'è. Al suo posto, **verifica per
 
 Dichiara la verifica per mutazione nella proposta dei test.
 
+## Un test approvato ha il setup sbagliato
+
+Se un test **approvato** fallisce per un errore del suo setup (non del comportamento), non è un test "da far passare":
+dillo all'utente con il motivo, proponi la correzione minima (stesso intento, setup diverso) e **aspetta la conferma**.
+Dopo la conferma dichiaralo nel report (sezione "File toccati e test"), con il test e che cosa è cambiato.
+Vale anche per i test **già esistenti** da aggiornare perché il requisito è cambiato (es. l'elenco esatto dei campi
+di una risposta): segnalali all'utente prima di toccarli.
+
 ## Rami raggiungibili solo con una race
 
 Si può simulare la race con `vi.spyOn` su una **funzione di servizio** (mai sul DB). La scelta va dichiarata nella proposta.
