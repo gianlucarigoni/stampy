@@ -32,20 +32,33 @@ try {
   await input.pressSequentially('60')
   await page.waitForTimeout(3500)
   check('60 stays visible after a poll', (await input.inputValue()) === '60')
-  check('error text is shown', await page.getByText('Quantità non valida').isVisible())
-  // F8: primary buttons are never disabled. The tap sends nothing and puts the focus on the quantity field.
+  // F11 (D26): primary buttons are never disabled. The tap sends nothing, puts the focus on the quantity field and
+  // the message ("Massimo 50.", "Minimo 1.") appears in the reserved row of the card.
   const confirmBtn = page.getByRole('button', { name: /^Conferma/ })
   check('Confirm is not disabled (never-disabled primary)', !(await confirmBtn.isDisabled()))
+  let sent = 0
+  page.on('request', (r) => r.url().includes('/confirm') && sent++)
   await confirmBtn.click()
   check('tapping Confirm with a bad quantity focuses the field', await input.evaluate((el) => el === document.activeElement))
+  check('message "Massimo 50." is shown', await page.getByText('Massimo 50.').isVisible())
+  await input.press('Control+A')
+  await input.pressSequentially('0')
+  await confirmBtn.click()
+  check('message "Minimo 1." is shown', await page.getByText('Minimo 1.').isVisible())
+  await page.waitForTimeout(4500) // longer than the undo window: a tap that sent nothing must not fire later
+  check('nothing was sent for an invalid quantity', sent === 0, String(sent))
 
   section('Confirm sends the typed value')
   await input.press('Control+A')
   await input.pressSequentially('3')
   const body = page.waitForRequest((r) => r.url().includes('/confirm') && r.method() === 'POST')
   await page.getByRole('button', { name: /^Conferma/ }).click()
+  // D27: the call is delayed by 4 s so "Annulla" can cancel it.
+  await page.getByText(/^Confermo 3 prodotti/).waitFor()
+  check('"Annulla" is offered before the call leaves', (await page.getByRole('button', { name: /^Annulla/ }).count()) === 1)
+  check('no stamp recorded during the undo window', (await eventsOf(requestId)) === '')
   check('request body is {stamps: 3}', (await body).postData() === '{"stamps":3}', (await body).postData() ?? '')
-  await page.getByText('Richiesta approvata').first().waitFor()
+  await page.getByText(/^Confermata/).first().waitFor({ timeout: 8000 })
   check('DB: 1 stamp event of quantity 3', (await eventsOf(requestId)) === 'stamp:3', await eventsOf(requestId))
   check('DB: card at 3 stamps', cardCount(customer.id, fx.venueId) === 3)
 } catch (e) {

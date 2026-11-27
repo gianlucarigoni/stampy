@@ -330,8 +330,12 @@
 
 // --- Header and menu ------------------------------------------------------------------------------------------------
 .app-header {
+  position: relative; // the venue menu is centered on the header
   min-height: 3.5rem; // 56
   margin-bottom: 0.75rem;
+}
+.app-header-centered.app-header-title {
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 .app-header-split {
   display: flex;
@@ -622,4 +626,12 @@
 .app-btn-tall {
   min-height: 4rem; // 64: the irreversible step is the biggest target
   text-wrap: balance;
+}
+
+// Header chip placeholder while the roles are unknown: same height as the venue chip, so the header does not jump.
+.venue-chip-skeleton {
+  justify-self: center;
+  width: 9rem;
+  height: 2.75rem;
+  border-radius: 99px;
 }

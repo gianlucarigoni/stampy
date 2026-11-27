@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { getMyVenues, type MemberVenue } from '@/api/endpoints'
 import AppHeader from '@/components/AppHeader.vue'
+import SignOutDialog from '@/components/SignOutDialog.vue'
+import VenueSwitcher from '@/components/VenueSwitcher.vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import AppIconButton from '@/components/ui/AppIconButton.vue'
 import AppMenu, { type MenuItem } from '@/components/ui/AppMenu.vue'
@@ -14,6 +16,8 @@ const router = useRouter()
 const { logout } = useAuth()
 
 const error = ref('')
+const confirmingSignOut = ref(false)
+const signingOut = ref(false)
 const menu = ref<InstanceType<typeof AppMenu> | null>(null)
 
 // Memberships, asked once and only on staff screens (customers never need them).
@@ -40,9 +44,7 @@ const staffVenueId = computed(() => {
 
 // One header for everyone: "Profilo" first (customer: history and account deletion live there; staff and
 // owners have no customer history there). Inside a venue the user belongs to, "Storico richieste" (that
-// venue's requests) comes right after, and "Cambia locale" only when the user belongs to more than one
-// venue (never on the venue list itself, where it would point to the same page).
-const isStaffArea = computed(() => isStaffScreen.value || route.name === 'staff-venues')
+// venue's requests) comes right after. Switching venue is the job of the header chip (P6).
 const menuItems = computed<MenuItem[]>(() => {
   // On /name (B28 4) every link would only bounce back here until the name is saved: the menu offers just "Esci".
   if (route.name === 'display-name') return []
@@ -50,9 +52,6 @@ const menuItems = computed<MenuItem[]>(() => {
   const venueId = staffVenueId.value
   if (venueId) {
     items.push({ label: 'Storico richieste', to: { name: 'staff-history', params: { venueId } }, name: 'staff-history', icon: 'clock-counter-clockwise' })
-  }
-  if (isStaffArea.value && route.name !== 'staff-venues' && (memberships.value?.length ?? 0) > 1) {
-    items.push({ label: 'Cambia locale', to: { name: 'staff-venues' }, name: 'staff-venues', icon: 'storefront' })
   }
   return items
 })
@@ -80,16 +79,28 @@ function goBack() {
   else router.push(profileOrigin ?? { name: 'no-venue' })
 }
 
-async function signOut() {
+// "Esci" asks first (D32); the dialog's confirm does the real sign-out.
+function signOut() {
   menu.value?.close()
+  confirmingSignOut.value = true
+}
+async function doSignOut() {
   error.value = ''
+  signingOut.value = true
   try {
     await logout()
+    confirmingSignOut.value = false
     await router.replace({ name: 'login' })
   } catch (err) {
+    confirmingSignOut.value = false
     error.value = err instanceof ApiError ? err.message : 'Errore interno'
+  } finally {
+    signingOut.value = false
   }
 }
+
+// Venue chip in the header: only inside a venue the user belongs to (queue and history), and only once the roles are known.
+const switcherVenues = computed(() => (staffVenueId.value ? memberships.value : null))
 
 // Roles unknown yet on a staff screen: the menu keeps a placeholder instead of jumping when the links appear (21 §5.5).
 const menuLoading = computed(() => isStaffScreen.value && memberships.value === null)
@@ -102,6 +113,10 @@ watch(() => route.fullPath, () => menu.value?.close())
       <template #start>
         <AppIconButton v-if="showBack" icon="arrow-left" label="Indietro" @click="goBack" />
       </template>
+      <template v-if="switcherVenues || menuLoading" #title>
+        <VenueSwitcher v-if="switcherVenues" :venues="switcherVenues" :current-id="staffVenueId!" :route-name="route.name === 'staff-history' ? 'staff-history' : 'staff-queue'" />
+        <span v-else class="venue-chip-skeleton app-skeleton-line" aria-hidden="true" />
+      </template>
       <AppMenu ref="menu" :items="menuItems" :loading="menuLoading" @signout="signOut" />
     </AppHeader>
 
@@ -109,5 +124,6 @@ watch(() => route.fullPath, () => menu.value?.close())
       <AppAlert v-if="error" type="error">{{ error }}</AppAlert>
       <RouterView :key="route.path" />
     </main>
+    <SignOutDialog :open="confirmingSignOut" :busy="signingOut" @confirm="doSignOut" @cancel="confirmingSignOut = false" />
   </div>
 </template>

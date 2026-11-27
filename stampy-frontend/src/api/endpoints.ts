@@ -47,6 +47,7 @@ export interface MemberVenue {
 export interface QueueItem {
   requestId: string
   publicCode: string
+  displayName: string | null // customer's name (B39); null for an anonymised or unnamed user
   stampsCount: number
   stampsRequired: number
   promotionChanged: boolean // card still on the old promotion: it restarts from 0 on confirmation

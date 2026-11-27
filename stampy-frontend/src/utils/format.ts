@@ -11,3 +11,9 @@ export function formatTime(iso: string): string {
 export function waitMinutes(seconds: number): string {
   return `${Math.max(1, Math.ceil(seconds / 60))} min`
 }
+
+/** Minutes (or seconds under a minute) since an instant, from the device clock: indicative only. */
+export function sinceText(iso: string, nowMs: number): string {
+  const s = Math.max(0, Math.floor((nowMs - new Date(iso).getTime()) / 1000))
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min`
+}

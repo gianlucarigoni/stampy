@@ -5,6 +5,7 @@ import { ApiError } from '@/api/client'
 import { getMyVenues, type MemberVenue } from '@/api/endpoints'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import AppButton from '@/components/ui/AppButton.vue'
+import AppCard from '@/components/ui/AppCard.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton.vue'
 
 const router = useRouter()
@@ -36,22 +37,21 @@ onMounted(load)
 </script>
 
 <template>
-  <section v-if="error" class="card card-body">
-    <AppAlert type="error">{{ error }}</AppAlert>
+  <h1 class="h2 mb-3">I tuoi locali</h1>
+
+  <section v-if="error" class="d-grid gap-3">
+    <AppAlert type="error" title="Non siamo riusciti a caricare i tuoi locali">{{ error }}</AppAlert>
     <AppButton @click="load">Riprova</AppButton>
   </section>
 
-  <AppSkeleton v-else-if="!venues" card :lines="3" height="3rem" />
+  <AppSkeleton v-else-if="!venues" :lines="3" height="3.5rem" label="Caricamento dei locali…" />
 
-  <section v-else-if="venues.length > 0" class="card card-body d-grid gap-3">
-    <h1 class="h4 mb-0">I tuoi locali</h1>
-    <AppButton
-      v-for="venue in venues"
-      :key="venue.venueId"
-      variant="secondary"
-      :to="{ name: 'staff-queue', params: { venueId: venue.venueId } }"
-    >
-      {{ venue.name }}
-    </AppButton>
-  </section>
+  <ul v-else class="list-unstyled d-grid gap-3 mb-0">
+    <li v-for="venue in venues" :key="venue.venueId">
+      <AppCard :to="{ name: 'staff-queue', params: { venueId: venue.venueId } }">
+        <span class="d-block fw-bold text-break">{{ venue.name }}</span>
+        <span class="d-block small text-body-secondary">{{ venue.role === 'owner' ? 'Titolare' : 'Staff' }}</span>
+      </AppCard>
+    </li>
+  </ul>
 </template>

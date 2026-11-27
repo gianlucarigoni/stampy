@@ -1,426 +1,305 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { ApiError } from '@/api/client'
-import {
-  confirmRequest,
-  getMyVenues,
-  getQueue,
-  rejectRequest,
-  type ConfirmResult,
-  type MemberVenue,
-  type QueueItem,
-} from '@/api/endpoints'
-import PromotionNotice from '@/components/PromotionNotice.vue'
+import { confirmRequest, getQueue, rejectRequest, type QueueItem } from '@/api/endpoints'
+import QueueCard, { UNDO_MS, type CardState, type ClosedReason } from '@/components/QueueCard.vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import AppButton from '@/components/ui/AppButton.vue'
-import AppIconButton from '@/components/ui/AppIconButton.vue'
+import AppChip from '@/components/ui/AppChip.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton.vue'
 import { usePolling } from '@/composables/usePolling'
-import { formatTime } from '@/utils/format'
+import { formatTime, sinceText } from '@/utils/format'
 
 const props = defineProps<{ venueId: string }>()
 
 const POLL_MS = 3000
-const MIN_PRODUCTS = 1
-const MAX_PRODUCTS = 50 // same limit as the confirm DTO
+const NEW_MS = 3000 // how long a request that just arrived is marked "Nuova"
+const TAP_GUARD_MS = 300 // taps right after the list changed are ignored: the card under the finger may be another one
+const SCROLLED_PX = 120
 
-const requests = shallowRef<QueueItem[] | null>(null)
-const venue = shallowRef<MemberVenue | null>(null)
+const requests = shallowRef<QueueItem[] | null>(null) // last answer of the server
 const forbidden = ref(false)
-// Two separate messages: `error` belongs to the last staff action and stays until the next
-// one; `pollError` is the connection state of the background refresh (BUG-01).
-const error = ref('')
-const pollError = ref('')
-// Outcome of the actions just done: the card stays in place showing it (see `rows`).
-type Resolved = {
-  requestId: string
-  publicCode: string
-  index: number // where the card was in the queue
-  outcome:
-    | { kind: 'approved'; stampsAdded: number; rewards: number; reward: string; rewardReady: boolean }
-    | { kind: 'rejected' }
-}
-const resolved = ref<Resolved[]>([])
-const announcement = ref('') // screen-reader text for the outcome (cards appear without a live region)
-// Short on purpose: the feedback must not sit on top of the next request.
-const RESOLVED_MS = 8000
-const timers = new Set<ReturnType<typeof setTimeout>>()
-// Display-only clock for "scade tra …" (the server decides what is expired, not this).
+const pollError = ref('') // connection state of the background refresh, separate from the errors of the cards
+const lastUpdate = ref<number | null>(null)
+const announcement = ref('') // screen-reader text for the outcomes
+
+// Cards, newest first. A card stays in `order` after it left the server's queue (handled, expired): see D25.
+const order = ref<string[]>([])
+const items = shallowRef<Record<string, QueueItem>>({})
+const states = reactive<Record<string, CardState>>({})
+const errors = reactive<Record<string, string>>({})
+const heights = reactive<Record<string, number>>({}) // height of the pending card, kept by "Scaduta / Già gestita"
+const newAt = reactive<Record<string, number>>({}) // ids shown as "Nuova"
+const unseenNew = ref(0)
+const scrolled = ref(false)
+let tapGuardUntil = 0
+
+const timers = new Map<string, ReturnType<typeof setTimeout>>() // the delayed calls (undo window)
+const pendingCalls = new Map<string, () => Promise<void>>()
+const stateOf = (id: string): CardState => states[id] ?? { kind: 'pending' }
+
+// Display-only clock ("da 2 min", "scade tra …", the undo countdown). The server decides what is expired, not this.
 const now = ref(Date.now())
 let clock: ReturnType<typeof setInterval> | undefined
-const busyId = ref('')
-// Which action is running on that card, so the spinner and "Invio…" are on the button that was tapped.
-const busyKind = ref<'confirm' | 'reject' | ''>('')
+let ticks = 0
 
-// Kept per request so a queue refresh never resets what staff is counting.
-// `products` is the last valid quantity; `drafts` is the raw text while staff types. The input
-// shows the draft, so a re-render (polling every 3 s, the clock) can never overwrite it.
-const products = reactive<Record<string, number>>({})
-const drafts = reactive<Record<string, string>>({})
+const heightOf = (id: string) => document.getElementById(`card-${id}`)?.offsetHeight ?? 0
 
-const productsOf = (requestId: string) => products[requestId] ?? MIN_PRODUCTS
-
-/** Whole number in 1..50, otherwise null. The backend validates again. */
-function parseProducts(raw: string): number | null {
-  if (!/^\d+$/.test(raw.trim())) return null
-  const n = Number(raw)
-  return n >= MIN_PRODUCTS && n <= MAX_PRODUCTS ? n : null
-}
-
-/** The quantity that would be sent now; null while the typed text is not valid. */
-const quantityOf = (requestId: string) =>
-  requestId in drafts ? parseProducts(drafts[requestId]!) : productsOf(requestId)
-
-const inputText = (requestId: string) => drafts[requestId] ?? String(productsOf(requestId))
-
-function changeProducts(requestId: string, delta: number) {
-  const next = (quantityOf(requestId) ?? productsOf(requestId)) + delta
-  products[requestId] = Math.min(MAX_PRODUCTS, Math.max(MIN_PRODUCTS, next))
-  delete drafts[requestId]
-}
-
-function typeProducts(requestId: string, input: HTMLInputElement) {
-  drafts[requestId] = input.value
-  const valid = parseProducts(input.value)
-  if (valid !== null) products[requestId] = valid
-}
-
-// Leaving the field: a valid text is normalized ("07" -> 7); an invalid one stays visible with
-// its message, and a tap on Confirm only moves the focus there, so a wrong quantity is never sent silently.
-function commitProducts(requestId: string) {
-  if (requestId in drafts && parseProducts(drafts[requestId]!) !== null) delete drafts[requestId]
-}
-
-const errorText = (err: unknown) => (err instanceof ApiError ? err.message : 'Errore interno')
-
-// A timeout or dropped connection does not tell whether the server acted (UX-03).
-const actionErrorText = (err: unknown) =>
-  err instanceof ApiError && err.status === 0
-    ? 'Esito non confermato: controlla la coda prima di riprovare.'
-    : errorText(err)
-
-/** Indicative only, from the device clock: "3 min fa" / "scade tra 2 min". */
-function ageText(item: QueueItem) {
-  const left = Math.ceil((new Date(item.expiresAt).getTime() - now.value) / 1000)
-  if (left <= 0) return 'scade ora'
-  return left < 60 ? `scade tra ${left} s` : `scade tra ${Math.ceil(left / 60)} min`
+/** Request that left the server's queue without us acting on it: expired, or handled by a colleague. */
+function markGone(id: string) {
+  heights[id] = heightOf(id)
+  const item = items.value[id]
+  // Indicative guess from the device clock: only the 409 `reason` is authoritative.
+  const reason: ClosedReason = item && new Date(item.expiresAt).getTime() <= Date.now() + 5000 ? 'expired' : 'handled'
+  states[id] = { kind: 'closed', reason }
 }
 
 /** Returns false when polling must stop. */
 async function refresh(): Promise<boolean> {
   try {
-    const result = await getQueue(props.venueId)
-    requests.value = result.requests
+    const list = (await getQueue(props.venueId)).requests
+    const live = new Set(list.map((r) => r.requestId))
+    const first = requests.value === null
+    for (const id of order.value) if (!live.has(id) && !(id in states)) markGone(id)
+    const fresh = list.filter((r) => !(r.requestId in items.value)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    items.value = { ...items.value, ...Object.fromEntries(list.map((r) => [r.requestId, r])) }
+    if (fresh.length > 0) {
+      order.value = [...fresh.map((r) => r.requestId), ...order.value]
+      if (!first) {
+        tapGuardUntil = Date.now() + TAP_GUARD_MS
+        if (scrolled.value) unseenNew.value += fresh.length
+        for (const r of fresh) {
+          newAt[r.requestId] = Date.now()
+          setTimeout(() => delete newAt[r.requestId], NEW_MS)
+        }
+        announcement.value = fresh.length === 1 ? 'Nuova richiesta in coda.' : `${fresh.length} nuove richieste in coda.`
+      }
+    }
+    requests.value = list
     pollError.value = ''
-    forgetGone(result.requests)
+    lastUpdate.value = Date.now()
     return true
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 403 || err.status === 400)) {
+    // Any "this venue is not yours" answer looks the same (same 404 for a foreign and a missing venue).
+    if (err instanceof ApiError && [400, 403, 404].includes(err.status)) {
       forbidden.value = true
       return false
     }
-    pollError.value = errorText(err) // transient: the next round may succeed
-    return true
+    pollError.value = err instanceof ApiError && err.status !== 0 ? `Non riesco ad aggiornare la coda (errore ${err.status})` : 'Connessione assente'
+    return true // transient: the next round may succeed
   }
 }
-
-// Quantities of requests that left the queue (expired, handled elsewhere) are dropped.
-function forgetGone(list: QueueItem[]) {
-  const live = new Set(list.map((item) => item.requestId))
-  for (const id of Object.keys(products)) if (!live.has(id)) delete products[id]
-  for (const id of Object.keys(drafts)) if (!live.has(id)) delete drafts[id]
-}
-
 const polling = usePolling(refresh, POLL_MS)
 
-function later(fn: () => void, ms: number) {
-  const timer = setTimeout(() => {
-    timers.delete(timer)
-    fn()
-  }, ms)
-  timers.add(timer)
-}
-
-function settle(entry: Resolved) {
-  resolved.value = [...resolved.value.filter((r) => r.requestId !== entry.requestId), entry]
-  later(() => dismissResolved(entry.requestId), RESOLVED_MS)
-}
-
-const dismissResolved = (requestId: string) =>
-  (resolved.value = resolved.value.filter((r) => r.requestId !== requestId))
-
-// Queue order with the just-handled cards kept where they were (they are no longer in the
-// queue, but staff needs to see the outcome in place of the card).
-type Row =
-  | { type: 'item'; item: QueueItem }
-  | { type: 'resolved'; entry: Resolved }
-
-const rows = computed<Row[]>(() => {
-  const byId = new Map(resolved.value.map((r) => [r.requestId, r]))
-  const queue = requests.value ?? []
-  const list: Row[] = queue.map((item) => {
-    const entry = byId.get(item.requestId)
-    return entry ? { type: 'resolved', entry } : { type: 'item', item }
-  })
-  const shown = new Set(queue.map((item) => item.requestId))
-  for (const entry of [...resolved.value].sort((a, b) => a.index - b.index)) {
-    if (!shown.has(entry.requestId)) list.splice(Math.min(entry.index, list.length), 0, { type: 'resolved', entry })
+// --- actions: the call is delayed by UNDO_MS so "Annulla" can cancel it (D27, UI only) ---------------------------------
+function request(item: QueueItem, action: 'confirm' | 'reject', count = 1) {
+  const id = item.requestId
+  if (Date.now() < tapGuardUntil || states[id]) return
+  heights[id] = heightOf(id)
+  delete errors[id]
+  const call = () =>
+    action === 'confirm'
+      ? confirmRequest(props.venueId, id, count).then((r) => {
+          states[id] = {
+            kind: 'done',
+            at: Date.now(),
+            outcome: {
+              kind: 'approved',
+              stampsAdded: r.stampsAdded,
+              rewards: r.rewards,
+              reward: r.reward,
+              // The customer's card is now full: staff only needs to know a reward is waiting, not the balance.
+              rewardReady: r.stampsCount >= r.stampsRequired,
+            },
+          }
+          announcement.value = `${item.publicCode}: richiesta approvata${r.rewards > 0 ? `, consegna il premio: ${r.reward}` : ''}.`
+        })
+      : rejectRequest(props.venueId, id).then(() => {
+          states[id] = { kind: 'done', at: Date.now(), outcome: { kind: 'rejected' } }
+          announcement.value = `${item.publicCode}: richiesta rifiutata, nessun timbro aggiunto.`
+        })
+  const send = async () => {
+    timers.delete(id)
+    pendingCalls.delete(id)
+    states[id] = { kind: 'sending', action }
+    try {
+      await call()
+    } catch (err) {
+      fail(item, err)
+    }
   }
-  return list
+  pendingCalls.set(id, send)
+  timers.set(id, setTimeout(send, UNDO_MS))
+  states[id] = { kind: 'undo', action, products: count, deadline: Date.now() + UNDO_MS }
+  now.value = Date.now()
+}
+
+function fail(item: QueueItem, err: unknown) {
+  const id = item.requestId
+  if (err instanceof ApiError && err.status === 409 && err.reason) {
+    // The 409 says why: expired, or confirmed / rejected by a colleague (B38).
+    states[id] = { kind: 'closed', reason: err.reason as ClosedReason }
+    return
+  }
+  if (err instanceof ApiError && err.status === 404) {
+    states[id] = { kind: 'closed', reason: 'gone' }
+    return
+  }
+  // The card goes back to pending with the error inside it, prefixed by the code (21 §5.1 "della coda").
+  delete states[id]
+  errors[id] =
+    err instanceof ApiError && err.status === 0
+      ? `${item.publicCode} · Esito non confermato: controlla la coda prima di riprovare.`
+      : `${item.publicCode} · ${err instanceof ApiError ? err.message : 'Errore interno'}`
+}
+
+function undo(id: string) {
+  clearTimeout(timers.get(id))
+  timers.delete(id)
+  pendingCalls.delete(id)
+  delete states[id] // no call was made: nothing to undo on the server
+}
+
+function close(id: string) {
+  delete states[id]
+  delete errors[id]
+  delete heights[id]
+  delete newAt[id]
+  order.value = order.value.filter((x) => x !== id)
+  const { [id]: _gone, ...rest } = items.value
+  items.value = rest
+}
+const closable = computed(() => order.value.filter((id) => states[id]?.kind === 'done' || states[id]?.kind === 'closed'))
+const closeAll = () => [...closable.value].forEach(close)
+
+// --- derived ------------------------------------------------------------------------------------------------------------
+// Requests still waiting (a card with an outcome or an action in progress is not "in coda" any more).
+const live = computed(() => order.value.filter((id) => !(id in states)).map((id) => items.value[id]!))
+const oldest = computed(() => live.value.reduce<string | null>((a, r) => (a === null || r.createdAt < a ? r.createdAt : a), null))
+const counter = computed(() => `${live.value.length} in coda`)
+const updatedAt = computed(() => (lastUpdate.value ? formatTime(new Date(lastUpdate.value).toISOString()) : ''))
+
+watch(live, (list) => {
+  document.title = list.length > 0 ? `(${list.length}) Stampy` : 'Stampy'
 })
 
-async function act(requestId: string, kind: 'confirm' | 'reject', action: () => Promise<void>) {
-  if (busyId.value) return
-  busyId.value = requestId
-  busyKind.value = kind
-  error.value = ''
-  try {
-    await action()
-    delete products[requestId]
-    delete drafts[requestId]
-  } catch (err) {
-    // Typically 404/409: request expired or already handled from another device.
-    error.value = actionErrorText(err)
-  } finally {
-    busyId.value = ''
-    busyKind.value = ''
-    await refresh()
+// "↑ N nuove": the newest card is on top, so a request that arrives while staff scrolled down is above the screen.
+function onScroll() {
+  scrolled.value = window.scrollY > SCROLLED_PX
+  if (!scrolled.value) unseenNew.value = 0
+}
+const toTop = () => window.scrollTo({ top: 0 })
+
+function flush() {
+  // Leaving the page must not lose a tap that was still in its undo window: the call goes out now.
+  for (const id of [...pendingCalls.keys()]) {
+    clearTimeout(timers.get(id))
+    void pendingCalls.get(id)?.()
   }
 }
-
-const indexOf = (item: QueueItem) => Math.max(0, (requests.value ?? []).indexOf(item))
-
-// Stamps and rewards come only from the backend's answer: the rule is never computed here.
-function onApproved(item: QueueItem, index: number, result: ConfirmResult) {
-  settle({
-    requestId: item.requestId,
-    publicCode: item.publicCode,
-    index,
-    outcome: {
-      kind: 'approved',
-      stampsAdded: result.stampsAdded,
-      rewards: result.rewards,
-      reward: result.reward,
-      // The customer's card is now full: staff only needs to know a reward is waiting, not the balance.
-      rewardReady: result.stampsCount >= result.stampsRequired,
-    },
-  })
-  announcement.value = `${item.publicCode}: richiesta approvata${result.rewards > 0 ? `, premio ritirato: ${result.reward}` : ''}.`
-}
-
-function confirm(item: QueueItem) {
-  const count = quantityOf(item.requestId)
-  if (count === null) {
-    // Confirm is never disabled (21 §4.1): the tap sends nothing and takes the staff to the field that says why.
-    document.getElementById(`qty-${item.requestId}`)?.focus()
-    return // never send a guessed quantity
-  }
-  return act(item.requestId, 'confirm', async () => {
-    const index = indexOf(item)
-    const result = await confirmRequest(props.venueId, item.requestId, count)
-    onApproved(item, index, result)
-  })
-}
-
-// A rejection that went through is a success of the operation, not an error.
-const reject = (item: QueueItem) =>
-  act(item.requestId, 'reject', async () => {
-    const index = indexOf(item)
-    await rejectRequest(props.venueId, item.requestId)
-    settle({ requestId: item.requestId, publicCode: item.publicCode, index, outcome: { kind: 'rejected' } })
-    announcement.value = `${item.publicCode}: richiesta rifiutata, nessun timbro aggiunto.`
-  })
-
-// Pending requests in the tab title: staff may be looking at another tab.
-watch(requests, (list) => {
-  document.title = list && list.length > 0 ? `(${list.length}) Stampy` : 'Stampy'
-})
 
 onUnmounted(() => {
   clearInterval(clock)
-  timers.forEach(clearTimeout)
+  window.removeEventListener('scroll', onScroll)
+  flush()
   document.title = 'Stampy'
 })
 
 onMounted(async () => {
-  clock = setInterval(() => (now.value = Date.now()), 10000)
+  window.addEventListener('scroll', onScroll, { passive: true })
+  clock = setInterval(() => {
+    // 4 times a second only while a countdown is visible, otherwise every 10 s.
+    const counting = Object.values(states).some((s) => s.kind === 'undo')
+    if (counting || ++ticks % 40 === 0) now.value = Date.now()
+  }, 250)
   if (await refresh()) polling.start()
-  try {
-    const { venues } = await getMyVenues()
-    venue.value = venues.find((v) => v.venueId === props.venueId) ?? null
-  } catch {
-    /* only the title depends on this */
-  }
 })
 </script>
 
 <template>
-  <section v-if="forbidden" class="card card-body">
-    <AppAlert type="error">Non sei autorizzato a gestire questo locale.</AppAlert>
-    <RouterLink :to="{ name: 'staff-venues' }">I tuoi locali</RouterLink>
-  </section>
+  <AppEmptyState v-if="forbidden" icon="warning-circle-fill" title="Non sei autorizzato">
+    Non sei autorizzato a gestire questo locale.
+    <template #actions>
+      <AppButton :to="{ name: 'staff-venues' }">I tuoi locali</AppButton>
+    </template>
+  </AppEmptyState>
 
   <template v-else>
-    <div class="d-flex align-items-baseline justify-content-between gap-3 mb-3">
-      <h1 class="h4 mb-0">{{ venue?.name ?? 'Richieste' }}</h1>
-    </div>
-
-    <!-- Sticky: with several cards the outcome of the last one must stay in view (UX-02). -->
-    <div class="feedback">
-      <AppAlert v-if="error" type="error" class="mb-2">{{ error }}</AppAlert>
+    <!-- Sticky: counter, connection banner and "new requests" stay in view while staff scrolls. -->
+    <div class="queue-bar">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="h2 mb-0">Richieste</h1>
+        <AppChip v-if="requests" variant="neutral" icon="clock">
+          {{ counter }}<template v-if="oldest"> · la più vecchia da {{ sinceText(oldest, now) }}</template>
+        </AppChip>
+      </div>
+      <AppAlert v-if="pollError" type="warning" class="mb-0">
+        {{ pollError }}: la coda potrebbe non essere aggiornata<template v-if="updatedAt"> (ultimo aggiornamento {{ updatedAt }})</template>. Riprovo…
+      </AppAlert>
+      <AppButton v-if="unseenNew > 0 && scrolled" compact variant="secondary" @click="toTop">
+        ↑ {{ unseenNew === 1 ? '1 nuova' : `${unseenNew} nuove` }}
+      </AppButton>
     </div>
     <p class="visually-hidden" role="status">{{ announcement }}</p>
-    <AppAlert v-if="pollError" type="warning">{{ pollError }}</AppAlert>
 
-    <AppSkeleton v-if="!requests" card :lines="3" height="2rem" />
+    <div v-if="!requests" class="d-grid gap-3">
+      <AppSkeleton v-for="n in 2" :key="n" card :lines="4" height="3.5rem" />
+    </div>
 
-    <p v-else-if="rows.length === 0" class="card card-body text-body-secondary">Nessuna richiesta in attesa.</p>
-
-    <template v-for="row in rows" :key="row.type === 'item' ? row.item.requestId : row.entry.requestId">
-    <article v-if="row.type === 'resolved'" class="card card-body mb-3">
-      <h2 class="h5 text-break">{{ row.entry.publicCode }}</h2>
-      <div
-        v-if="row.entry.outcome.kind === 'approved'"
-        class="alert alert-success mb-3"
-      >
-        <p class="fw-semibold mb-1">✔ Richiesta approvata</p>
-        <p class="mb-0">
-          <template v-if="row.entry.outcome.stampsAdded > 0">
-            +{{ row.entry.outcome.stampsAdded }} {{ row.entry.outcome.stampsAdded === 1 ? 'timbro' : 'timbri' }}
-          </template>
-          <template v-if="row.entry.outcome.rewards > 0">
-            <template v-if="row.entry.outcome.stampsAdded > 0"> · </template>
-            <strong>{{ row.entry.outcome.rewards === 1 ? 'Premio ritirato' : `${row.entry.outcome.rewards} premi ritirati` }}:</strong>
-            {{ row.entry.outcome.reward }}
-          </template>
-          <template v-else-if="row.entry.outcome.stampsAdded === 0">Nessun timbro aggiunto</template>
-          <strong v-if="row.entry.outcome.rewardReady"> · Premio disponibile</strong>
-        </p>
-      </div>
-      <div v-else class="alert alert-warning mb-3">
-        <p class="fw-semibold mb-1">⚠ Richiesta rifiutata</p>
-        <p class="mb-0">Nessun timbro aggiunto.</p>
-      </div>
-      <button
-        type="button"
-        class="btn btn-outline-secondary"
-        :aria-label="`Chiudi esito di ${row.entry.publicCode}`"
-        @click="dismissResolved(row.entry.requestId)"
-      >
-        Ok
-      </button>
-    </article>
     <template v-else>
-    <article v-for="item in [row.item]" :key="item.requestId" class="card card-body mb-3">
-      <div class="d-flex align-items-baseline justify-content-between gap-3">
-        <h2 class="h5 mb-0 text-break">{{ item.publicCode }}</h2>
-        <span class="text-body-secondary text-end">
-          {{ formatTime(item.createdAt) }}
-          <small class="d-block">{{ ageText(item) }}</small>
-        </span>
-      </div>
+      <section v-if="live.length === 0" class="card card-body queue-empty">
+        <p class="fw-bold mb-1">Nessuna richiesta in attesa</p>
+        <p class="mb-0 text-body-secondary"><span class="dot" aria-hidden="true" /> In ascolto · aggiornato alle {{ updatedAt }}</p>
+      </section>
 
-      <p v-if="item.promotionChanged" class="mt-2 mb-0"><PromotionNotice variant="staff" /></p>
+      <AppButton v-if="closable.length >= 2" compact variant="secondary" class="mb-3" @click="closeAll">Chiudi tutti</AppButton>
 
-      <p class="my-2">
-        {{ item.stampsCount }} / {{ item.stampsRequired }} timbri
-        <strong v-if="item.stampsCount >= item.stampsRequired" class="text-success">
-          · Premio disponibile
-        </strong>
-      </p>
-
-      <div class="stepper mb-3" role="group" :aria-label="`Prodotti consumati per ${item.publicCode}, premio compreso`">
-        <AppIconButton
-          icon="minus"
-          :label="`Un prodotto in meno per ${item.publicCode}`"
-          :limited="(quantityOf(item.requestId) ?? MAX_PRODUCTS) <= MIN_PRODUCTS"
-          @click="changeProducts(item.requestId, -1)"
-        />
-        <div class="quantity">
-          <input
-            :id="`qty-${item.requestId}`"
-            class="form-control quantity-input"
-            type="number"
-            inputmode="numeric"
-            :min="MIN_PRODUCTS"
-            :max="MAX_PRODUCTS"
-            step="1"
-            :aria-label="`Numero di prodotti per ${item.publicCode}`"
-            :aria-invalid="quantityOf(item.requestId) === null"
-            :aria-describedby="quantityOf(item.requestId) === null ? `qty-error-${item.requestId}` : undefined"
-            :value="inputText(item.requestId)"
-            @input="typeProducts(item.requestId, $event.target as HTMLInputElement)"
-            @change="commitProducts(item.requestId)"
-          />
-          <span class="text-body-secondary">{{ quantityOf(item.requestId) === 1 ? 'prodotto' : 'prodotti' }}</span>
-        </div>
-        <AppIconButton
-          icon="plus"
-          :label="`Un prodotto in più per ${item.publicCode}`"
-          :limited="(quantityOf(item.requestId) ?? MIN_PRODUCTS) >= MAX_PRODUCTS"
-          @click="changeProducts(item.requestId, 1)"
+      <div class="queue-list">
+        <QueueCard
+          v-for="id in order"
+          :key="id"
+          :item="items[id]!"
+          :state="stateOf(id)"
+          :now="now"
+          :is-new="id in newAt"
+          :error="errors[id]"
+          :frozen-height="heights[id]"
+          @confirm="(n) => request(items[id]!, 'confirm', n)"
+          @reject="request(items[id]!, 'reject')"
+          @undo="undo(id)"
+          @close="close(id)"
         />
       </div>
-      <p
-        v-if="quantityOf(item.requestId) === null"
-        :id="`qty-error-${item.requestId}`"
-        class="text-danger fw-semibold"
-      >
-        ⚠ Quantità non valida: inserisci un numero intero da {{ MIN_PRODUCTS }} a {{ MAX_PRODUCTS }}.
-      </p>
-
-      <div class="d-grid gap-3" style="grid-template-columns: 1fr 1fr">
-        <AppButton
-          variant="danger-outline"
-          :aria-label="`Rifiuta ${item.publicCode}`"
-          :busy="busyId === item.requestId && busyKind === 'reject'"
-          busy-label="Invio…"
-          @click="reject(item)"
-        >
-          Rifiuta
-        </AppButton>
-        <AppButton
-          :aria-label="`Conferma ${item.publicCode}`"
-          :busy="busyId === item.requestId && busyKind === 'confirm'"
-          busy-label="Invio…"
-          @click="confirm(item)"
-        >
-          Conferma
-        </AppButton>
-      </div>
-    </article>
-    </template>
     </template>
   </template>
 </template>
 
 <style scoped>
-.stepper {
-  display: grid;
-  grid-template-columns: 2.75rem 1fr 2.75rem;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.quantity {
-  text-align: center;
-}
-
-.quantity-input {
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-align: center;
-  padding: 0.25rem;
-}
-
-.quantity span {
-  display: block;
-  font-size: 0.875rem;
-}
-
-.feedback {
+.queue-bar {
   position: sticky;
   top: 0;
   z-index: 10;
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 -0.5rem 0.75rem;
+  padding: 0.5rem;
+  background: var(--app-bg);
+}
+.queue-list {
+  display: grid;
+  gap: 1rem;
+  overflow-anchor: auto;
+}
+.queue-empty {
+  margin-bottom: 1rem;
+}
+.dot {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-right: 0.25rem;
+  background: var(--app-ok);
+  border-radius: 50%;
 }
 </style>
